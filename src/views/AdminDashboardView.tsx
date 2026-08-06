@@ -1,0 +1,199 @@
+import React from 'react';
+import { DB } from '../lib/storage';
+import {
+  GraduationCap,
+  UserCheck,
+  BookOpen,
+  Layers,
+  Award,
+  Users,
+  FileText,
+  UserPlus,
+  CreditCard,
+  FileCheck2,
+  TrendingUp,
+  Clock,
+  ArrowRight
+} from 'lucide-react';
+import { ActiveTab } from '../components/Sidebar';
+
+interface AdminDashboardViewProps {
+  setActiveTab: (tab: ActiveTab) => void;
+}
+
+export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ setActiveTab }) => {
+  const etudiants = DB.getEtudiants();
+  const enseignants = DB.getEnseignants();
+  const filieres = DB.getFilieres();
+  const classes = DB.getClasses();
+  const matieres = DB.getMatieres();
+  const inscriptions = DB.getInscriptions();
+  const paiements = DB.getPaiements();
+  const bulletins = DB.getBulletins();
+  const notes = DB.getNotes();
+  const historique = DB.getHistorique();
+
+  // Total Payments this month
+  const totalPaiementsMois = paiements.reduce((sum, p) => sum + p.montant_paye, 0);
+
+  const stats = [
+    { label: 'Total Étudiants', value: etudiants.length, badge: '+8.2%', icon: GraduationCap, tab: 'etudiants' },
+    { label: 'Enseignants', value: enseignants.length, badge: 'Actifs', icon: UserCheck, tab: 'enseignants' },
+    { label: 'Filières', value: filieres.length, badge: 'LMD', icon: Layers, tab: 'filieres' },
+    { label: 'Classes', value: classes.length, badge: 'Salles', icon: Users, tab: 'classes' },
+    { label: 'Matières (UE)', value: matieres.length, badge: 'Modules', icon: FileText, tab: 'matieres' },
+    { label: 'Inscriptions', value: inscriptions.length, badge: 'Validées', icon: UserPlus, tab: 'inscriptions' },
+    { label: 'Paiements (FCFA)', value: `${(totalPaiementsMois / 1000).toFixed(0)}k`, badge: 'Scolarité', icon: CreditCard, tab: 'paiements' },
+    { label: 'Bulletins Édités', value: bulletins.length, badge: 'Générés', icon: FileCheck2, tab: 'bulletins' },
+  ];
+
+  return (
+    <div className="space-y-8 animate-in fade-in duration-300">
+      
+      {/* Title & Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-[20px] border border-[#E5E7EB] shadow-xs">
+        <div>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-bold text-[#1A1A1A]">Tableau de bord Administrateur</h2>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              En direct
+            </span>
+          </div>
+          <p className="text-xs text-gray-500 mt-0.5">Aperçu analytique en temps réel du système scolaire universitaire.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setActiveTab('inscriptions')}
+            className="h-[38px] px-4 bg-[#0066FF] hover:bg-blue-700 text-white rounded-[12px] text-xs font-semibold transition-colors shadow-xs flex items-center gap-2"
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            + Nouvelle Inscription
+          </button>
+          <button
+            onClick={() => setActiveTab('notes')}
+            className="h-[38px] px-4 bg-white border border-[#E5E7EB] hover:bg-gray-50 text-[#374151] rounded-[12px] text-xs font-semibold transition-colors flex items-center gap-2"
+          >
+            <FileText className="w-3.5 h-3.5 text-gray-500" />
+            + Saisie des Notes
+          </button>
+        </div>
+      </div>
+
+      {/* Ordered & Compact Analytical Overview Grid */}
+      <div className="space-y-4">
+        {/* Section 1: Effectifs & Structure Académique */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+              <GraduationCap className="w-3.5 h-3.5 text-[#0066FF]" />
+              Structure Académique & Community
+            </span>
+            <span className="text-[10px] text-gray-400 font-medium">4 indicateurs clefs</span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { label: 'Total Étudiants', value: etudiants.length, badge: '+8.2%', icon: GraduationCap, tab: 'etudiants', color: 'text-blue-600', bg: 'bg-blue-50' },
+              { label: 'Enseignants', value: enseignants.length, badge: 'Actifs', icon: UserCheck, tab: 'enseignants', color: 'text-indigo-600', bg: 'bg-indigo-50' },
+              { label: 'Filières LMD', value: filieres.length, badge: 'Agrées', icon: Layers, tab: 'filieres', color: 'text-emerald-600', bg: 'bg-emerald-50' },
+              { label: 'Classes Salles', value: classes.length, badge: 'Assignées', icon: Users, tab: 'classes', color: 'text-amber-600', bg: 'bg-amber-50' },
+            ].map((s, idx) => {
+              const Icon = s.icon;
+              return (
+                <div
+                  key={idx}
+                  onClick={() => setActiveTab(s.tab as ActiveTab)}
+                  className="bg-white p-3.5 rounded-[16px] border border-[#E5E7EB] shadow-2xs hover:border-[#0066FF] hover:shadow-xs transition-all cursor-pointer group flex items-center justify-between h-[76px]"
+                >
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider block">
+                      {s.label}
+                    </span>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-xl font-bold text-[#1A1A1A] tracking-tight">{s.value}</span>
+                      <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${s.bg} ${s.color}`}>
+                        {s.badge}
+                      </span>
+                    </div>
+                  </div>
+                  <div className={`p-2 rounded-[10px] ${s.bg} group-hover:scale-105 transition-transform`}>
+                    <Icon className={`w-4 h-4 ${s.color}`} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Section 2: Performance, Recouvrement & Inscriptions */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+              <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
+              Activités, Examens & Recouvrement Financier
+            </span>
+            <span className="text-[10px] text-gray-400 font-medium">4 indicateurs en temps réel</span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { label: 'Unités d\'Enseignement', value: matieres.length, badge: 'Modules', icon: FileText, tab: 'matieres', color: 'text-cyan-600', bg: 'bg-cyan-50' },
+              { label: 'Inscriptions Validées', value: inscriptions.length, badge: 'Complets', icon: UserPlus, tab: 'inscriptions', color: 'text-purple-600', bg: 'bg-purple-50' },
+              { label: 'Scolarité Recouvrée', value: `${(totalPaiementsMois / 1000).toFixed(0)}k FCFA`, badge: 'Comptabilité', icon: CreditCard, tab: 'paiements', color: 'text-emerald-600', bg: 'bg-emerald-50' },
+              { label: 'Bulletins Générés', value: bulletins.length, badge: 'Édités', icon: FileCheck2, tab: 'bulletins', color: 'text-rose-600', bg: 'bg-rose-50' },
+            ].map((s, idx) => {
+              const Icon = s.icon;
+              return (
+                <div
+                  key={idx}
+                  onClick={() => setActiveTab(s.tab as ActiveTab)}
+                  className="bg-white p-3.5 rounded-[16px] border border-[#E5E7EB] shadow-2xs hover:border-[#0066FF] hover:shadow-xs transition-all cursor-pointer group flex items-center justify-between h-[76px]"
+                >
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider block">
+                      {s.label}
+                    </span>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-xl font-bold text-[#1A1A1A] tracking-tight">{s.value}</span>
+                      <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${s.bg} ${s.color}`}>
+                        {s.badge}
+                      </span>
+                    </div>
+                  </div>
+                  <div className={`p-2 rounded-[10px] ${s.bg} group-hover:scale-105 transition-transform`}>
+                    <Icon className={`w-4 h-4 ${s.color}`} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Activités Récentes / Historique Access */}
+      <div className="bg-white rounded-[20px] border border-[#E5E7EB] shadow-xs p-5">
+        <div className="pb-3 border-b border-gray-100 mb-4 flex items-center justify-between">
+          <h3 className="font-bold text-base text-[#1A1A1A]">Journal d'Activités & Sécurité (Historique)</h3>
+          <button
+            onClick={() => setActiveTab('historique')}
+            className="text-[#0066FF] text-xs font-bold hover:underline flex items-center gap-1"
+          >
+            <span>Voir tout l'historique</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+        <div className="space-y-4">
+          {historique.slice(0, 8).map((h) => (
+            <div key={h.id} className="flex gap-3 text-xs items-start">
+              <div className="w-2 h-2 mt-1.5 rounded-full bg-[#0066FF] flex-shrink-0"></div>
+              <div className="flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                <p className="font-medium text-[#1A1A1A]">{h.description}</p>
+                <p className="text-[10px] text-gray-400 font-mono whitespace-nowrap">{h.created_at} • IP: {h.ip_adresse}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+    </div>
+  );
+};
