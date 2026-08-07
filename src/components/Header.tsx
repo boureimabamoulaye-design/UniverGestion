@@ -38,17 +38,17 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         )}
 
-        <div>
-          <h1 className="text-sm sm:text-base lg:text-xl font-bold text-[#1A1A1A] truncate max-w-[200px] sm:max-w-[320px] lg:max-w-none">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xs sm:text-base lg:text-xl font-bold text-[#1A1A1A] truncate max-w-xs sm:max-w-md lg:max-w-none leading-snug">
             {user.role === 'ADMIN' 
               ? (user.universite_nom || 'Université des Sciences, des Techniques et des Technologies de Bamako')
               : 'Espace Étudiant Mali'}
           </h1>
-          <div className="flex items-center gap-2 mt-0.5">
-            <span className="px-2.5 py-0.5 bg-gray-100 text-[#6B7280] rounded-full text-[10px] sm:text-xs font-semibold">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-0.5">
+            <span className="px-2.5 py-0.5 bg-gray-100 text-[#6B7280] rounded-full text-[10px] sm:text-xs font-semibold whitespace-nowrap">
               {activeAnnee.libelle || 'Année Académique 2024-2025'}
             </span>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-[#0066FF] rounded-full text-[10px] sm:text-xs font-medium">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-[#0066FF] rounded-full text-[10px] sm:text-xs font-medium whitespace-nowrap">
               <span className="w-1.5 h-1.5 rounded-full bg-[#0066FF]"></span>
               Active
             </span>

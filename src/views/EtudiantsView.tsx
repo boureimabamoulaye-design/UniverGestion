@@ -212,37 +212,37 @@ export const EtudiantsView: React.FC = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:flex md:flex-wrap items-center gap-2 w-full lg:w-auto">
           <button
             onClick={() => setIsImportModalOpen(true)}
-            className="h-[40px] sm:h-[44px] px-3 sm:px-4 bg-white border border-[#E5E7EB] hover:bg-gray-50 text-gray-700 rounded-[12px] sm:rounded-[14px] text-xs font-semibold flex items-center justify-center gap-1.5 sm:gap-2 transition-colors"
+            className="h-[40px] sm:h-[44px] px-3 sm:px-4 bg-white border border-[#E5E7EB] hover:bg-gray-50 text-gray-700 rounded-[12px] sm:rounded-[14px] text-xs font-semibold flex items-center justify-center gap-1.5 sm:gap-2 transition-colors w-full sm:w-auto"
           >
             <Upload className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span className="truncate">Importer (Excel)</span>
+            <span>Importer (Excel)</span>
           </button>
 
           <button
             onClick={handleExportCSV}
-            className="h-[40px] sm:h-[44px] px-3 sm:px-4 bg-white border border-[#E5E7EB] hover:bg-gray-50 text-gray-700 rounded-[12px] sm:rounded-[14px] text-xs font-semibold flex items-center justify-center gap-1.5 sm:gap-2 transition-colors"
+            className="h-[40px] sm:h-[44px] px-3 sm:px-4 bg-white border border-[#E5E7EB] hover:bg-gray-50 text-gray-700 rounded-[12px] sm:rounded-[14px] text-xs font-semibold flex items-center justify-center gap-1.5 sm:gap-2 transition-colors w-full sm:w-auto"
           >
             <FileSpreadsheet className="w-4 h-4 text-blue-600 shrink-0" />
-            <span className="truncate">Exporter Excel</span>
+            <span>Exporter Excel</span>
           </button>
 
           <button
             onClick={handlePrint}
-            className="h-[40px] sm:h-[44px] px-3 sm:px-4 bg-white border border-[#E5E7EB] hover:bg-gray-50 text-gray-700 rounded-[12px] sm:rounded-[14px] text-xs font-semibold flex items-center justify-center gap-1.5 sm:gap-2 transition-colors"
+            className="h-[40px] sm:h-[44px] px-3 sm:px-4 bg-white border border-[#E5E7EB] hover:bg-gray-50 text-gray-700 rounded-[12px] sm:rounded-[14px] text-xs font-semibold flex items-center justify-center gap-1.5 sm:gap-2 transition-colors w-full sm:w-auto"
           >
             <Printer className="w-4 h-4 text-gray-600 shrink-0" />
-            <span className="truncate">Imprimer</span>
+            <span>Imprimer</span>
           </button>
 
           <button
             onClick={() => handleOpenModal()}
-            className="h-[40px] sm:h-[44px] px-4 sm:px-5 bg-[#0066FF] hover:bg-blue-700 text-white rounded-[12px] sm:rounded-[14px] text-xs font-semibold flex items-center justify-center gap-1.5 sm:gap-2 transition-colors shadow-xs"
+            className="h-[40px] sm:h-[44px] px-4 sm:px-5 bg-[#0066FF] hover:bg-blue-700 text-white rounded-[12px] sm:rounded-[14px] text-xs font-semibold flex items-center justify-center gap-1.5 sm:gap-2 transition-colors shadow-xs w-full sm:w-auto"
           >
             <Plus className="w-4 h-4 shrink-0" />
-            <span className="truncate">Nouveau Étudiant</span>
+            <span>Nouveau Étudiant</span>
           </button>
         </div>
       </div>

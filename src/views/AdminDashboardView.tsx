@@ -31,7 +31,6 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ setActiv
   const paiements = DB.getPaiements();
   const bulletins = DB.getBulletins();
   const notes = DB.getNotes();
-  const historique = DB.getHistorique();
 
   // Total Payments this month
   const totalPaiementsMois = paiements.reduce((sum, p) => sum + p.montant_paye, 0);
@@ -91,7 +90,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ setActiv
             </span>
             <span className="text-[10px] text-gray-400 font-medium">4 indicateurs clefs</span>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {[
               { label: 'Total Étudiants', value: etudiants.length, badge: '+8.2%', icon: GraduationCap, tab: 'etudiants', color: 'text-blue-600', bg: 'bg-blue-50' },
               { label: 'Enseignants', value: enseignants.length, badge: 'Actifs', icon: UserCheck, tab: 'enseignants', color: 'text-indigo-600', bg: 'bg-indigo-50' },
@@ -103,7 +102,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ setActiv
                 <div
                   key={idx}
                   onClick={() => setActiveTab(s.tab as ActiveTab)}
-                  className="bg-white p-3.5 rounded-[16px] border border-[#E5E7EB] shadow-2xs hover:border-[#0066FF] hover:shadow-xs transition-all cursor-pointer group flex items-center justify-between h-[76px]"
+                  className="bg-white p-3.5 rounded-[16px] border border-[#E5E7EB] shadow-2xs hover:border-[#0066FF] hover:shadow-xs transition-all cursor-pointer group flex items-center justify-between min-h-[76px] h-auto w-full"
                 >
                   <div className="space-y-0.5">
                     <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider block">
@@ -134,7 +133,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ setActiv
             </span>
             <span className="text-[10px] text-gray-400 font-medium">4 indicateurs en temps réel</span>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {[
               { label: 'Unités d\'Enseignement', value: matieres.length, badge: 'Modules', icon: FileText, tab: 'matieres', color: 'text-cyan-600', bg: 'bg-cyan-50' },
               { label: 'Inscriptions Validées', value: inscriptions.length, badge: 'Complets', icon: UserPlus, tab: 'inscriptions', color: 'text-purple-600', bg: 'bg-purple-50' },
@@ -146,7 +145,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ setActiv
                 <div
                   key={idx}
                   onClick={() => setActiveTab(s.tab as ActiveTab)}
-                  className="bg-white p-3.5 rounded-[16px] border border-[#E5E7EB] shadow-2xs hover:border-[#0066FF] hover:shadow-xs transition-all cursor-pointer group flex items-center justify-between h-[76px]"
+                  className="bg-white p-3.5 rounded-[16px] border border-[#E5E7EB] shadow-2xs hover:border-[#0066FF] hover:shadow-xs transition-all cursor-pointer group flex items-center justify-between min-h-[76px] h-auto w-full"
                 >
                   <div className="space-y-0.5">
                     <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider block">
@@ -166,31 +165,6 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ setActiv
               );
             })}
           </div>
-        </div>
-      </div>
-
-      {/* Activités Récentes / Historique Access */}
-      <div className="bg-white rounded-[20px] border border-[#E5E7EB] shadow-xs p-5">
-        <div className="pb-3 border-b border-gray-100 mb-4 flex items-center justify-between">
-          <h3 className="font-bold text-base text-[#1A1A1A]">Journal d'Activités & Sécurité (Historique)</h3>
-          <button
-            onClick={() => setActiveTab('historique')}
-            className="text-[#0066FF] text-xs font-bold hover:underline flex items-center gap-1"
-          >
-            <span>Voir tout l'historique</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-        <div className="space-y-4">
-          {historique.slice(0, 8).map((h) => (
-            <div key={h.id} className="flex gap-3 text-xs items-start">
-              <div className="w-2 h-2 mt-1.5 rounded-full bg-[#0066FF] flex-shrink-0"></div>
-              <div className="flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                <p className="font-medium text-[#1A1A1A]">{h.description}</p>
-                <p className="text-[10px] text-gray-400 font-mono whitespace-nowrap">{h.created_at} • IP: {h.ip_adresse}</p>
-              </div>
-            </div>
-          ))}
         </div>
       </div>
 

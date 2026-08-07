@@ -75,8 +75,7 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
     date_inscription: '2025-10-01'
   };
 
-  // Check if account was deleted or set to inactive/suspended by admin
-  const isAccountActive = etudiant && etudiant.statut === 'Actif' && !(etudiant as any).est_supprime;
+
 
   const classes = DB.getClasses();
   const studentClass = classes.find(c => c.id === etudiant.classe_id) || classes[0];
@@ -250,21 +249,7 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
     };
   });
 
-  if (!isAccountActive) {
-    return (
-      <div className="p-8 bg-white rounded-[24px] border border-rose-100 text-center space-y-4 max-w-xl mx-auto my-12 shadow-sm animate-in fade-in duration-300">
-        <div className="w-16 h-16 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mx-auto">
-          <AlertCircle className="w-8 h-8" />
-        </div>
-        <h2 className="text-base font-bold text-slate-900">Accès Restreint / Compte Désactivé</h2>
-        <p className="text-xs text-slate-600 leading-relaxed">
-          Votre compte étudiant a été suspendu, désactivé ou retiré par l'administration.
-          Toutes les informations restent synchronisées en temps réel, mais l'accès à ce profil est actuellement restreint.
-          Veuillez contacter le service de la scolarité.
-        </p>
-      </div>
-    );
-  }
+
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">

@@ -111,7 +111,6 @@ export const FilieresView: React.FC = () => {
                 <th className="px-6 py-4">Filière / Spécialité</th>
                 <th className="px-6 py-4">Classes Rattachées</th>
                 <th className="px-6 py-4">Domaine d'études</th>
-                <th className="px-6 py-4 text-center">Durée (Ans)</th>
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
@@ -141,7 +140,6 @@ export const FilieresView: React.FC = () => {
                     <td className="px-6 py-4 text-gray-600">
                       <span className="font-semibold block text-[#1A1A1A]">{item.domaine || 'Sciences & Technologies'}</span>
                     </td>
-                    <td className="px-6 py-4 text-center font-bold text-gray-700">{item.duree_annees} ans</td>
                     <td className="px-6 py-4 text-right space-x-2">
                       <button
                         onClick={() => handleOpenModal(item)}
@@ -171,30 +169,16 @@ export const FilieresView: React.FC = () => {
         title={editingItem ? 'Modifier la Filière' : 'Ajouter une Filière'}
       >
         <form onSubmit={handleSave} className="space-y-4 text-xs">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block font-semibold text-gray-700 mb-1">Code Filière *</label>
-              <input
-                type="text"
-                value={formData.code}
-                onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                placeholder="Ex: INFO"
-                className="w-full h-[44px] px-3 border border-[#E5E7EB] rounded-[14px]"
-                required
-              />
-            </div>
-            <div>
-              <label className="block font-semibold text-gray-700 mb-1">Durée de la formation (Années) *</label>
-              <input
-                type="number"
-                min={1}
-                max={7}
-                value={formData.duree_annees}
-                onChange={(e) => setFormData({ ...formData, duree_annees: Number(e.target.value) })}
-                className="w-full h-[44px] px-3 border border-[#E5E7EB] rounded-[14px]"
-                required
-              />
-            </div>
+          <div>
+            <label className="block font-semibold text-gray-700 mb-1">Code Filière *</label>
+            <input
+              type="text"
+              value={formData.code}
+              onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+              placeholder="Ex: INFO"
+              className="w-full h-[44px] px-3 border border-[#E5E7EB] rounded-[14px]"
+              required
+            />
           </div>
 
           <div>

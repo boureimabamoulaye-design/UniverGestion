@@ -20,8 +20,8 @@ import {
 } from 'lucide-react';
 
 interface DraftGrade {
-  cc: number;
-  exam: number;
+  cc: number | string;
+  exam: number | string;
   observation?: string;
 }
 
@@ -43,8 +43,9 @@ export const NotesView: React.FC = () => {
   // Active view mode: 'SINGLE_MATIERE' or 'GLOBAL_MATRIX'
   const [activeMatiereId, setActiveMatiereId] = useState<number | 'ALL'>('ALL');
 
-  // Search & Pagination
+  // Search & Pagination & Grade Status Filter
   const [search, setSearch] = useState<string>('');
+  const [gradeFilter, setGradeFilter] = useState<'ALL' | 'AVEC_NOTE' | 'SANS_NOTE'>('SANS_NOTE');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(10);
 
@@ -109,25 +110,6 @@ export const NotesView: React.FC = () => {
     );
   }, [etudiants, classes, selectedFiliere]);
 
-  // Filtered Students with Search
-  const filteredStudents = useMemo(() => {
-    if (!search.trim()) return filiereStudents;
-    const q = search.toLowerCase();
-    return filiereStudents.filter(
-      e => e.matricule.toLowerCase().includes(q) ||
-           e.nom.toLowerCase().includes(q) ||
-           e.prenom.toLowerCase().includes(q) ||
-           `${e.prenom} ${e.nom}`.toLowerCase().includes(q)
-    );
-  }, [filiereStudents, search]);
-
-  // Pagination logic
-  const totalPages = Math.ceil(filteredStudents.length / itemsPerPage) || 1;
-  const paginatedStudents = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return filteredStudents.slice(start, start + itemsPerPage);
-  }, [filteredStudents, currentPage, itemsPerPage]);
-
   // Key generator helper
   const getGradeKey = (etudiantId: number, matiereId: number) => `${etudiantId}_${matiereId}`;
 
@@ -144,24 +126,95 @@ export const NotesView: React.FC = () => {
            n.annee_academique_id === Number(selectedAnnee)
     );
     return {
-      cc: existing?.note_cc ?? 12,
-      exam: existing?.note_examen ?? 14,
+      cc: existing?.note_cc !== undefined && existing?.note_cc !== null ? existing.note_cc : '',
+      exam: existing?.note_examen !== undefined && existing?.note_examen !== null ? existing.note_examen : '',
       observation: existing?.appreciation ?? ''
     };
   };
 
+  // Helper to check if a student has received grades for active subject(s)
+  const hasStudentGrade = (etudiantId: number) => {
+    const targetMatieres = activeMatiereId === 'ALL'
+      ? semesterMatieres
+      : semesterMatieres.filter(m => m.id === activeMatiereId);
+
+    if (targetMatieres.length === 0) return false;
+
+    return targetMatieres.some(m => {
+      const key = getGradeKey(etudiantId, m.id);
+      const draft = draftGrades[key];
+      if (draft !== undefined) {
+        return (draft.cc !== '' && draft.cc !== undefined && draft.cc !== null) ||
+               (draft.exam !== '' && draft.exam !== undefined && draft.exam !== null);
+      }
+      const dbNote = notesList.find(
+        n => n.etudiant_id === etudiantId &&
+             n.matiere_id === m.id &&
+             n.semestre_id === Number(selectedSemestre) &&
+             n.annee_academique_id === Number(selectedAnnee)
+      );
+      return dbNote !== undefined && (dbNote.note_cc !== undefined || dbNote.note_examen !== undefined);
+    });
+  };
+
+  // Counts for grade status filter
+  const { avecNoteCount, sansNoteCount } = useMemo(() => {
+    let avec = 0;
+    let sans = 0;
+    filiereStudents.forEach(st => {
+      if (hasStudentGrade(st.id)) avec++;
+      else sans++;
+    });
+    return { avecNoteCount: avec, sansNoteCount: sans };
+  }, [filiereStudents, semesterMatieres, activeMatiereId, draftGrades, notesList, selectedSemestre, selectedAnnee]);
+
+  // Filtered Students with Search & Grade Filter
+  const filteredStudents = useMemo(() => {
+    return filiereStudents.filter(st => {
+      // Search
+      if (search.trim()) {
+        const q = search.toLowerCase();
+        const matchesSearch = 
+          st.matricule.toLowerCase().includes(q) ||
+          st.nom.toLowerCase().includes(q) ||
+          st.prenom.toLowerCase().includes(q) ||
+          `${st.prenom} ${st.nom}`.toLowerCase().includes(q);
+        if (!matchesSearch) return false;
+      }
+
+      // Grade Status
+      if (gradeFilter !== 'ALL') {
+        const hasNotes = hasStudentGrade(st.id);
+        if (gradeFilter === 'AVEC_NOTE' && !hasNotes) return false;
+        if (gradeFilter === 'SANS_NOTE' && hasNotes) return false;
+      }
+
+      return true;
+    });
+  }, [filiereStudents, search, gradeFilter, semesterMatieres, activeMatiereId, draftGrades, notesList, selectedSemestre, selectedAnnee]);
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredStudents.length / itemsPerPage) || 1;
+  const paginatedStudents = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredStudents.slice(start, start + itemsPerPage);
+  }, [filteredStudents, currentPage, itemsPerPage]);
+
   // Grade change handler
   const handleGradeChange = (etudiantId: number, matiereId: number, field: 'cc' | 'exam', rawValue: string) => {
-    const parsed = parseFloat(rawValue);
-    const value = isNaN(parsed) ? 0 : parsed;
     const key = getGradeKey(etudiantId, matiereId);
     const current = getStudentGrade(etudiantId, matiereId);
+    let val: number | string = rawValue.trim();
+    if (val !== '') {
+      const parsed = parseFloat(rawValue);
+      val = isNaN(parsed) ? '' : parsed;
+    }
 
     setDraftGrades(prev => ({
       ...prev,
       [key]: {
         ...current,
-        [field]: value
+        [field]: val
       }
     }));
     setIsSaved(false);
@@ -183,9 +236,7 @@ export const NotesView: React.FC = () => {
 
   // Batch Fill for entire student list (for current active subject or all subjects)
   const handleBatchFill = (field: 'cc' | 'exam', rawVal: string) => {
-    const parsed = parseFloat(rawVal);
-    if (isNaN(parsed)) return;
-    const value = Math.min(20, Math.max(0, parsed));
+    const val = rawVal.trim() === '' ? '' : Math.min(20, Math.max(0, parseFloat(rawVal)));
 
     const updated = { ...draftGrades };
     const targetMatieres = activeMatiereId === 'ALL' 
@@ -198,7 +249,7 @@ export const NotesView: React.FC = () => {
         const current = getStudentGrade(st.id, m.id);
         updated[key] = {
           ...current,
-          [field]: value
+          [field]: val
         };
       });
     });
@@ -209,8 +260,14 @@ export const NotesView: React.FC = () => {
 
   // Boundary Validation Check
   const getGradeValidationError = (grade: DraftGrade): string | null => {
-    if (grade.cc < 0 || grade.cc > 20) return 'CC [0-20]';
-    if (grade.exam < 0 || grade.exam > 20) return 'Exam [0-20]';
+    if (grade.cc !== '' && grade.cc !== undefined && grade.cc !== null) {
+      const c = Number(grade.cc);
+      if (isNaN(c) || c < 0 || c > 20) return 'CC [0-20]';
+    }
+    if (grade.exam !== '' && grade.exam !== undefined && grade.exam !== null) {
+      const e = Number(grade.exam);
+      if (isNaN(e) || e < 0 || e > 20) return 'Exam [0-20]';
+    }
     return null;
   };
 
@@ -228,15 +285,22 @@ export const NotesView: React.FC = () => {
 
       semesterMatieres.forEach(m => {
         const g = getStudentGrade(st.id, m.id);
-        if (g.cc >= 0 && g.cc <= 20 && g.exam >= 0 && g.exam <= 20) {
-          filledCount++;
-          const noteM = (g.cc * 0.3) + (g.exam * 0.7);
-          const credit = m.credits || 3;
-          studentSum += noteM * credit;
-          studentCredits += credit;
-        } else {
-          invalidCount++;
+        const hasCc = g.cc !== '' && g.cc !== undefined && g.cc !== null;
+        const hasExam = g.exam !== '' && g.exam !== undefined && g.exam !== null;
+        const ccNum = hasCc ? Number(g.cc) : 0;
+        const examNum = hasExam ? Number(g.exam) : 0;
+
+        if (hasCc || hasExam) {
+          if (ccNum >= 0 && ccNum <= 20 && examNum >= 0 && examNum <= 20) {
+            filledCount++;
+          } else {
+            invalidCount++;
+          }
         }
+        const noteM = (ccNum * 0.4) + (examNum * 0.6);
+        const credit = m.credits || 3;
+        studentSum += noteM * credit;
+        studentCredits += credit;
       });
 
       const stAvg = studentCredits > 0 ? studentSum / studentCredits : 0;
@@ -278,7 +342,9 @@ export const NotesView: React.FC = () => {
     filiereStudents.forEach(st => {
       semesterMatieres.forEach(m => {
         const g = getStudentGrade(st.id, m.id);
-        const noteFinale = parseFloat(((g.cc * 0.3) + (g.exam * 0.7)).toFixed(2));
+        const ccVal = g.cc === '' || g.cc === undefined || g.cc === null ? 0 : Number(g.cc);
+        const examVal = g.exam === '' || g.exam === undefined || g.exam === null ? 0 : Number(g.exam);
+        const noteFinale = parseFloat(((ccVal * 0.4) + (examVal * 0.6)).toFixed(2));
 
         const existingNote = notesList.find(
           n => n.etudiant_id === st.id &&
@@ -295,8 +361,8 @@ export const NotesView: React.FC = () => {
           matiere_id: m.id,
           semestre_id: Number(selectedSemestre),
           annee_academique_id: Number(selectedAnnee),
-          note_cc: g.cc,
-          note_examen: g.exam,
+          note_cc: ccVal,
+          note_examen: examVal,
           note_finale: noteFinale,
           appreciation
         });
@@ -334,7 +400,9 @@ export const NotesView: React.FC = () => {
 
       semesterMatieres.forEach(m => {
         const g = getStudentGrade(st.id, m.id);
-        const moy = ((g.cc * 0.3) + (g.exam * 0.7)).toFixed(2);
+        const ccVal = g.cc === '' || g.cc === undefined || g.cc === null ? 0 : Number(g.cc);
+        const examVal = g.exam === '' || g.exam === undefined || g.exam === null ? 0 : Number(g.exam);
+        const moy = ((ccVal * 0.4) + (examVal * 0.6)).toFixed(2);
         const coeff = m.credits || 3;
         sum += parseFloat(moy) * coeff;
         coeffs += coeff;
@@ -537,17 +605,55 @@ export const NotesView: React.FC = () => {
       {/* STUDENT LIST & SUBJECT GRADES TABLE - ADMINISTRATIVE REGISTER STYLE */}
       <div className="bg-white rounded-[16px] border border-gray-300 shadow-sm overflow-hidden">
         
-        {/* Table Controls (Search & Pagination) */}
-        <div className="p-4 bg-slate-50/80 border-b border-gray-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-          <div className="relative flex-1 max-w-md">
-            <input
-              type="text"
-              placeholder="Recherche instantanée par nom d'étudiant..."
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
-              className="w-full h-[38px] bg-white border border-gray-300 rounded-[10px] pl-9 pr-3 text-xs font-medium text-gray-800 focus:outline-none focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF]"
-            />
-            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+        {/* Table Controls (Search, Grade Status Filter & Pagination) */}
+        <div className="p-4 bg-slate-50/80 border-b border-gray-200 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
+            <div className="relative flex-1 max-w-xs">
+              <input
+                type="text"
+                placeholder="Recherche par nom d'étudiant..."
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+                className="w-full h-[36px] bg-white border border-gray-300 rounded-[8px] pl-9 pr-3 text-xs font-medium text-gray-800 focus:outline-none focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF]"
+              />
+              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+            </div>
+
+            {/* Filter Grade Status Buttons */}
+            <div className="flex items-center gap-1 bg-gray-200/70 p-1 rounded-[8px] shrink-0">
+              <button
+                onClick={() => { setGradeFilter('ALL'); setCurrentPage(1); }}
+                className={`px-2.5 py-1 text-xs font-bold rounded-[6px] transition-all ${
+                  gradeFilter === 'ALL'
+                    ? 'bg-white text-slate-900 shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Tous ({filiereStudents.length})
+              </button>
+              <button
+                onClick={() => { setGradeFilter('AVEC_NOTE'); setCurrentPage(1); }}
+                className={`px-2.5 py-1 text-xs font-bold rounded-[6px] transition-all flex items-center gap-1 ${
+                  gradeFilter === 'AVEC_NOTE'
+                    ? 'bg-emerald-600 text-white shadow-2xs'
+                    : 'text-emerald-700 hover:text-emerald-800'
+                }`}
+              >
+                <CheckCircle2 className="w-3 h-3" />
+                Avec notes ({avecNoteCount})
+              </button>
+              <button
+                onClick={() => { setGradeFilter('SANS_NOTE'); setCurrentPage(1); }}
+                className={`px-2.5 py-1 text-xs font-bold rounded-[6px] transition-all flex items-center gap-1 ${
+                  gradeFilter === 'SANS_NOTE'
+                    ? 'bg-amber-600 text-white shadow-2xs'
+                    : 'text-amber-700 hover:text-amber-800'
+                }`}
+              >
+                <AlertTriangle className="w-3 h-3" />
+                Sans note ({sansNoteCount})
+              </button>
+            </div>
           </div>
 
           <div className="flex items-center justify-between sm:justify-end gap-3 text-xs text-gray-600">
@@ -591,18 +697,18 @@ export const NotesView: React.FC = () => {
         <div className="overflow-x-auto">
           {activeMatiereId === 'ALL' ? (
             /* MULTI-MATIERE MATRIX TABLE */
-            <table className="w-full text-left border-collapse border-spacing-0 min-w-[900px]">
+            <table className="w-full text-left border-collapse border-spacing-0 min-w-[750px]">
               <thead>
                 <tr className="bg-slate-100 text-[11px] font-bold text-slate-700 uppercase tracking-wider border-b border-gray-300">
-                  <th className="px-3 py-3 text-center w-12 border-r border-gray-300">N°</th>
-                  <th className="px-4 py-3 border-r border-gray-300 min-w-[200px]">Nom & Prénom(s) de l'Étudiant</th>
+                  <th className="px-2 py-2.5 text-center w-10 border-r border-gray-300">N°</th>
+                  <th className="px-3 py-2.5 border-r border-gray-300 min-w-[170px] max-w-[210px]">Nom & Prénom(s)</th>
                   {semesterMatieres.map(m => (
-                    <th key={m.id} className="px-3 py-3 text-center border-r border-gray-300 bg-slate-100">
-                      <div className="text-slate-900 font-extrabold normal-case text-xs">{m.nom}</div>
-                      <div className="text-[10px] font-semibold text-slate-500 lowercase mt-0.5">Note CC (30%) | Exam (70%)</div>
+                    <th key={m.id} className="px-1.5 py-2 text-center border-r border-gray-300 bg-slate-100/90 min-w-[85px] max-w-[105px]">
+                      <div className="text-slate-900 font-extrabold normal-case text-[11px] leading-tight truncate px-0.5" title={m.nom}>{m.nom}</div>
+                      <div className="text-[9px] font-semibold text-slate-500 mt-0.5">Cl 40% | Ex 60%</div>
                     </th>
                   ))}
-                  <th className="px-4 py-3 text-center bg-slate-200/70 text-slate-900 min-w-[110px]">Moy. Semestre</th>
+                  <th className="px-3 py-2.5 text-center bg-slate-200/70 text-slate-900 min-w-[95px]">Moy. Sem.</th>
                 </tr>
               </thead>
               <tbody className="text-xs divide-y divide-gray-200">
@@ -621,50 +727,52 @@ export const NotesView: React.FC = () => {
 
                     return (
                       <tr key={st.id} className="odd:bg-white even:bg-slate-50/60 hover:bg-blue-50/40 transition-colors">
-                        <td className="px-3 py-2.5 text-center text-slate-500 font-mono text-[11px] font-bold border-r border-gray-200">{globalIdx}</td>
-                        <td className="px-4 py-2.5 font-bold text-slate-900 border-r border-gray-200">{st.prenom} {st.nom}</td>
+                        <td className="px-2 py-2 text-center text-slate-500 font-mono text-[10px] font-bold border-r border-gray-200">{globalIdx}</td>
+                        <td className="px-3 py-2 font-bold text-slate-900 border-r border-gray-200 truncate max-w-[200px]" title={`${st.prenom} ${st.nom}`}>{st.prenom} {st.nom}</td>
 
-                        {/* Matières Inputs Side-by-Side */}
+                        {/* Matières Inputs Side-by-Side (Ultra Compact) */}
                         {semesterMatieres.map(m => {
                           const g = getStudentGrade(st.id, m.id);
-                          const moy = ((g.cc * 0.3) + (g.exam * 0.7));
+                          const ccVal = g.cc === '' || g.cc === undefined || g.cc === null ? 0 : Number(g.cc);
+                          const examVal = g.exam === '' || g.exam === undefined || g.exam === null ? 0 : Number(g.exam);
+                          const moy = ((ccVal * 0.4) + (examVal * 0.6));
                           const credit = m.credits || 3;
                           sumMoy += moy * credit;
                           totalCredits += credit;
 
                           return (
-                            <td key={m.id} className="px-2 py-2 text-center border-r border-gray-200">
-                              <div className="flex items-center justify-center gap-1.5">
+                            <td key={m.id} className="px-1 py-1.5 text-center border-r border-gray-200">
+                              <div className="flex items-center justify-center gap-0.5">
                                 <div className="flex flex-col items-center">
-                                  <span className="text-[9px] font-semibold text-gray-400">CC</span>
+                                  <span className="text-[8px] font-semibold text-slate-400 leading-none mb-0.5">CL</span>
                                   <input
                                     type="number"
                                     step="0.5"
                                     min="0"
                                     max="20"
-                                    placeholder="0"
+                                    placeholder=""
                                     value={g.cc}
                                     onChange={(e) => handleGradeChange(st.id, m.id, 'cc', e.target.value)}
-                                    className="w-12 h-7 text-center bg-white border border-gray-300 rounded-[5px] font-mono text-[11px] font-bold text-gray-900 focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF] outline-none"
+                                    className="w-9 h-6 text-center bg-white border border-gray-300 rounded text-[10px] font-mono font-bold text-gray-900 focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF] outline-none px-0.5"
                                   />
                                 </div>
-                                <span className="text-gray-300 font-bold self-end mb-1">/</span>
+                                <span className="text-gray-300 text-[10px] font-bold self-end mb-0.5">/</span>
                                 <div className="flex flex-col items-center">
-                                  <span className="text-[9px] font-semibold text-gray-400">EXAM</span>
+                                  <span className="text-[8px] font-semibold text-slate-400 leading-none mb-0.5">EX</span>
                                   <input
                                     type="number"
                                     step="0.5"
                                     min="0"
                                     max="20"
-                                    placeholder="0"
+                                    placeholder=""
                                     value={g.exam}
                                     onChange={(e) => handleGradeChange(st.id, m.id, 'exam', e.target.value)}
-                                    className="w-12 h-7 text-center bg-white border border-gray-300 rounded-[5px] font-mono text-[11px] font-bold text-gray-900 focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF] outline-none"
+                                    className="w-9 h-6 text-center bg-white border border-gray-300 rounded text-[10px] font-mono font-bold text-gray-900 focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF] outline-none px-0.5"
                                   />
                                 </div>
                               </div>
-                              <div className={`text-[10px] font-mono font-extrabold mt-1 ${moy >= 10 ? 'text-emerald-700' : 'text-red-600'}`}>
-                                Moy: {moy.toFixed(2)}
+                              <div className={`text-[9px] font-mono font-extrabold mt-0.5 leading-none ${moy >= 10 ? 'text-emerald-700' : 'text-red-600'}`}>
+                                {moy.toFixed(2)}
                               </div>
                             </td>
                           );
@@ -675,13 +783,13 @@ export const NotesView: React.FC = () => {
                           const semAvg = totalCredits > 0 ? (sumMoy / totalCredits) : 0;
                           const isPass = semAvg >= 10;
                           return (
-                            <td className="px-4 py-2.5 text-center font-mono font-bold bg-slate-50/80">
-                              <span className={`inline-block px-2.5 py-1 rounded-[6px] border text-xs font-bold ${
+                            <td className="px-2.5 py-2 text-center font-mono font-bold bg-slate-50/80">
+                              <span className={`inline-block px-2 py-0.5 rounded border text-[11px] font-bold ${
                                 isPass 
                                   ? 'bg-emerald-50 text-emerald-800 border-emerald-300' 
                                   : 'bg-red-50 text-red-800 border-red-300'
                               }`}>
-                                {semAvg.toFixed(2)} / 20
+                                {semAvg.toFixed(2)}
                               </span>
                             </td>
                           );
@@ -700,8 +808,8 @@ export const NotesView: React.FC = () => {
                 <tr className="bg-slate-100 text-[11px] font-bold text-slate-700 uppercase tracking-wider border-b border-gray-300">
                   <th className="px-4 py-3.5 text-center w-12 border-r border-gray-300">N°</th>
                   <th className="px-5 py-3.5 border-r border-gray-300">Nom & Prénom(s) de l'Étudiant</th>
-                  <th className="px-5 py-3.5 text-center border-r border-gray-300 w-36">Note CC (30%)</th>
-                  <th className="px-5 py-3.5 text-center border-r border-gray-300 w-36">Note Examen (70%)</th>
+                  <th className="px-5 py-3.5 text-center border-r border-gray-300 w-36">Note Classe (40%)</th>
+                  <th className="px-5 py-3.5 text-center border-r border-gray-300 w-36">Note Examen (60%)</th>
                   <th className="px-5 py-3.5 text-center border-r border-gray-300 w-36 bg-slate-200/50">Note Finale (/20)</th>
                   <th className="px-5 py-3.5 border-r border-gray-300">Observation</th>
                   <th className="px-5 py-3.5 text-center w-36">Décision</th>
@@ -719,7 +827,9 @@ export const NotesView: React.FC = () => {
                     const matiereId = currentActiveMatiere?.id || semesterMatieres[0]?.id || 1;
                     const grade = getStudentGrade(st.id, matiereId);
                     const err = getGradeValidationError(grade);
-                    const moy = parseFloat(((grade.cc * 0.3) + (grade.exam * 0.7)).toFixed(2));
+                    const ccVal = grade.cc === '' || grade.cc === undefined || grade.cc === null ? 0 : Number(grade.cc);
+                    const examVal = grade.exam === '' || grade.exam === undefined || grade.exam === null ? 0 : Number(grade.exam);
+                    const moy = parseFloat(((ccVal * 0.4) + (examVal * 0.6)).toFixed(2));
                     const isPassed = moy >= 10;
                     const globalIdx = (currentPage - 1) * itemsPerPage + idx + 1;
 
@@ -735,10 +845,11 @@ export const NotesView: React.FC = () => {
                             step="0.25"
                             min="0"
                             max="20"
+                            placeholder=""
                             value={grade.cc}
                             onChange={(e) => handleGradeChange(st.id, matiereId, 'cc', e.target.value)}
                             className={`w-20 h-8 text-center rounded-[6px] font-mono font-bold text-xs outline-none transition-all ${
-                              grade.cc < 0 || grade.cc > 20
+                              grade.cc !== '' && (Number(grade.cc) < 0 || Number(grade.cc) > 20)
                                 ? 'bg-red-50 border-2 border-red-500 text-red-700'
                                 : 'bg-white border border-gray-300 text-gray-900 focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF]'
                             }`}
@@ -752,10 +863,11 @@ export const NotesView: React.FC = () => {
                             step="0.25"
                             min="0"
                             max="20"
+                            placeholder=""
                             value={grade.exam}
                             onChange={(e) => handleGradeChange(st.id, matiereId, 'exam', e.target.value)}
                             className={`w-20 h-8 text-center rounded-[6px] font-mono font-bold text-xs outline-none transition-all ${
-                              grade.exam < 0 || grade.exam > 20
+                              grade.exam !== '' && (Number(grade.exam) < 0 || Number(grade.exam) > 20)
                                 ? 'bg-red-50 border-2 border-red-500 text-red-700'
                                 : 'bg-white border border-gray-300 text-gray-900 focus:border-[#0066FF] focus:ring-1 focus:ring-[#0066FF]'
                             }`}
@@ -788,7 +900,7 @@ export const NotesView: React.FC = () => {
                               Hors Bornes
                             </span>
                           ) : (
-                            <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                            <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${
                               isPassed 
                                 ? 'bg-emerald-50 text-emerald-800 border-emerald-200' 
                                 : 'bg-red-50 text-red-800 border-red-200'
@@ -894,7 +1006,9 @@ export const NotesView: React.FC = () => {
 
                   semesterMatieres.forEach(m => {
                     const g = getStudentGrade(st.id, m.id);
-                    const moy = ((g.cc * 0.3) + (g.exam * 0.7));
+                    const ccVal = g.cc === '' || g.cc === undefined || g.cc === null ? 0 : Number(g.cc);
+                    const examVal = g.exam === '' || g.exam === undefined || g.exam === null ? 0 : Number(g.exam);
+                    const moy = ((ccVal * 0.4) + (examVal * 0.6));
                     const c = m.credits || 3;
                     sum += moy * c;
                     coeffs += c;
