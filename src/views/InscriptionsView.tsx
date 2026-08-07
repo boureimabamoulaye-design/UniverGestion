@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { DB } from '../lib/storage';
 import { Inscription } from '../types/database';
 import { Modal } from '../components/Modal';
+import { ConfirmModal } from '../components/ConfirmModal';
 import { StudentSearchSelect } from '../components/StudentSearchSelect';
-import { UserPlus, Users, Search, CheckCircle, Clock } from 'lucide-react';
+import { UserPlus, Users, Search, CheckCircle, Clock, Trash2 } from 'lucide-react';
 
 export const InscriptionsView: React.FC = () => {
   const [list, setList] = useState<Inscription[]>(DB.getInscriptions());
@@ -13,6 +14,7 @@ export const InscriptionsView: React.FC = () => {
 
   const [isIndivModalOpen, setIsIndivModalOpen] = useState(false);
   const [isCollectiveModalOpen, setIsCollectiveModalOpen] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
 
   // Single Inscription Form
   const [indivForm, setIndivForm] = useState({
@@ -78,7 +80,23 @@ export const InscriptionsView: React.FC = () => {
 
     setList(DB.getInscriptions());
     setIsCollectiveModalOpen(false);
-    alert(`Passage collectif réussi pour ${studentsInSourceClass.length} étudiants !`);
+  };
+
+  const handleDelete = (id: number) => {
+    setDeleteConfirmId(id);
+  };
+
+  const executeDeleteInscription = () => {
+    if (deleteConfirmId !== null) {
+      const item = list.find(i => i.id === deleteConfirmId);
+      if (item) {
+        const student = etudiants.find(e => e.id === item.etudiant_id);
+        DB.moveToCorbeille('INSCRIPTION', item.id, `Inscription ${student ? `${student.prenom} ${student.nom}` : `#${item.id}`}`, `Paiement: ${item.statut_paiement}`, item);
+        DB.deleteInscription(deleteConfirmId);
+        setList(DB.getInscriptions());
+      }
+      setDeleteConfirmId(null);
+    }
   };
 
   return (
@@ -121,7 +139,8 @@ export const InscriptionsView: React.FC = () => {
                 <th className="px-6 py-4">Classe Attribuée</th>
                 <th className="px-6 py-4">Type</th>
                 <th className="px-6 py-4">Paiement Frais</th>
-                <th className="px-6 py-4 text-right">Statut Validation</th>
+                <th className="px-6 py-4">Statut Validation</th>
+                <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="text-xs divide-y divide-gray-100">
@@ -141,11 +160,20 @@ export const InscriptionsView: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 font-bold text-emerald-600">{item.statut_paiement}</td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-6 py-4">
                       <span className="px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full font-bold text-[10px] inline-flex items-center gap-1">
                         <CheckCircle className="w-3 h-3" />
                         {item.statut_validation}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button
+                        onClick={() => handleDelete(item.id)}
+                        className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-[10px] text-xs font-semibold inline-flex items-center"
+                        title="Annuler / Supprimer l'inscription"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </td>
                   </tr>
                 );
@@ -297,6 +325,15 @@ export const InscriptionsView: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      <ConfirmModal
+        isOpen={deleteConfirmId !== null}
+        title="Confirmer l'annulation de l'inscription"
+        message="Voulez-vous vraiment annuler/supprimer cette inscription ? Elle sera déplacée vers la Corbeille."
+        confirmLabel="Oui, supprimer"
+        onConfirm={executeDeleteInscription}
+        onClose={() => setDeleteConfirmId(null)}
+      />
 
     </div>
   );

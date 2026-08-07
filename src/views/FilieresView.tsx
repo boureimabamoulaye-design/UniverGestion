@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { DB } from '../lib/storage';
 import { Filiere } from '../types/database';
 import { Modal } from '../components/Modal';
+import { ConfirmModal } from '../components/ConfirmModal';
 import { Layers, Plus, Search } from 'lucide-react';
 
 export const FilieresView: React.FC = () => {
@@ -9,6 +10,7 @@ export const FilieresView: React.FC = () => {
   const classes = DB.getClasses();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Filiere | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [search, setSearch] = useState('');
 
   const [formData, setFormData] = useState({
@@ -58,9 +60,18 @@ export const FilieresView: React.FC = () => {
   };
 
   const handleDelete = (id: number) => {
-    if (confirm('Voulez-vous supprimer cette filière ?')) {
-      DB.deleteFiliere(id);
-      setList(DB.getFilieres());
+    setDeleteConfirmId(id);
+  };
+
+  const executeDeleteFiliere = () => {
+    if (deleteConfirmId !== null) {
+      const item = list.find(f => f.id === deleteConfirmId);
+      if (item) {
+        DB.moveToCorbeille('FILIERE', item.id, `${item.code} - ${item.nom}`, `Filière Domaine: ${item.domaine}`, item);
+        DB.deleteFiliere(deleteConfirmId);
+        setList(DB.getFilieres());
+      }
+      setDeleteConfirmId(null);
     }
   };
 
@@ -231,6 +242,15 @@ export const FilieresView: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      <ConfirmModal
+        isOpen={deleteConfirmId !== null}
+        title="Confirmer la suppression"
+        message="Voulez-vous vraiment supprimer cette filière ? Elle sera envoyée dans la Corbeille."
+        confirmLabel="Oui, supprimer"
+        onConfirm={executeDeleteFiliere}
+        onClose={() => setDeleteConfirmId(null)}
+      />
 
     </div>
   );

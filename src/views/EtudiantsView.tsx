@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { DB } from '../lib/storage';
 import { Etudiant } from '../types/database';
 import { Modal } from '../components/Modal';
+import { ConfirmModal } from '../components/ConfirmModal';
 import {
   GraduationCap,
   Plus,
@@ -31,6 +32,7 @@ export const EtudiantsView: React.FC = () => {
 
   const [editingItem, setEditingItem] = useState<Etudiant | null>(null);
   const [viewingItem, setViewingItem] = useState<Etudiant | null>(null);
+  const [deleteConfirmStudent, setDeleteConfirmStudent] = useState<Etudiant | null>(null);
 
   // Search & Filters
   const [search, setSearch] = useState('');
@@ -109,18 +111,22 @@ export const EtudiantsView: React.FC = () => {
   const handleDelete = (id: number) => {
     const student = list.find(e => e.id === id);
     if (!student) return;
-    if (confirm(`Voulez-vous déplacer l'étudiant ${student.prenom} ${student.nom} (${student.matricule}) vers la Corbeille ?`)) {
-      DB.moveToCorbeille(
-        'ETUDIANT',
-        student.id,
-        `${student.prenom} ${student.nom} (${student.matricule})`,
-        `Étudiant ${student.statut} - Classe ID #${student.classe_id}`,
-        student,
-        'Administrateur'
-      );
-      DB.deleteEtudiant(id);
-      setList(DB.getEtudiants());
-    }
+    setDeleteConfirmStudent(student);
+  };
+
+  const executeDeleteStudent = () => {
+    if (!deleteConfirmStudent) return;
+    DB.moveToCorbeille(
+      'ETUDIANT',
+      deleteConfirmStudent.id,
+      `${deleteConfirmStudent.prenom} ${deleteConfirmStudent.nom} (${deleteConfirmStudent.matricule})`,
+      `Étudiant ${deleteConfirmStudent.statut} - Classe ID #${deleteConfirmStudent.classe_id}`,
+      deleteConfirmStudent,
+      'Administrateur'
+    );
+    DB.deleteEtudiant(deleteConfirmStudent.id);
+    setList(DB.getEtudiants());
+    setDeleteConfirmStudent(null);
   };
 
   // Export List as CSV / Excel
@@ -625,6 +631,16 @@ export const EtudiantsView: React.FC = () => {
           </div>
         </div>
       </Modal>
+
+      {/* Delete Confirm Modal */}
+      <ConfirmModal
+        isOpen={!!deleteConfirmStudent}
+        title="Confirmer la suppression"
+        message={deleteConfirmStudent ? `Voulez-vous vraiment supprimer l'étudiant ${deleteConfirmStudent.prenom} ${deleteConfirmStudent.nom} (${deleteConfirmStudent.matricule}) ? Il sera déplacé vers la Corbeille.` : ''}
+        confirmLabel="Oui, supprimer"
+        onConfirm={executeDeleteStudent}
+        onClose={() => setDeleteConfirmStudent(null)}
+      />
 
     </div>
   );

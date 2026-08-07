@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { DB } from '../lib/storage';
 import { Paiement } from '../types/database';
 import { Modal } from '../components/Modal';
+import { ConfirmModal } from '../components/ConfirmModal';
 import { CreditCard, Plus, Printer, Edit2, Trash2, Eye, ShieldCheck } from 'lucide-react';
 import { StudentSearchSelect } from '../components/StudentSearchSelect';
 
@@ -447,6 +448,15 @@ export const PaiementsView: React.FC = () => {
           </div>
         </Modal>
       )}
+
+      <ConfirmModal
+        isOpen={!!deletingPaiement}
+        title="Confirmer la suppression du paiement"
+        message={deletingPaiement ? `Voulez-vous vraiment supprimer le paiement de ${deletingPaiement.montant_paye.toLocaleString()} FCFA (Réf: ${deletingPaiement.reference_recu}) ?` : ''}
+        confirmLabel="Oui, supprimer"
+        onConfirm={handleDeleteConfirm}
+        onClose={() => setDeletingPaiement(null)}
+      />
 
     </div>
   );

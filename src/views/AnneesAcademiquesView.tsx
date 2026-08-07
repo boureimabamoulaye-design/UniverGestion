@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { DB } from '../lib/storage';
 import { AnneeAcademique } from '../types/database';
 import { Modal } from '../components/Modal';
-import { Clock, Plus, CheckCircle, Archive } from 'lucide-react';
+import { ConfirmModal } from '../components/ConfirmModal';
+import { Clock, Plus, CheckCircle, Archive, Trash2 } from 'lucide-react';
 
 export const AnneesAcademiquesView: React.FC = () => {
   const [list, setList] = useState<AnneeAcademique[]>(DB.getAnneesAcademiques());
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<AnneeAcademique | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
 
   const [formData, setFormData] = useState({
     code: '',
@@ -59,6 +61,21 @@ export const AnneesAcademiquesView: React.FC = () => {
   const handleActivate = (id: number) => {
     DB.setActiveAnneeAcademique(id);
     setList(DB.getAnneesAcademiques());
+  };
+
+  const handleDelete = (id: number) => {
+    setDeleteConfirmId(id);
+  };
+
+  const executeDeleteAnnee = () => {
+    if (deleteConfirmId !== null) {
+      const item = list.find(a => a.id === deleteConfirmId);
+      if (item) {
+        DB.deleteAnneeAcademique(deleteConfirmId);
+        setList(DB.getAnneesAcademiques());
+      }
+      setDeleteConfirmId(null);
+    }
   };
 
   return (
@@ -130,6 +147,15 @@ export const AnneesAcademiquesView: React.FC = () => {
                     >
                       Modifier
                     </button>
+                    {!item.est_active && (
+                      <button
+                        onClick={() => handleDelete(item.id)}
+                        className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-[10px] text-xs font-semibold inline-flex items-center"
+                        title="Supprimer l'année académique"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -232,6 +258,15 @@ export const AnneesAcademiquesView: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      <ConfirmModal
+        isOpen={deleteConfirmId !== null}
+        title="Confirmer la suppression"
+        message="Voulez-vous vraiment supprimer cette année académique ?"
+        confirmLabel="Oui, supprimer"
+        onConfirm={executeDeleteAnnee}
+        onClose={() => setDeleteConfirmId(null)}
+      />
 
     </div>
   );

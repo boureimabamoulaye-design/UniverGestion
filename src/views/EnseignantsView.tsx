@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { DB } from '../lib/storage';
 import { Enseignant } from '../types/database';
 import { Modal } from '../components/Modal';
+import { ConfirmModal } from '../components/ConfirmModal';
 import { UserCheck, Plus, Search } from 'lucide-react';
 
 export const EnseignantsView: React.FC = () => {
@@ -10,6 +11,7 @@ export const EnseignantsView: React.FC = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Enseignant | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [search, setSearch] = useState('');
 
   const [formData, setFormData] = useState({
@@ -67,9 +69,18 @@ export const EnseignantsView: React.FC = () => {
   };
 
   const handleDelete = (id: number) => {
-    if (confirm('Voulez-vous supprimer cet enseignant ?')) {
-      DB.deleteEnseignant(id);
-      setList(DB.getEnseignants());
+    setDeleteConfirmId(id);
+  };
+
+  const executeDeleteEnseignant = () => {
+    if (deleteConfirmId !== null) {
+      const ens = list.find(e => e.id === deleteConfirmId);
+      if (ens) {
+        DB.moveToCorbeille('ENSEIGNANT', ens.id, `${ens.titre} ${ens.prenom} ${ens.nom}`, `Spécialité: ${ens.specialite}`, ens);
+        DB.deleteEnseignant(deleteConfirmId);
+        setList(DB.getEnseignants());
+      }
+      setDeleteConfirmId(null);
     }
   };
 
@@ -258,6 +269,15 @@ export const EnseignantsView: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      <ConfirmModal
+        isOpen={deleteConfirmId !== null}
+        title="Confirmer la suppression"
+        message="Voulez-vous vraiment supprimer cet enseignant ? Il sera envoyé dans la Corbeille."
+        confirmLabel="Oui, supprimer"
+        onConfirm={executeDeleteEnseignant}
+        onClose={() => setDeleteConfirmId(null)}
+      />
 
     </div>
   );

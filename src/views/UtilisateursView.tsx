@@ -2,11 +2,14 @@ import React, { useState } from 'react';
 import { DB } from '../lib/storage';
 import { Utilisateur } from '../types/database';
 import { Modal } from '../components/Modal';
-import { Users, Plus, Key, ShieldCheck, UserX, UserCheck } from 'lucide-react';
+import { ConfirmModal } from '../components/ConfirmModal';
+import { Users, Plus, Key, ShieldCheck, UserX, UserCheck, Trash2 } from 'lucide-react';
 
 export const UtilisateursView: React.FC = () => {
   const [list, setList] = useState<Utilisateur[]>(DB.getUtilisateurs());
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [resetPassUser, setResetPassUser] = useState<Utilisateur | null>(null);
+  const [deleteUserItem, setDeleteUserItem] = useState<Utilisateur | null>(null);
 
   const [formData, setFormData] = useState({
     nom: '',
@@ -39,13 +42,30 @@ export const UtilisateursView: React.FC = () => {
   };
 
   const handleResetPassword = (u: Utilisateur) => {
-    if (confirm(`Réinitialiser le mot de passe de ${u.prenom} ${u.nom} à 'admin123' ?`)) {
+    setResetPassUser(u);
+  };
+
+  const executeResetPassword = () => {
+    if (resetPassUser) {
       DB.saveUtilisateur({
-        ...u,
+        ...resetPassUser,
         mot_de_passe: 'admin123'
       });
-      alert('Mot de passe réinitialisé à admin123 !');
       setList(DB.getUtilisateurs());
+      setResetPassUser(null);
+    }
+  };
+
+  const handleDeleteUser = (u: Utilisateur) => {
+    setDeleteUserItem(u);
+  };
+
+  const executeDeleteUser = () => {
+    if (deleteUserItem) {
+      DB.moveToCorbeille('UTILISATEUR', deleteUserItem.id, `${deleteUserItem.prenom} ${deleteUserItem.nom}`, `Rôle: ${deleteUserItem.role}`, deleteUserItem);
+      DB.deleteUtilisateur(deleteUserItem.id);
+      setList(DB.getUtilisateurs());
+      setDeleteUserItem(null);
     }
   };
 
@@ -105,11 +125,18 @@ export const UtilisateursView: React.FC = () => {
                       onClick={() => handleToggleStatus(u)}
                       className={`px-3 py-1.5 rounded-[10px] text-xs font-semibold ${
                         u.statut === 'Actif'
-                          ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                          ? 'bg-amber-50 text-amber-700 hover:bg-amber-100'
                           : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
                       }`}
                     >
                       {u.statut === 'Actif' ? 'Désactiver' : 'Activer'}
+                    </button>
+                    <button
+                      onClick={() => handleDeleteUser(u)}
+                      className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-[10px] text-xs font-semibold inline-flex items-center"
+                      title="Supprimer l'utilisateur"
+                    >
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </td>
                 </tr>
@@ -206,6 +233,25 @@ export const UtilisateursView: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      <ConfirmModal
+        isOpen={!!resetPassUser}
+        title="Réinitialiser le mot de passe"
+        message={resetPassUser ? `Voulez-vous réinitialiser le mot de passe de ${resetPassUser.prenom} ${resetPassUser.nom} (${resetPassUser.email}) à le mot de passe par défaut 'admin123' ?` : ''}
+        confirmLabel="Réinitialiser"
+        variant="warning"
+        onConfirm={executeResetPassword}
+        onClose={() => setResetPassUser(null)}
+      />
+
+      <ConfirmModal
+        isOpen={!!deleteUserItem}
+        title="Confirmer la suppression du compte"
+        message={deleteUserItem ? `Voulez-vous vraiment supprimer le compte de ${deleteUserItem.prenom} ${deleteUserItem.nom} (${deleteUserItem.email}) ? Il sera déplacé vers la Corbeille.` : ''}
+        confirmLabel="Oui, supprimer"
+        onConfirm={executeDeleteUser}
+        onClose={() => setDeleteUserItem(null)}
+      />
 
     </div>
   );

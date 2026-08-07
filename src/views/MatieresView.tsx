@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { DB } from '../lib/storage';
 import { Matiere } from '../types/database';
 import { Modal } from '../components/Modal';
+import { ConfirmModal } from '../components/ConfirmModal';
 import { FileText, Plus, Search, Upload, Download, CheckCircle2, X } from 'lucide-react';
 
 export const MatieresView: React.FC = () => {
@@ -12,6 +13,7 @@ export const MatieresView: React.FC = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Matiere | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [search, setSearch] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -104,9 +106,18 @@ export const MatieresView: React.FC = () => {
   };
 
   const handleDelete = (id: number) => {
-    if (confirm('Voulez-vous supprimer cette matière ?')) {
-      DB.deleteMatiere(id);
-      setList(DB.getMatieres());
+    setDeleteConfirmId(id);
+  };
+
+  const executeDeleteMatiere = () => {
+    if (deleteConfirmId !== null) {
+      const mat = list.find(m => m.id === deleteConfirmId);
+      if (mat) {
+        DB.moveToCorbeille('MATIERE', mat.id, `${mat.code} - ${mat.nom}`, `Crédits: ${mat.credits}`, mat);
+        DB.deleteMatiere(deleteConfirmId);
+        setList(DB.getMatieres());
+      }
+      setDeleteConfirmId(null);
     }
   };
 
@@ -357,6 +368,15 @@ export const MatieresView: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      <ConfirmModal
+        isOpen={deleteConfirmId !== null}
+        title="Confirmer la suppression"
+        message="Voulez-vous vraiment supprimer cette matière ? Elle sera envoyée dans la Corbeille."
+        confirmLabel="Oui, supprimer"
+        onConfirm={executeDeleteMatiere}
+        onClose={() => setDeleteConfirmId(null)}
+      />
 
     </div>
   );

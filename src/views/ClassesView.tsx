@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { DB } from '../lib/storage';
 import { Classe } from '../types/database';
 import { Modal } from '../components/Modal';
+import { ConfirmModal } from '../components/ConfirmModal';
 import { Users, Plus, Search } from 'lucide-react';
 
 export const ClassesView: React.FC = () => {
@@ -12,6 +13,7 @@ export const ClassesView: React.FC = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Classe | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [search, setSearch] = useState('');
   const [selectedFiliereFilter, setSelectedFiliereFilter] = useState<string>('all');
 
@@ -61,9 +63,18 @@ export const ClassesView: React.FC = () => {
   };
 
   const handleDelete = (id: number) => {
-    if (confirm('Voulez-vous supprimer cette classe ?')) {
-      DB.deleteClasse(id);
-      setList(DB.getClasses());
+    setDeleteConfirmId(id);
+  };
+
+  const executeDeleteClasse = () => {
+    if (deleteConfirmId !== null) {
+      const item = list.find(c => c.id === deleteConfirmId);
+      if (item) {
+        DB.moveToCorbeille('CLASSE', item.id, `${item.code} - ${item.nom}`, `Capacité: ${item.capacite}`, item);
+        DB.deleteClasse(deleteConfirmId);
+        setList(DB.getClasses());
+      }
+      setDeleteConfirmId(null);
     }
   };
 
@@ -230,6 +241,15 @@ export const ClassesView: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      <ConfirmModal
+        isOpen={deleteConfirmId !== null}
+        title="Confirmer la suppression"
+        message="Voulez-vous vraiment supprimer cette classe ? Elle sera envoyée dans la Corbeille."
+        confirmLabel="Oui, supprimer"
+        onConfirm={executeDeleteClasse}
+        onClose={() => setDeleteConfirmId(null)}
+      />
 
     </div>
   );

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { DB } from '../lib/storage';
 import { Semestre } from '../types/database';
 import { Modal } from '../components/Modal';
+import { ConfirmModal } from '../components/ConfirmModal';
 import { Calendar, Plus, Search, Pencil, Trash2 } from 'lucide-react';
 
 export const SemestresView: React.FC = () => {
@@ -10,6 +11,7 @@ export const SemestresView: React.FC = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Semestre | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [search, setSearch] = useState('');
   const [selectedNiveauFilter, setSelectedNiveauFilter] = useState<string>('all');
 
@@ -56,9 +58,18 @@ export const SemestresView: React.FC = () => {
   };
 
   const handleDelete = (id: number) => {
-    if (window.confirm('Voulez-vous vraiment supprimer ce semestre ? Il sera déplacé vers la corbeille.')) {
-      DB.deleteSemestre(id);
-      setList(DB.getSemestres());
+    setDeleteConfirmId(id);
+  };
+
+  const executeDeleteSemestre = () => {
+    if (deleteConfirmId !== null) {
+      const sem = list.find(s => s.id === deleteConfirmId);
+      if (sem) {
+        DB.moveToCorbeille('SEMESTRE', sem.id, `${sem.code} - ${sem.libelle}`, `Ordre: ${sem.ordre}`, sem);
+        DB.deleteSemestre(deleteConfirmId);
+        setList(DB.getSemestres());
+      }
+      setDeleteConfirmId(null);
     }
   };
 
@@ -237,6 +248,16 @@ export const SemestresView: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      <ConfirmModal
+        isOpen={deleteConfirmId !== null}
+        title="Confirmer la suppression du semestre"
+        message="Voulez-vous vraiment supprimer ce semestre ? Il sera déplacé vers la Corbeille."
+        confirmLabel="Oui, supprimer"
+        onConfirm={executeDeleteSemestre}
+        onClose={() => setDeleteConfirmId(null)}
+      />
+
     </div>
   );
 };

@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { DB } from '../lib/storage';
 import { CorbeilleItem } from '../types/database';
+import { ConfirmModal } from '../components/ConfirmModal';
 import { Trash2, RotateCcw, AlertTriangle, RefreshCw, Archive, Search, CheckCircle } from 'lucide-react';
 
 export const CorbeilleView: React.FC = () => {
   const [items, setItems] = useState<CorbeilleItem[]>([]);
   const [search, setSearch] = useState('');
   const [message, setMessage] = useState<string | null>(null);
+  const [deletePermanentItem, setDeletePermanentItem] = useState<{ id: number; titre: string } | null>(null);
+  const [isEmptyTrashConfirm, setIsEmptyTrashConfirm] = useState(false);
 
   const loadCorbeille = () => {
     setItems(DB.getCorbeille());
@@ -29,17 +32,25 @@ export const CorbeilleView: React.FC = () => {
   };
 
   const handleDeletePermanent = (id: number, titre: string) => {
-    if (window.confirm(`Voulez-vous vraiment supprimer définitivement "${titre}" ? Cette action est irréversible.`)) {
-      DB.deletePermanentlyFromCorbeille(id);
+    setDeletePermanentItem({ id, titre });
+  };
+
+  const executeDeletePermanent = () => {
+    if (deletePermanentItem) {
+      DB.deletePermanentlyFromCorbeille(deletePermanentItem.id);
+      setDeletePermanentItem(null);
       loadCorbeille();
     }
   };
 
   const handleEmptyTrash = () => {
-    if (window.confirm('Voulez-vous vraiment vider intégralement la corbeille ? Tous les éléments seront définitivement effacés.')) {
-      DB.clearCorbeille();
-      loadCorbeille();
-    }
+    setIsEmptyTrashConfirm(true);
+  };
+
+  const executeEmptyTrash = () => {
+    DB.clearCorbeille();
+    setIsEmptyTrashConfirm(false);
+    loadCorbeille();
   };
 
   const filteredItems = items.filter(item =>
@@ -190,6 +201,25 @@ export const CorbeilleView: React.FC = () => {
           </table>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={!!deletePermanentItem}
+        title="Suppression définitive"
+        message={deletePermanentItem ? `Voulez-vous vraiment supprimer définitivement "${deletePermanentItem.titre}" ? Cette action est irréversible.` : ''}
+        confirmLabel="Purger définitivement"
+        onConfirm={executeDeletePermanent}
+        onClose={() => setDeletePermanentItem(null)}
+      />
+
+      <ConfirmModal
+        isOpen={isEmptyTrashConfirm}
+        title="Vider la corbeille"
+        message="Voulez-vous vraiment vider intégralement la corbeille ? Tous les éléments seront définitivement supprimés sans possibilité de récupération."
+        confirmLabel="Vider toute la corbeille"
+        onConfirm={executeEmptyTrash}
+        onClose={() => setIsEmptyTrashConfirm(false)}
+      />
+
     </div>
   );
 };

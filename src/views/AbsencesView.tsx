@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { DB } from '../lib/storage';
 import { Absence } from '../types/database';
 import { Modal } from '../components/Modal';
-import { AlertCircle, Plus, Search, CheckCircle, ShieldAlert } from 'lucide-react';
+import { ConfirmModal } from '../components/ConfirmModal';
+import { AlertCircle, Plus, Search, CheckCircle, ShieldAlert, Trash2 } from 'lucide-react';
 import { StudentSearchSelect } from '../components/StudentSearchSelect';
 
 export const AbsencesView: React.FC = () => {
@@ -12,6 +13,7 @@ export const AbsencesView: React.FC = () => {
   const activeAnnee = DB.getActiveAnneeAcademique();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     etudiant_id: etudiants[0]?.id || 1,
     matiere_id: matieres[0]?.id || 1,
@@ -44,6 +46,18 @@ export const AbsencesView: React.FC = () => {
       motif: !absence.justifiee ? 'Motif médical fourni' : 'Absence non justifiée'
     });
     setList(DB.getAbsences());
+  };
+
+  const handleDelete = (id: number) => {
+    setDeleteConfirmId(id);
+  };
+
+  const executeDeleteAbsence = () => {
+    if (deleteConfirmId !== null) {
+      DB.deleteAbsence(deleteConfirmId);
+      setList(DB.getAbsences());
+      setDeleteConfirmId(null);
+    }
   };
 
   // Check students with > 3 non-justified absences
@@ -115,7 +129,7 @@ export const AbsencesView: React.FC = () => {
                       {item.date_absence} ({item.heures}h)
                     </td>
                     <td className="px-6 py-4 text-gray-500">{item.motif || 'Aucun motif'}</td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
                       <button
                         onClick={() => handleToggleJustify(item)}
                         className={`px-3 py-1 rounded-full text-[10px] font-bold transition-colors ${
@@ -124,7 +138,14 @@ export const AbsencesView: React.FC = () => {
                             : 'bg-red-50 text-red-600 hover:bg-red-100'
                         }`}
                       >
-                        {item.justifie ? 'Justifié' : 'Non Justifié (Cliquer pour valider)'}
+                        {item.justifie ? 'Justifié' : 'Non Justifié (Valider)'}
+                      </button>
+                      <button
+                        onClick={() => handleDelete(item.id)}
+                        className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-[10px] text-xs font-semibold inline-flex items-center"
+                        title="Supprimer la saisie d'absence"
+                      >
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </td>
                   </tr>
@@ -230,6 +251,15 @@ export const AbsencesView: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      <ConfirmModal
+        isOpen={deleteConfirmId !== null}
+        title="Confirmer la suppression d'absence"
+        message="Voulez-vous vraiment supprimer cette saisie d'absence ?"
+        confirmLabel="Oui, supprimer"
+        onConfirm={executeDeleteAbsence}
+        onClose={() => setDeleteConfirmId(null)}
+      />
 
     </div>
   );

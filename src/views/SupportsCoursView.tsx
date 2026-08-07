@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { DB } from '../lib/storage';
 import { SupportCours, AuthUser } from '../types/database';
 import { Modal } from '../components/Modal';
+import { ConfirmModal } from '../components/ConfirmModal';
 import { BookOpen, Plus, Search, Pencil, Trash2, Download, FileText, Upload, CheckCircle2, X, LayoutGrid, List } from 'lucide-react';
 
 interface SupportsCoursViewProps {
@@ -28,6 +29,7 @@ export const SupportsCoursView: React.FC<SupportsCoursViewProps> = ({ currentUse
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<SupportCours | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [search, setSearch] = useState('');
   const [selectedSemestreFilter, setSelectedSemestreFilter] = useState<string>('all');
   const [selectedMatiereFilter, setSelectedMatiereFilter] = useState<string>('all');
@@ -106,9 +108,14 @@ export const SupportsCoursView: React.FC<SupportsCoursViewProps> = ({ currentUse
   };
 
   const handleDelete = (id: number) => {
-    if (window.confirm('Voulez-vous vraiment supprimer ce support de cours ?')) {
-      DB.deleteSupportCours(id);
+    setDeleteConfirmId(id);
+  };
+
+  const executeDeleteSupport = () => {
+    if (deleteConfirmId !== null) {
+      DB.deleteSupportCours(deleteConfirmId);
       setList(DB.getSupportsCours());
+      setDeleteConfirmId(null);
     }
   };
 
@@ -580,6 +587,16 @@ export const SupportsCoursView: React.FC<SupportsCoursViewProps> = ({ currentUse
           </form>
         </Modal>
       )}
+
+      <ConfirmModal
+        isOpen={deleteConfirmId !== null}
+        title="Confirmer la suppression du support"
+        message="Voulez-vous vraiment supprimer ce support de cours ?"
+        confirmLabel="Oui, supprimer"
+        onConfirm={executeDeleteSupport}
+        onClose={() => setDeleteConfirmId(null)}
+      />
+
     </div>
   );
 };

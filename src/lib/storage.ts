@@ -452,6 +452,10 @@ export class DB {
     return result;
   }
 
+  static deleteInscription(id: number): void {
+    setItem(STORAGE_KEYS.INSCRIPTIONS, this.getInscriptions().filter(i => i.id !== id));
+  }
+
   static saveNote(item: Omit<Note, 'id'> & { id?: number }): Note {
     const list = this.getNotes();
     // Formula: Note Finale = (30% CC) + (70% Examen)

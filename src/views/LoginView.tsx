@@ -60,6 +60,11 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
       const etudiant = etudiants.find(e => e.matricule.toLowerCase() === login.toLowerCase().trim());
 
       if ((login === '2024-USTTB-001' && password === 'etudiant123') || (etudiant && etudiant.mot_de_passe === password)) {
+        if (etudiant && (etudiant.statut === 'Suspendu' as any || etudiant.statut === 'Inactif' as any || etudiant.statut === 'Abandon' as any || etudiant.statut === 'Exclu' as any)) {
+          setError('Ce compte étudiant a été suspendu ou désactivé par l\'administration. Accès refusé.');
+          return;
+        }
+
         const baseStudent = etudiant || etudiants[0] || {
           id: 1,
           matricule: '2024-USTTB-001',

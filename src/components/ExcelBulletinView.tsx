@@ -11,7 +11,9 @@ import {
   Semestre
 } from '../types/database';
 import { DB } from '../lib/storage';
-import { Award, Building2, Printer, Check, X, GraduationCap } from 'lucide-react';
+import { Award, Building2, Printer, Check, X, GraduationCap, Download, FileSpreadsheet } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { jsPDF } from 'jspdf';
 
 interface ExcelBulletinViewProps {
   etudiant: Etudiant;
@@ -203,6 +205,8 @@ export const ExcelBulletinView: React.FC<ExcelBulletinViewProps> = ({
 
   const studentClasse = classe || allDBClasses.find(c => c.id === safeEtudiant.classe_id) || allDBClasses[0];
   const studentFiliere = filiere || allDBFilieres.find(f => f.id === studentClasse?.filiere_id) || allDBFilieres[0];
+  const allDBFacultes = DB.getFacultes();
+  const studentFaculte = faculte || allDBFacultes.find(f => f.id === studentFiliere?.faculte_id) || allDBFacultes[0];
 
   // Get semestres belonging to the student's level or all semestres
   let yearSemestres = allDBSemestres.filter(s => {
@@ -334,6 +338,124 @@ export const ExcelBulletinView: React.FC<ExcelBulletinViewProps> = ({
     <div className="space-y-4">
       {/* Main Official Printable Document Container */}
       <div className="bg-white text-slate-900 font-sans p-3.5 sm:p-6 md:p-8 border border-slate-300 rounded-sm shadow-xs max-w-4xl mx-auto print:border-none print:p-0">
+
+        {/* Action Bar Screen Only */}
+        {onPrint && (
+          <div className="mb-4 flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-200 print:hidden">
+            <div className="flex items-center gap-2 text-xs text-slate-600 font-medium">
+              <GraduationCap className="w-4 h-4 text-blue-600" />
+              <span>Bulletin Officiel de Notes - Système LMD Universitaire</span>
+            </div>
+            <button
+              onClick={onPrint}
+              className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-md text-xs font-bold flex items-center gap-2 transition-colors shadow-xs"
+            >
+              <Printer className="w-4 h-4" />
+              <span>Imprimer le Bulletin</span>
+            </button>
+          </div>
+        )}
+
+        {/* 1. OFFICIAL UNIVERSITY & MINISTRY HEADER */}
+        <div className="mb-5 pb-4 border-b-2 border-slate-800">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center text-center md:text-left">
+            {/* Left Column: Republic & Ministry */}
+            <div className="text-[11px] leading-tight text-slate-800 uppercase font-serif">
+              <p className="font-extrabold text-slate-950">RÉPUBLIQUE DU MALI</p>
+              <p className="text-[9px] italic text-slate-600 font-sans normal-case">Un Peuple - Un But - Une Foi</p>
+              <p className="mt-1 font-bold text-[10px] text-slate-800 leading-snug">
+                MINISTÈRE DE L'ENSEIGNEMENT SUPÉRIEUR ET DE LA RECHERCHE SCIENTIFIQUE
+              </p>
+            </div>
+
+            {/* Middle Column: University & Faculty */}
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-slate-900 text-white font-extrabold text-sm mb-1 shadow-xs print:border print:border-slate-800">
+                {universite?.sigle || 'USTTB'}
+              </div>
+              <h1 className="font-black text-xs sm:text-sm uppercase text-slate-900 tracking-tight leading-snug">
+                {universite?.nom || 'UNIVERSITÉ DES SCIENCES ET DES TECHNIQUES DE BAMAKO'}
+              </h1>
+              <p className="text-[11px] font-bold text-slate-700 mt-0.5">
+                {faculte?.nom || studentFaculte?.nom || 'FACULTÉ DES SCIENCES ET TECHNIQUES'}
+              </p>
+            </div>
+
+            {/* Right Column: Title & Academic Term */}
+            <div className="text-center md:text-right text-xs">
+              <div className="inline-block px-3 py-1 bg-slate-900 text-white font-black uppercase tracking-wider text-xs rounded-sm print:bg-slate-900 print:text-white">
+                BULLETIN DE NOTES
+              </div>
+              <p className="text-xs font-extrabold text-slate-900 mt-1.5">
+                {safeSemestreLibelle.toUpperCase()}
+              </p>
+              <p className="text-[11px] font-semibold text-slate-700">
+                Année Académique : <span className="font-bold text-slate-950">{anneeAcademique?.libelle || '2025-2026'}</span>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* 2. STUDENT INFORMATION BLOCK (INFORMATIONS DE L'ÉTUDIANT) */}
+        <div className="mb-5 bg-slate-50/80 border border-slate-300 rounded-sm p-3.5 sm:p-4 text-xs shadow-2xs">
+          <div className="flex items-center justify-between pb-2 mb-3 border-b border-slate-300">
+            <h3 className="font-extrabold text-slate-900 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-blue-600 print:bg-slate-800"></span>
+              INFORMATIONS DE L'ÉTUDIANT
+            </h3>
+            <span className="text-[10px] font-mono text-slate-500 font-semibold">
+              Date d'édition : {dateEdition}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 leading-relaxed">
+            {/* Column 1: Identity */}
+            <div className="space-y-1">
+              <div>
+                <span className="text-[10px] font-bold text-slate-500 uppercase block">Nom & Prénom(s) :</span>
+                <span className="font-extrabold text-slate-950 text-sm">{safeEtudiant.nom.toUpperCase()} {safeEtudiant.prenom}</span>
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-slate-500 uppercase block">Matricule :</span>
+                <span className="font-mono font-black text-blue-700 print:text-slate-900 bg-blue-50 print:bg-slate-100 px-1.5 py-0.5 rounded text-xs inline-block">
+                  {safeEtudiant.matricule}
+                </span>
+              </div>
+            </div>
+
+            {/* Column 2: Birth & Personal Details */}
+            <div className="space-y-1">
+              <div>
+                <span className="text-[10px] font-bold text-slate-500 uppercase block">Né(e) le / à :</span>
+                <span className="font-semibold text-slate-900">
+                  {safeEtudiant.date_naissance || '12/05/2003'} à {safeEtudiant.lieu_naissance || 'Bamako'}
+                </span>
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-slate-500 uppercase block">Sexe / Nationalité :</span>
+                <span className="font-semibold text-slate-900">
+                  {safeEtudiant.sexe === 'F' ? 'Féminin (F)' : 'Masculin (M)'} — {safeEtudiant.nationalite || 'Malienne'}
+                </span>
+              </div>
+            </div>
+
+            {/* Column 3: Academic Placement */}
+            <div className="space-y-1">
+              <div>
+                <span className="text-[10px] font-bold text-slate-500 uppercase block">Filière / Spécialité :</span>
+                <span className="font-bold text-slate-900">
+                  {studentFiliere?.nom || 'Informatique & Télécoms'} {studentFiliere?.code ? `(${studentFiliere.code})` : ''}
+                </span>
+              </div>
+              <div>
+                <span className="text-[10px] font-bold text-slate-500 uppercase block">Classe / Statut :</span>
+                <span className="font-bold text-slate-900">
+                  {studentClasse?.nom || 'Licence 1'} — <span className="text-emerald-700 font-extrabold">{safeEtudiant.statut || 'Régulier'}</span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* UNIFIED BULLETIN TABLE + SYNTHÈSE DES RÉSULTATS COLLÉE EN BAS */}
         <div className="mb-2 border border-slate-400 rounded-xs overflow-x-auto bg-white shadow-xs">
