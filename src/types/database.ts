@@ -77,6 +77,7 @@ export interface Etudiant {
   adresse: string;
   classe_id: number;
   filiere_id?: number;
+  niveau_id?: number;
   date_inscription: string;
   statut: 'Régulier' | 'Inscrit' | 'Suspendu' | 'Diplômé';
   mot_de_passe: string;

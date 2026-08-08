@@ -188,46 +188,6 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
     setTimeout(() => setIsSaved(false), 3000);
   };
 
-  // Filter matieres for selected semester
-  const semesterMatieres = matieres.filter(m => m.semestre_id === selectedSemestreId);
-
-  // Calculate semester notes & statistics
-  const semesterNotes = notes.filter(n => n.semestre_id === selectedSemestreId);
-
-  let totalPoints = 0;
-  let totalCreditsSemester = 0;
-  let creditsValidated = 0;
-
-  const notesTableData = semesterMatieres.map(mat => {
-    const noteObj = semesterNotes.find(n => n.matiere_id === mat.id);
-    const cc = noteObj ? noteObj.note_cc : null;
-    const exam = noteObj ? noteObj.note_examen : null;
-    const finale = noteObj ? noteObj.note_finale : null;
-    const isValidated = finale !== null && finale >= 10;
-
-    if (finale !== null) {
-      totalPoints += finale * (mat.credits || 1);
-      totalCreditsSemester += mat.credits || 1;
-      if (isValidated) {
-        creditsValidated += mat.credits || 1;
-      }
-    }
-
-    return {
-      matiere: mat,
-      cc,
-      exam,
-      finale,
-      isValidated
-    };
-  });
-
-  const semesterAverage = totalCreditsSemester > 0
-    ? Math.round((totalPoints / totalCreditsSemester) * 100) / 100
-    : (semesterNotes.length > 0
-      ? Math.round((semesterNotes.reduce((acc, curr) => acc + curr.note_finale, 0) / semesterNotes.length) * 100) / 100
-      : null);
-
   const getMention = (avg: number | null) => {
     if (avg === null) return 'En attente';
     if (avg >= 16) return 'Très Bien';
@@ -236,6 +196,104 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
     if (avg >= 10) return 'Passable';
     return 'Ajourné';
   };
+
+  // Filter semestres assigned to student's level & filière (e.g. S1 & S2)
+  const studentNiveauId = studentClass?.niveau_id || etudiant.niveau_id || 1;
+  const assignedSemestres = semestres.filter(s => s.niveau_id === studentNiveauId);
+  const activeSemestres = assignedSemestres.length > 0 ? assignedSemestres : semestres.slice(0, 2);
+
+  // Tab mode for Examen tab: 0 = Bilan Annuel (S1 + S2), or semester ID (1 for S1, 2 for S2)
+  const [examenViewFilter, setExamenViewFilter] = useState<number>(0);
+
+  // Per-semester detailed calculations
+  const semestresCalculations = activeSemestres.map(sem => {
+    // Matieres for this semester & filiere
+    const semMatieres = matieres.filter(m => 
+      m.semestre_id === sem.id && 
+      (m.filiere_id === studentFiliere?.id || m.filiere_id === etudiant.filiere_id || !m.filiere_id)
+    );
+    const applicableMatieres = semMatieres.length > 0 ? semMatieres : matieres.filter(m => m.semestre_id === sem.id);
+    const semNotes = notes.filter(n => n.semestre_id === sem.id);
+
+    let semTotalPoints = 0;
+    let semTotalCredits = 0;
+    let semCreditsValidated = 0;
+
+    const tableRows = applicableMatieres.map(mat => {
+      const noteObj = semNotes.find(n => n.matiere_id === mat.id);
+      const cc = noteObj ? noteObj.note_cc : null;
+      const exam = noteObj ? noteObj.note_examen : null;
+      const finale = noteObj ? noteObj.note_finale : null;
+      const isValidated = finale !== null && finale >= 10;
+
+      if (finale !== null) {
+        semTotalPoints += finale * (mat.credits || 1);
+        semTotalCredits += mat.credits || 1;
+        if (isValidated) {
+          semCreditsValidated += mat.credits || 1;
+        }
+      }
+
+      return {
+        matiere: mat,
+        cc,
+        exam,
+        finale,
+        isValidated
+      };
+    });
+
+    const average = semTotalCredits > 0
+      ? Math.round((semTotalPoints / semTotalCredits) * 100) / 100
+      : (semNotes.length > 0
+        ? Math.round((semNotes.reduce((acc, curr) => acc + curr.note_finale, 0) / semNotes.length) * 100) / 100
+        : null);
+
+    return {
+      semestre: sem,
+      matieres: applicableMatieres,
+      rows: tableRows,
+      average,
+      totalCredits: semTotalCredits || applicableMatieres.reduce((acc, m) => acc + (m.credits || 1), 0),
+      validatedCredits: semCreditsValidated,
+      isAdmis: average !== null && average >= 10,
+      mention: getMention(average)
+    };
+  });
+
+  // Calculate Global Annual Summary (S1 + S2)
+  let annualTotalPoints = 0;
+  let annualTotalCredits = 0;
+  let annualValidatedCredits = 0;
+
+  semestresCalculations.forEach(sc => {
+    sc.rows.forEach(r => {
+      if (r.finale !== null) {
+        annualTotalPoints += r.finale * (r.matiere.credits || 1);
+        annualTotalCredits += r.matiere.credits || 1;
+        if (r.isValidated) annualValidatedCredits += r.matiere.credits || 1;
+      }
+    });
+  });
+
+  const annualAverage = annualTotalCredits > 0
+    ? Math.round((annualTotalPoints / annualTotalCredits) * 100) / 100
+    : (() => {
+        const validAvgs = semestresCalculations.map(s => s.average).filter((a): a is number => a !== null);
+        if (validAvgs.length === 0) return null;
+        return Math.round((validAvgs.reduce((a, b) => a + b, 0) / validAvgs.length) * 100) / 100;
+      })();
+
+  const isAnnualAdmis = annualAverage !== null && annualAverage >= 10;
+  const annualMention = getMention(annualAverage);
+
+  // Backward compatibility helpers for selectedSemestreId
+  const currentSelectedSemCalculation = semestresCalculations.find(sc => sc.semestre.id === selectedSemestreId) || semestresCalculations[0];
+  const semesterAverage = currentSelectedSemCalculation?.average ?? null;
+  const creditsValidated = currentSelectedSemCalculation?.validatedCredits ?? 0;
+  const totalCreditsSemester = currentSelectedSemCalculation?.totalCredits ?? 30;
+  const semesterMatieres = currentSelectedSemCalculation?.matieres ?? [];
+  const notesTableData = currentSelectedSemCalculation?.rows ?? [];
 
   // Gather student's inscriptions & training fees (Frais de formation) across all registered filières
   const studentInscriptions = DB.getInscriptions().filter(i => i.etudiant_id === etudiant.id);
@@ -440,7 +498,7 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
         </div>
       )}
 
-      {/* TAB EXAMEN & RELEVÉ DE NOTES (Requirement 3) */}
+      {/* TAB EXAMEN & RELEVÉ DE NOTES (Semestre 1 & Semestre 2) */}
       {currentTab === 'examen' && (
         <div className="space-y-6 animate-in fade-in duration-300">
           
@@ -449,27 +507,14 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
             <div>
               <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2">
                 <Award className="w-5 h-5 text-blue-600" />
-                <span>Espace Examen & Relevé des Notes</span>
+                <span>Espace Examen & Relevé des Notes (Semestre 1 & 2)</span>
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Consultez vos résultats d'examen, votre moyenne générale et votre décision de jury.
+                Consultez le calcul des notes par semestre attribué à la filière <b>{studentFiliere?.nom || 'Informatique & Génie Logiciel'}</b> ({studentClass?.code || 'L1'}), votre moyenne générale et votre bilan LMD.
               </p>
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <label className="text-xs font-bold text-slate-700 shrink-0">Semestre :</label>
-                <select
-                  value={selectedSemestreId}
-                  onChange={(e) => setSelectedSemestreId(Number(e.target.value))}
-                  className="h-10 bg-slate-50 border border-slate-300 rounded-xl px-3 text-xs font-bold text-blue-600 focus:outline-none focus:border-blue-600"
-                >
-                  {semestres.map(s => (
-                    <option key={s.id} value={s.id}>{s.libelle}</option>
-                  ))}
-                </select>
-              </div>
-
               <button
                 onClick={() => window.print()}
                 className="h-10 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-xs shrink-0"
@@ -480,113 +525,173 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
             </div>
           </div>
 
-          {/* Exam Performance KPI Summary */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Moyenne Générale</span>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-2xl font-black text-slate-900 font-mono">
-                  {semesterAverage !== null ? semesterAverage.toFixed(2) : '--'}
+
+
+          {/* View Filter Switcher Tabs */}
+          <div className="flex flex-wrap items-center gap-2 p-1.5 bg-slate-100 rounded-xl border border-slate-200">
+            <button
+              onClick={() => setExamenViewFilter(0)}
+              className={`px-4 py-2 rounded-lg text-xs font-extrabold transition-all flex items-center gap-2 ${
+                examenViewFilter === 0
+                  ? 'bg-white text-blue-600 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              <span>Bilan Annuel Global (S1 + S2)</span>
+              {annualAverage !== null && (
+                <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-700 text-[10px] font-mono">
+                  {annualAverage.toFixed(2)}/20
                 </span>
-                <span className="text-xs text-slate-500 font-bold">/ 20</span>
-              </div>
-            </div>
+              )}
+            </button>
 
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Statut Examen</span>
-              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold ${
-                semesterAverage !== null && semesterAverage >= 10
-                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                  : 'bg-red-100 text-red-800 border border-red-200'
-              }`}>
-                {semesterAverage !== null
-                  ? (semesterAverage >= 10 ? 'ADMIS(E)' : 'AJOURNÉ(E)')
-                  : 'En attente'}
-              </span>
-            </div>
-
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Mention du Jury</span>
-              <span className="text-sm font-bold text-slate-800 block">
-                {getMention(semesterAverage)}
-              </span>
-            </div>
-
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Crédits ECTS Validés</span>
-              <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-black text-blue-600 font-mono">{creditsValidated}</span>
-                <span className="text-xs text-slate-500 font-bold">/ {totalCreditsSemester || 30} ECTS</span>
-              </div>
-            </div>
+            {semestresCalculations.map(sc => (
+              <button
+                key={sc.semestre.id}
+                onClick={() => setExamenViewFilter(sc.semestre.id)}
+                className={`px-4 py-2 rounded-lg text-xs font-extrabold transition-all flex items-center gap-2 ${
+                  examenViewFilter === sc.semestre.id
+                    ? 'bg-white text-blue-600 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                }`}
+              >
+                <span>{sc.semestre.libelle}</span>
+                {sc.average !== null && (
+                  <span className="px-2 py-0.5 rounded-md bg-slate-200/80 text-slate-800 text-[10px] font-mono">
+                    {sc.average.toFixed(2)}/20
+                  </span>
+                )}
+              </button>
+            ))}
           </div>
 
-          {/* Detailed Exam Marks Table */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-            <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-              <h4 className="font-bold text-xs text-slate-900 uppercase tracking-wider">
-                Relevé des Notes par Unité d'Enseignement ({semesterMatieres.length} matières)
-              </h4>
-              <span className="text-xs text-slate-500 font-mono">Session Unifiée LMD</span>
-            </div>
+          {/* Detailed Exam Marks Tables */}
+          {semestresCalculations
+            .filter(sc => examenViewFilter === 0 || examenViewFilter === sc.semestre.id)
+            .map(sc => (
+              <div key={sc.semestre.id} className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+                <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-1 rounded-lg bg-blue-600 text-white font-extrabold text-xs font-mono">
+                      {sc.semestre.code}
+                    </span>
+                    <h4 className="font-bold text-xs text-slate-900 uppercase tracking-wider">
+                      Relevé des Notes - {sc.semestre.libelle} ({sc.matieres.length} matières)
+                    </h4>
+                  </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse min-w-[640px]">
-                <thead>
-                  <tr className="bg-slate-100/80 text-[11px] font-bold text-slate-600 uppercase tracking-wider border-b border-slate-200">
-                    <th className="px-5 py-3">Code / UE</th>
-                    <th className="px-5 py-3">Matière / Module</th>
-                    <th className="px-5 py-3 text-center">Crédits</th>
-                    <th className="px-5 py-3 text-center">Note CC (/20)</th>
-                    <th className="px-5 py-3 text-center">Note Examen (/20)</th>
-                    <th className="px-5 py-3 text-center">Note Finale (/20)</th>
-                    <th className="px-5 py-3 text-right">Décision UE</th>
-                  </tr>
-                </thead>
-                <tbody className="text-xs divide-y divide-slate-200">
-                  {notesTableData.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="px-5 py-8 text-center text-slate-400 font-medium">
-                        Aucune note d'examen saisie pour ce semestre.
-                      </td>
-                    </tr>
-                  ) : (
-                    notesTableData.map((row, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
-                        <td className="px-5 py-3 font-mono font-bold text-blue-600 whitespace-nowrap">{row.matiere.code}</td>
-                        <td className="px-5 py-3 font-bold text-slate-900">{row.matiere.nom}</td>
-                        <td className="px-5 py-3 text-center font-bold text-slate-700 font-mono">{row.matiere.credits || 3}</td>
-                        <td className="px-5 py-3 text-center font-mono font-semibold text-slate-800">
-                          {row.cc !== null ? row.cc.toFixed(1) : '--'}
-                        </td>
-                        <td className="px-5 py-3 text-center font-mono font-semibold text-slate-800">
-                          {row.exam !== null ? row.exam.toFixed(1) : '--'}
-                        </td>
-                        <td className="px-5 py-3 text-center font-mono font-bold text-sm text-slate-900">
-                          {row.finale !== null ? row.finale.toFixed(2) : '--'}
-                        </td>
-                        <td className="px-5 py-3 text-right whitespace-nowrap">
-                          {row.finale !== null ? (
-                            row.isValidated ? (
-                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                Validée
-                              </span>
-                            ) : (
-                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-red-100 text-red-800 border border-red-200">
-                                À Rattraper
-                              </span>
-                            )
-                          ) : (
-                            <span className="text-slate-400 italic">En attente</span>
-                          )}
-                        </td>
+                  <div className="flex items-center gap-3 text-xs font-bold">
+                    <span className="text-slate-500">
+                      Moyenne : <b className="text-slate-900 font-mono">{sc.average !== null ? sc.average.toFixed(2) : '--'}/20</b>
+                    </span>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+                      sc.isAdmis
+                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                        : 'bg-red-100 text-red-800 border border-red-200'
+                    }`}>
+                      {sc.average !== null ? (sc.isAdmis ? 'ADMIS(E)' : 'AJOURNÉ(E)') : 'En attente'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse min-w-[640px]">
+                    <thead>
+                      <tr className="bg-slate-100/80 text-[11px] font-bold text-slate-600 uppercase tracking-wider border-b border-slate-200">
+                        <th className="px-5 py-3">Code / UE</th>
+                        <th className="px-5 py-3">Matière / Module</th>
+                        <th className="px-5 py-3 text-center">Crédits</th>
+                        <th className="px-5 py-3 text-center">Note CC (/20)</th>
+                        <th className="px-5 py-3 text-center">Note Examen (/20)</th>
+                        <th className="px-5 py-3 text-center">Note Finale (/20)</th>
+                        <th className="px-5 py-3 text-right">Décision UE</th>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    </thead>
+                    <tbody className="text-xs divide-y divide-slate-200">
+                      {sc.rows.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="px-5 py-8 text-center text-slate-400 font-medium">
+                            Aucune note d'examen enregistrée pour le {sc.semestre.libelle}.
+                          </td>
+                        </tr>
+                      ) : (
+                        sc.rows.map((row, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
+                            <td className="px-5 py-3 font-mono font-bold text-blue-600 whitespace-nowrap">{row.matiere.code}</td>
+                            <td className="px-5 py-3 font-bold text-slate-900">{row.matiere.nom}</td>
+                            <td className="px-5 py-3 text-center font-bold text-slate-700 font-mono">{row.matiere.credits || 3}</td>
+                            <td className="px-5 py-3 text-center font-mono font-semibold text-slate-800">
+                              {row.cc !== null ? row.cc.toFixed(1) : '--'}
+                            </td>
+                            <td className="px-5 py-3 text-center font-mono font-semibold text-slate-800">
+                              {row.exam !== null ? row.exam.toFixed(1) : '--'}
+                            </td>
+                            <td className="px-5 py-3 text-center font-mono font-bold text-sm text-slate-900">
+                              {row.finale !== null ? row.finale.toFixed(2) : '--'}
+                            </td>
+                            <td className="px-5 py-3 text-right whitespace-nowrap">
+                              {row.finale !== null ? (
+                                row.isValidated ? (
+                                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                    Validée
+                                  </span>
+                                ) : (
+                                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-red-100 text-red-800 border border-red-200">
+                                    À Rattraper
+                                  </span>
+                                )
+                              ) : (
+                                <span className="text-slate-400 italic">En attente</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
+
+          {/* Final Annual LMD Compensation Summary */}
+          {examenViewFilter === 0 && (
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-6 shadow-xs space-y-4">
+              <div className="space-y-1">
+                <h4 className="font-extrabold text-sm text-blue-950 flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5 text-blue-600" />
+                  <span>Synthèse du Bilan Annuel & Compensation LMD</span>
+                </h4>
+                <p className="text-xs text-blue-800">
+                  Calcul combiné des moyennes compensées de <b>Semestre 1</b> et <b>Semestre 2</b> conformément à la réglementation LMD USTTB.
+                </p>
+              </div>
+
+              {/* Horizontal Row with 3 Columns for S1, S2, and Annual Average */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
+                <div className="flex flex-col justify-between bg-white px-4 py-3.5 rounded-xl border border-blue-200/80 shadow-2xs">
+                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Moyenne S1</span>
+                  <span className="text-lg font-black font-mono text-slate-900">
+                    {semestresCalculations[0]?.average !== null ? semestresCalculations[0].average.toFixed(2) : '--'} <span className="text-xs font-normal text-slate-400">/ 20</span>
+                  </span>
+                </div>
+
+                <div className="flex flex-col justify-between bg-white px-4 py-3.5 rounded-xl border border-blue-200/80 shadow-2xs">
+                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Moyenne S2</span>
+                  <span className="text-lg font-black font-mono text-slate-900">
+                    {semestresCalculations[1]?.average !== null ? semestresCalculations[1].average.toFixed(2) : '--'} <span className="text-xs font-normal text-slate-400">/ 20</span>
+                  </span>
+                </div>
+
+                <div className="flex flex-col justify-between bg-blue-600 text-white px-4 py-3.5 rounded-xl border border-blue-700 shadow-xs">
+                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-blue-100 block mb-1">Moyenne Annuelle</span>
+                  <span className="text-xl font-black font-mono text-white">
+                    {annualAverage !== null ? annualAverage.toFixed(2) : '--'} <span className="text-xs font-semibold text-blue-200">/ 20</span>
+                  </span>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
 
         </div>
       )}

@@ -366,18 +366,21 @@ export class DB {
     const list = this.getEtudiants();
     const classes = this.getClasses();
     
-    // Auto-link filiere_id from classe_id
+    // Auto-link filiere_id and niveau_id from classe_id
     let filiere_id = item.filiere_id;
+    let niveau_id = item.niveau_id;
     if (item.classe_id) {
       const cls = classes.find(c => c.id === Number(item.classe_id));
-      if (cls && cls.filiere_id) {
-        filiere_id = cls.filiere_id;
+      if (cls) {
+        if (cls.filiere_id) filiere_id = cls.filiere_id;
+        if (cls.niveau_id) niveau_id = cls.niveau_id;
       }
     }
 
     const itemWithFiliere = {
       ...item,
-      ...(filiere_id ? { filiere_id } : {})
+      ...(filiere_id ? { filiere_id } : {}),
+      ...(niveau_id ? { niveau_id } : {})
     };
 
     let result: Etudiant;
@@ -391,7 +394,7 @@ export class DB {
       const activeYear = this.getActiveAnneeAcademique();
       const yr = activeYear.code.substring(0, 4);
       const matricule = item.matricule || `${yr}-USTTB-${String(nextId).padStart(3, '0')}`;
-      result = { ...itemWithFiliere, id: nextId, matricule, mot_de_passe: item.mot_de_passe || 'etudiant123' } as Etudiant;
+      result = { ...itemWithFiliere, id: nextId, matricule, mot_de_passe: item.mot_de_passe || 'etudiant123', statut: item.statut || 'Inscrit' } as Etudiant;
       list.push(result);
 
       // Auto-create inscription for current active year
@@ -401,7 +404,7 @@ export class DB {
         annee_academique_id: activeYear.id,
         date_inscription: new Date().toISOString().split('T')[0],
         statut: 'Validée',
-        frais_inscription: 50000
+        frais_inscription: 150000
       });
     }
     setItem(STORAGE_KEYS.ETUDIANTS, list);
@@ -525,6 +528,28 @@ export class DB {
       list.push(result);
     }
     setItem(STORAGE_KEYS.INSCRIPTIONS, list);
+
+    // Auto-sync student active class & filiere so student gets instant access to all features
+    if (result.etudiant_id && result.classe_id) {
+      const etudiants = this.getEtudiants();
+      const etudIdx = etudiants.findIndex(e => e.id === result.etudiant_id);
+      if (etudIdx !== -1) {
+        const classes = this.getClasses();
+        const cls = classes.find(c => c.id === result.classe_id);
+        const filiereId = cls?.filiere_id;
+        
+        etudiants[etudIdx] = {
+          ...etudiants[etudIdx],
+          classe_id: result.classe_id,
+          niveau_id: cls?.niveau_id || etudiants[etudIdx].niveau_id,
+          ...(filiereId ? { filiere_id: filiereId } : {}),
+          statut: 'Inscrit',
+          statut_compte: 'Actif',
+          est_bloque: false
+        };
+        setItem(STORAGE_KEYS.ETUDIANTS, etudiants);
+      }
+    }
 
     // Auto-create/sync corresponding payment record when inscription is active
     if (result.statut === 'Validée') {

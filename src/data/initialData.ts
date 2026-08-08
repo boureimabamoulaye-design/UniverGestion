@@ -160,6 +160,62 @@ export const INITIAL_MATIERES: Matiere[] = [
     ue_type: 'Mineure',
     support_fichier_nom: 'Manuel_Droit_Obligations.pdf',
     support_fichier_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
+  },
+  {
+    id: 5,
+    code: 'INF103',
+    nom: 'Développement Web & POO (Java/TypeScript)',
+    filiere_id: 1,
+    niveau_id: 1,
+    semestre_id: 2,
+    enseignant_id: 1,
+    credits: 6,
+    ue_nom: 'UE5 - Genie Logiciel & Web',
+    ue_type: 'Majeure',
+    support_fichier_nom: 'Cours_POO_Java_L1_S2.pdf',
+    support_fichier_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
+  },
+  {
+    id: 6,
+    code: 'INF104',
+    nom: 'Systèmes d\'Exploitation & Réseaux',
+    filiere_id: 1,
+    niveau_id: 1,
+    semestre_id: 2,
+    enseignant_id: 1,
+    credits: 5,
+    ue_nom: 'UE6 - Architecture & Réseaux',
+    ue_type: 'Majeure',
+    support_fichier_nom: 'Reseaux_Cisco_Basics.pdf',
+    support_fichier_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
+  },
+  {
+    id: 7,
+    code: 'MAT102',
+    nom: 'Mathématiques Appliquées & Probabilités',
+    filiere_id: 1,
+    niveau_id: 1,
+    semestre_id: 2,
+    enseignant_id: 2,
+    credits: 4,
+    ue_nom: 'UE7 - Mathématiques pour l\'Informatique',
+    ue_type: 'Mineure',
+    support_fichier_nom: 'Proba_Statistiques_S2.pdf',
+    support_fichier_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
+  },
+  {
+    id: 8,
+    code: 'ENG102',
+    nom: 'Anglais Professionnel & Expression S2',
+    filiere_id: 1,
+    niveau_id: 1,
+    semestre_id: 2,
+    enseignant_id: 3,
+    credits: 3,
+    ue_nom: 'UE8 - Langues & Communication S2',
+    ue_type: 'Mineure',
+    support_fichier_nom: 'Anglais_Technique_S2.pdf',
+    support_fichier_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
   }
 ];
 
@@ -253,6 +309,50 @@ export const INITIAL_NOTES: Note[] = [
     note_examen: 16,
     note_finale: 15.7,
     appreciation: 'Très bien'
+  },
+  {
+    id: 5,
+    etudiant_id: 1,
+    matiere_id: 5,
+    semestre_id: 2,
+    annee_academique_id: 1,
+    note_cc: 15,
+    note_examen: 14,
+    note_finale: 14.3,
+    appreciation: 'Très bon travail'
+  },
+  {
+    id: 6,
+    etudiant_id: 1,
+    matiere_id: 6,
+    semestre_id: 2,
+    annee_academique_id: 1,
+    note_cc: 13.5,
+    note_examen: 14,
+    note_finale: 13.8,
+    appreciation: 'Bon travail'
+  },
+  {
+    id: 7,
+    etudiant_id: 1,
+    matiere_id: 7,
+    semestre_id: 2,
+    annee_academique_id: 1,
+    note_cc: 12,
+    note_examen: 13.5,
+    note_finale: 12.9,
+    appreciation: 'Assez bien'
+  },
+  {
+    id: 8,
+    etudiant_id: 1,
+    matiere_id: 8,
+    semestre_id: 2,
+    annee_academique_id: 1,
+    note_cc: 16,
+    note_examen: 17,
+    note_finale: 16.6,
+    appreciation: 'Excellent'
   }
 ];
 
