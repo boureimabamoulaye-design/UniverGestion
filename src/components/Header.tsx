@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, LogOut, Menu } from 'lucide-react';
+import { Search, LogOut, Menu, Database } from 'lucide-react';
 import { AuthUser, NotificationAlerte, AnneeAcademique } from '../types/database';
 
 interface HeaderProps {
@@ -8,6 +8,7 @@ interface HeaderProps {
   notifications: NotificationAlerte[];
   onMarkNotificationRead: (id: number) => void;
   onOpenPHPExporter?: () => void;
+  onOpenMySQLConfig?: () => void;
   onLogout: () => void;
   searchQuery: string;
   setSearchQuery: (q: string) => void;
@@ -17,6 +18,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   user,
   activeAnnee,
+  onOpenMySQLConfig,
   onLogout,
   searchQuery,
   setSearchQuery,

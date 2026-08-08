@@ -23,9 +23,11 @@ import {
   Clock,
   Trash2,
   User,
-  X
+  X,
+  Lock
 } from 'lucide-react';
 import { AuthUser } from '../types/database';
+import { DB } from '../lib/storage';
 
 export type ActiveTab =
   | 'dashboard'
@@ -41,6 +43,7 @@ export type ActiveTab =
   | 'notes'
   | 'absences'
   | 'bulletins'
+  | 'examen'
   | 'paiements'
   | 'annees'
   | 'utilisateurs'
@@ -93,10 +96,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'parametres', label: 'Paramètres', icon: Settings },
   ];
 
-  const studentNav = [
+  const isStudentBlocked = !isAdmin && (
+    DB.isGlobalStudentLockActive() ||
+    user?.etudiantDetail?.statut_compte === 'Bloqué' ||
+    user?.etudiantDetail?.est_bloque ||
+    user?.etudiantDetail?.statut === 'Bloqué' ||
+    (user?.etudiantDetail?.statut as string) === 'Suspendu'
+  );
+
+  const studentNav = isStudentBlocked ? [
+    { id: 'bulletins', label: 'Accès Bloqué', icon: Lock },
+  ] : [
     { id: 'profil_etudiant', label: 'Mon Profil', icon: GraduationCap },
     { id: 'supports_cours', label: 'Supports de cours', icon: BookOpen },
     { id: 'bulletins', label: 'Mon Bulletin', icon: FileCheck2 },
+    { id: 'examen', label: 'Examen & Notes', icon: Award },
     { id: 'absences', label: 'Absences', icon: AlertCircle },
     { id: 'paiements', label: 'Mes Paiements', icon: CreditCard },
   ];

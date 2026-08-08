@@ -16,7 +16,11 @@ import {
   Trash2,
   CheckCircle,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  Lock,
+  Unlock,
+  ShieldAlert,
+  UserCheck
 } from 'lucide-react';
 
 export const EtudiantsView: React.FC = () => {
@@ -34,7 +38,7 @@ export const EtudiantsView: React.FC = () => {
   const [viewingItem, setViewingItem] = useState<Etudiant | null>(null);
   const [deleteConfirmStudent, setDeleteConfirmStudent] = useState<Etudiant | null>(null);
 
-  // Search & Filters
+  // Search & Filters - Empty search by default (Requirement 9)
   const [search, setSearch] = useState('');
   const [filterFiliere, setFilterFiliere] = useState<string>('all');
   const [filterClasse, setFilterClasse] = useState<string>('all');
@@ -51,7 +55,14 @@ export const EtudiantsView: React.FC = () => {
     telephone: '+223 70 00 00 00',
     email: '',
     classe_id: classes[0]?.id || 1,
-    statut: 'Inscrit' as 'Régulier' | 'Inscrit' | 'Suspendu' | 'Diplômé'
+    statut: 'Inscrit' as 'Régulier' | 'Inscrit' | 'Suspendu' | 'Diplômé',
+    // Tutor info (Requirement 1)
+    tuteur_nom: '',
+    tuteur_prenom: '',
+    tuteur_telephone: '',
+    // Account lock status (Requirement 7)
+    statut_compte: 'Actif' as 'Actif' | 'Inactif' | 'Bloqué',
+    est_bloque: false
   });
 
   const handleOpenModal = (item?: Etudiant) => {
@@ -69,7 +80,12 @@ export const EtudiantsView: React.FC = () => {
         telephone: item.telephone || '',
         email: item.email,
         classe_id: item.classe_id,
-        statut: item.statut
+        statut: item.statut,
+        tuteur_nom: item.tuteur_nom || '',
+        tuteur_prenom: item.tuteur_prenom || '',
+        tuteur_telephone: item.tuteur_telephone || '',
+        statut_compte: item.statut_compte || (item.est_bloque ? 'Bloqué' : 'Actif'),
+        est_bloque: item.est_bloque || item.statut_compte === 'Bloqué'
       });
     } else {
       setEditingItem(null);
@@ -86,7 +102,12 @@ export const EtudiantsView: React.FC = () => {
         telephone: '+223 70 00 00 00',
         email: '',
         classe_id: classes[0]?.id || 1,
-        statut: 'Inscrit'
+        statut: 'Inscrit',
+        tuteur_nom: '',
+        tuteur_prenom: '',
+        tuteur_telephone: '',
+        statut_compte: 'Actif',
+        est_bloque: false
       });
     }
     setIsModalOpen(true);
@@ -101,11 +122,23 @@ export const EtudiantsView: React.FC = () => {
       ...formData,
       classe_id: Number(formData.classe_id),
       mot_de_passe: editingItem ? editingItem.mot_de_passe : 'etudiant123',
-      date_inscription: editingItem ? editingItem.date_inscription : new Date().toISOString().split('T')[0]
+      date_inscription: editingItem ? editingItem.date_inscription : new Date().toISOString().split('T')[0],
+      est_bloque: formData.statut_compte === 'Bloqué'
     });
 
     setList(DB.getEtudiants());
     setIsModalOpen(false);
+  };
+
+  // Quick toggle student account lock (Requirement 7)
+  const handleToggleStudentLock = (student: Etudiant, newStatus: 'Actif' | 'Inactif' | 'Bloqué') => {
+    DB.saveEtudiant({
+      ...student,
+      statut_compte: newStatus,
+      est_bloque: newStatus === 'Bloqué'
+    });
+    DB.logAccess('SECURITE', `Modification statut compte étudiant ${student.prenom} ${student.nom} (#${student.matricule}) -> ${newStatus}`);
+    setList(DB.getEtudiants());
   };
 
   const handleDelete = (id: number) => {
@@ -129,10 +162,21 @@ export const EtudiantsView: React.FC = () => {
     setDeleteConfirmStudent(null);
   };
 
-  // Export List as CSV / Excel
+  // Export List
   const handleExportCSV = () => {
-    const headers = ["ID", "Matricule", "Nom", "Prénom", "Sexe", "Email", "Téléphone", "Statut"];
-    const rows = filtered.map(e => [e.id, e.matricule, e.nom, e.prenom, e.sexe, e.email, e.telephone, e.statut]);
+    const headers = ["ID", "Matricule", "Nom", "Prénom", "Sexe", "Email", "Téléphone", "Tuteur Nom", "Tuteur Téléphone", "Statut Compte"];
+    const rows = filtered.map(e => [
+      e.id,
+      e.matricule,
+      e.nom,
+      e.prenom,
+      e.sexe,
+      e.email,
+      e.telephone,
+      e.tuteur_nom || '',
+      e.tuteur_telephone || '',
+      e.statut_compte || (e.est_bloque ? 'Bloqué' : 'Actif')
+    ]);
     const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
@@ -143,61 +187,19 @@ export const EtudiantsView: React.FC = () => {
     document.body.removeChild(link);
   };
 
-  // Print List
   const handlePrint = () => {
     window.print();
-  };
-
-  // Batch Import Demo Simulation
-  const handleSimulateImport = () => {
-    const newStudents: Omit<Etudiant, 'id'>[] = [
-      {
-        matricule: `2024-USTTB-${String(list.length + 10).padStart(3, '0')}`,
-        nom: 'KEITA',
-        prenom: 'Fatoumata',
-        date_naissance: '2003-01-12',
-        lieu_naissance: 'Sikasso',
-        sexe: 'F',
-        nationalite: 'Malienne',
-        adresse: 'Koulikoro',
-        telephone: '+223 66 12 34 56',
-        email: 'fatoumata.keita@usttb.edu.ml',
-        classe_id: classes[0]?.id || 1,
-        statut: 'Inscrit',
-        date_inscription: '2024-10-05',
-        mot_de_passe: 'etudiant123'
-      },
-      {
-        matricule: `2024-USTTB-${String(list.length + 11).padStart(3, '0')}`,
-        nom: 'DEMBELE',
-        prenom: 'Moussa',
-        date_naissance: '2001-09-20',
-        lieu_naissance: 'Kayes',
-        sexe: 'M',
-        nationalite: 'Malienne',
-        adresse: 'Lafiabougou',
-        telephone: '+223 79 88 77 66',
-        email: 'moussa.dembele@usttb.edu.ml',
-        classe_id: classes[0]?.id || 1,
-        statut: 'Inscrit',
-        date_inscription: '2024-10-06',
-        mot_de_passe: 'etudiant123'
-      }
-    ];
-
-    newStudents.forEach(s => DB.saveEtudiant(s));
-    setList(DB.getEtudiants());
-    setIsImportModalOpen(false);
-    alert('Importation réussie de 2 nouveaux étudiants !');
   };
 
   // Filter Logic
   const filtered = list.filter(e => {
     const matchesSearch =
-      e.nom.toLowerCase().includes(search.toLowerCase()) ||
-      e.prenom.toLowerCase().includes(search.toLowerCase()) ||
-      e.matricule.toLowerCase().includes(search.toLowerCase()) ||
-      e.email.toLowerCase().includes(search.toLowerCase());
+      !search.trim() ||
+      e.nom.toLowerCase().includes(search.toLowerCase().trim()) ||
+      e.prenom.toLowerCase().includes(search.toLowerCase().trim()) ||
+      e.matricule.toLowerCase().includes(search.toLowerCase().trim()) ||
+      e.email.toLowerCase().includes(search.toLowerCase().trim()) ||
+      `${e.prenom} ${e.nom}`.toLowerCase().includes(search.toLowerCase().trim());
 
     const studentClass = classes.find(c => c.id === e.classe_id);
     const matchesFiliere = filterFiliere === 'all' || studentClass?.filiere_id === Number(filterFiliere);
@@ -208,7 +210,7 @@ export const EtudiantsView: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      
+
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4">
         <div>
@@ -253,14 +255,14 @@ export const EtudiantsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Multicriteria Search & Filters Bar */}
+      {/* Multicriteria Search & Filters Bar (Requirement 9: Empty placeholder search) */}
       <div className="bg-white p-3 sm:p-4 rounded-[16px] sm:rounded-[20px] border border-[#E5E7EB] shadow-xs grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
         <div className="relative sm:col-span-2">
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Rechercher matricule, nom, email..."
+            placeholder="Rechercher un étudiant..."
             className="w-full h-[40px] sm:h-[44px] bg-[#F9FAFB] border border-[#E5E7EB] rounded-[12px] sm:rounded-[14px] pl-9 pr-3 text-xs sm:text-sm focus:outline-none focus:border-[#0066FF]"
           />
           <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -298,14 +300,14 @@ export const EtudiantsView: React.FC = () => {
       {/* Main Table */}
       <div className="bg-white rounded-[16px] sm:rounded-[20px] border border-[#E5E7EB] shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[640px]">
+          <table className="w-full text-left border-collapse min-w-[720px]">
             <thead>
               <tr className="bg-gray-50 text-[11px] font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
                 <th className="px-4 sm:px-6 py-3.5">Matricule</th>
                 <th className="px-4 sm:px-6 py-3.5">Nom & Prénom</th>
-                <th className="px-4 sm:px-6 py-3.5">Sexe</th>
                 <th className="px-4 sm:px-6 py-3.5">Classe</th>
-                <th className="px-4 sm:px-6 py-3.5">Contact</th>
+                <th className="px-4 sm:px-6 py-3.5">Tuteur</th>
+                <th className="px-4 sm:px-6 py-3.5">Statut Compte</th>
                 <th className="px-4 sm:px-6 py-3.5 text-right">Actions</th>
               </tr>
             </thead>
@@ -319,25 +321,73 @@ export const EtudiantsView: React.FC = () => {
               ) : (
                 filtered.map((item) => {
                   const cls = classes.find(c => c.id === item.classe_id);
+                  const isBlocked = item.est_bloque || item.statut_compte === 'Bloqué';
+                  const isInactive = item.statut_compte === 'Inactif';
+
                   return (
                     <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
                       <td className="px-4 sm:px-6 py-3.5 font-mono font-bold text-[#0066FF] whitespace-nowrap">{item.matricule}</td>
                       <td className="px-4 sm:px-6 py-3.5 font-semibold text-[#1A1A1A]">
                         <div className="truncate max-w-[160px] sm:max-w-none">{item.prenom} {item.nom}</div>
-                      </td>
-                      <td className="px-4 sm:px-6 py-3.5 text-gray-600 font-medium whitespace-nowrap">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          item.sexe === 'F' ? 'bg-pink-50 text-pink-700' : 'bg-blue-50 text-blue-700'
-                        }`}>
-                          {item.sexe === 'F' ? 'Féminin' : 'Masculin'}
-                        </span>
+                        <div className="text-[10px] text-gray-400">{item.email}</div>
                       </td>
                       <td className="px-4 sm:px-6 py-3.5 font-medium text-gray-700 whitespace-nowrap">{cls?.nom || 'Section A'}</td>
                       <td className="px-4 sm:px-6 py-3.5 text-gray-600">
-                        <div className="truncate max-w-[180px]">{item.email}</div>
-                        <div className="text-[10px] text-gray-400 font-mono">{item.telephone}</div>
+                        {item.tuteur_nom ? (
+                          <div>
+                            <span className="font-semibold">{item.tuteur_prenom} {item.tuteur_nom}</span>
+                            <div className="text-[10px] text-gray-400 font-mono">{item.tuteur_telephone}</div>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 italic">Non renseigné</span>
+                        )}
+                      </td>
+                      <td className="px-4 sm:px-6 py-3.5 whitespace-nowrap">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                          isBlocked
+                            ? 'bg-red-50 text-red-700 border border-red-200'
+                            : isInactive
+                            ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                            : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        }`}>
+                          {isBlocked ? (
+                            <>
+                              <Lock className="w-3 h-3 text-red-600" />
+                              Accès Bloqué
+                            </>
+                          ) : isInactive ? (
+                            <>
+                              <XCircle className="w-3 h-3 text-amber-600" />
+                              Désactivé
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle className="w-3 h-3 text-emerald-600" />
+                              Compte Actif
+                            </>
+                          )}
+                        </span>
                       </td>
                       <td className="px-4 sm:px-6 py-3.5 text-right whitespace-nowrap space-x-1">
+                        {/* Quick Lock / Unlock Buttons */}
+                        {isBlocked ? (
+                          <button
+                            onClick={() => handleToggleStudentLock(item, 'Actif')}
+                            title="Débloquer le compte étudiant"
+                            className="p-1.5 bg-emerald-50 text-emerald-700 rounded-[8px] hover:bg-emerald-100 transition-colors inline-flex items-center justify-center gap-1"
+                          >
+                            <Unlock className="w-3.5 h-3.5" />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleToggleStudentLock(item, 'Bloqué')}
+                            title="Bloquer l'accès étudiant"
+                            className="p-1.5 bg-red-50 text-red-600 rounded-[8px] hover:bg-red-100 transition-colors inline-flex items-center justify-center gap-1"
+                          >
+                            <Lock className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+
                         <button
                           onClick={() => { setViewingItem(item); setIsDetailModalOpen(true); }}
                           title="Consulter la fiche complète"
@@ -355,7 +405,7 @@ export const EtudiantsView: React.FC = () => {
                         <button
                           onClick={() => handleDelete(item.id)}
                           title="Supprimer"
-                          className="p-1.5 bg-red-50 text-red-600 rounded-[10px] hover:bg-red-100 transition-colors"
+                          className="p-1.5 bg-red-50 text-red-600 rounded-[8px] hover:bg-red-100 transition-colors"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -369,7 +419,7 @@ export const EtudiantsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Modal Add / Edit Student */}
+      {/* Modal Add / Edit Student (Requirements 1 & 7) */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -494,16 +544,90 @@ export const EtudiantsView: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="md:col-span-2">
-              <label className="block font-semibold text-gray-700 mb-1">Adresse Domicile</label>
-              <input
-                type="text"
-                value={formData.adresse}
-                onChange={(e) => setFormData({ ...formData, adresse: e.target.value })}
-                placeholder="Quartier Badalabougou, Bamako"
-                className="w-full h-[44px] px-3 border border-[#E5E7EB] rounded-[14px]"
-              />
+          {/* SECTION TUTEUR DE L'ÉTUDIANT (Requirement 1) */}
+          <div className="p-3.5 bg-blue-50/50 rounded-2xl border border-blue-100 space-y-3">
+            <h4 className="font-bold text-xs text-blue-900 flex items-center gap-1.5">
+              <UserCheck className="w-4 h-4 text-blue-600" />
+              Informations du Tuteur / Responsable Légal
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Nom du Tuteur</label>
+                <input
+                  type="text"
+                  value={formData.tuteur_nom}
+                  onChange={(e) => setFormData({ ...formData, tuteur_nom: e.target.value })}
+                  placeholder="Nom du tuteur"
+                  className="w-full h-10 px-3 bg-white border border-slate-300 rounded-xl"
+                />
+              </div>
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Prénom du Tuteur</label>
+                <input
+                  type="text"
+                  value={formData.tuteur_prenom}
+                  onChange={(e) => setFormData({ ...formData, tuteur_prenom: e.target.value })}
+                  placeholder="Prénom du tuteur"
+                  className="w-full h-10 px-3 bg-white border border-slate-300 rounded-xl"
+                />
+              </div>
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Téléphone du Tuteur</label>
+                <input
+                  type="text"
+                  value={formData.tuteur_telephone}
+                  onChange={(e) => setFormData({ ...formData, tuteur_telephone: e.target.value })}
+                  placeholder="+223 66 00 11 22"
+                  className="w-full h-10 px-3 bg-white border border-slate-300 rounded-xl font-mono"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION STATUT ET ACCÈS DU COMPTE (Requirement 7) */}
+          <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+            <label className="block font-bold text-xs text-slate-800">
+              Statut du Compte / Accès à la Plateforme (Individuel)
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, statut_compte: 'Actif', est_bloque: false })}
+                className={`py-2 px-3 rounded-xl border font-bold text-xs flex items-center justify-center gap-1.5 transition-all ${
+                  formData.statut_compte === 'Actif'
+                    ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs'
+                    : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                }`}
+              >
+                <CheckCircle className="w-3.5 h-3.5" />
+                Activer le Compte
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, statut_compte: 'Inactif', est_bloque: false })}
+                className={`py-2 px-3 rounded-xl border font-bold text-xs flex items-center justify-center gap-1.5 transition-all ${
+                  formData.statut_compte === 'Inactif'
+                    ? 'bg-amber-600 text-white border-amber-700 shadow-xs'
+                    : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                }`}
+              >
+                <XCircle className="w-3.5 h-3.5" />
+                Désactiver le Compte
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, statut_compte: 'Bloqué', est_bloque: true })}
+                className={`py-2 px-3 rounded-xl border font-bold text-xs flex items-center justify-center gap-1.5 transition-all ${
+                  formData.statut_compte === 'Bloqué'
+                    ? 'bg-red-600 text-white border-red-700 shadow-xs'
+                    : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                }`}
+              >
+                <Lock className="w-3.5 h-3.5" />
+                Bloquer l'Accès
+              </button>
             </div>
           </div>
 
@@ -544,6 +668,13 @@ export const EtudiantsView: React.FC = () => {
                 <p className="text-gray-500">Né(e) le {viewingItem.date_naissance} à {viewingItem.lieu_naissance}</p>
               </div>
               <div className="text-right">
+                <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${
+                  viewingItem.est_bloque || viewingItem.statut_compte === 'Bloqué'
+                    ? 'bg-red-100 text-red-800'
+                    : 'bg-emerald-100 text-emerald-800'
+                }`}>
+                  Compte : {viewingItem.statut_compte || (viewingItem.est_bloque ? 'Bloqué' : 'Actif')}
+                </span>
                 <span className="text-[10px] text-gray-400 mt-1 block font-medium">Inscrit le {viewingItem.date_inscription}</span>
               </div>
             </div>
@@ -558,8 +689,10 @@ export const EtudiantsView: React.FC = () => {
                 <span className="font-medium text-[#1A1A1A]">{viewingItem.telephone || 'N/A'}</span>
               </div>
               <div>
-                <span className="text-gray-400 block font-semibold">Nationalité :</span>
-                <span className="font-medium text-[#1A1A1A]">{viewingItem.nationalite}</span>
+                <span className="text-gray-400 block font-semibold">Nom & Tél du Tuteur :</span>
+                <span className="font-bold text-[#1A1A1A]">
+                  {viewingItem.tuteur_nom ? `${viewingItem.tuteur_prenom} ${viewingItem.tuteur_nom} (${viewingItem.tuteur_telephone})` : 'Non renseigné'}
+                </span>
               </div>
               <div>
                 <span className="text-gray-400 block font-semibold">Adresse :</span>
@@ -567,14 +700,14 @@ export const EtudiantsView: React.FC = () => {
               </div>
             </div>
 
-            {/* Notes & Financial summary */}
+            {/* Financial summary */}
             <div>
-              <h4 className="font-bold text-sm text-[#1A1A1A] mb-2">Paiements de Scolarité</h4>
+              <h4 className="font-bold text-sm text-[#1A1A1A] mb-2">Historique des Paiements</h4>
               <div className="space-y-2">
                 {paiements.filter(p => p.etudiant_id === viewingItem.id).map(p => (
                   <div key={p.id} className="p-3 bg-gray-50 rounded-[12px] flex items-center justify-between border border-gray-200">
                     <div>
-                      <p className="font-bold">{p.type_frais}</p>
+                      <p className="font-bold">{p.type_frais} - {p.filiere_nom || p.filiere_code || 'Scolarité'}</p>
                       <p className="text-[10px] text-gray-400">{p.mode_paiement} • Réf: {p.reference_recu}</p>
                     </div>
                     <span className="font-bold text-emerald-600">{p.montant_paye.toLocaleString()} FCFA</span>
@@ -594,43 +727,6 @@ export const EtudiantsView: React.FC = () => {
           </div>
         </Modal>
       )}
-
-      {/* Modal Import Excel */}
-      <Modal
-        isOpen={isImportModalOpen}
-        onClose={() => setIsImportModalOpen(false)}
-        title="Importation d'Étudiants par Fichier Excel / CSV"
-      >
-        <div className="space-y-4 text-xs text-[#1A1A1A]">
-          <p className="text-gray-600">
-            Téléversez un fichier CSV ou Excel respectant le format standard :
-            <code className="block bg-gray-100 p-2 rounded font-mono text-[11px] mt-1">
-              Matricule, Nom, Prénom, Sexe, DateNaissance, Email, Telephone, Classe
-            </code>
-          </p>
-
-          <div className="border-2 border-dashed border-gray-200 rounded-[16px] p-8 text-center hover:border-[#0066FF] transition-colors cursor-pointer bg-gray-50/50">
-            <Upload className="w-8 h-8 text-[#0066FF] mx-auto mb-2" />
-            <p className="font-bold text-[#1A1A1A]">Glissez-déposez votre fichier Excel / CSV ici</p>
-            <p className="text-gray-400 text-[11px] mt-1">ou cliquez pour parcourir les dossiers</p>
-          </div>
-
-          <div className="pt-4 flex items-center justify-between border-t border-gray-100">
-            <button
-              onClick={() => setIsImportModalOpen(false)}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 font-semibold rounded-[12px]"
-            >
-              Annuler
-            </button>
-            <button
-              onClick={handleSimulateImport}
-              className="px-5 py-2.5 bg-[#0066FF] hover:bg-blue-700 text-white font-bold rounded-[12px]"
-            >
-              Exécuter l'Importation Démo
-            </button>
-          </div>
-        </div>
-      </Modal>
 
       {/* Delete Confirm Modal */}
       <ConfirmModal

@@ -17,7 +17,8 @@ import {
   ShieldCheck,
   Building2,
   DollarSign,
-  Download
+  Download,
+  Lock
 } from 'lucide-react';
 import { Modal } from '../components/Modal';
 import { ExcelBulletinView } from '../components/ExcelBulletinView';
@@ -249,7 +250,56 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
     };
   });
 
+  const isGlobalLock = DB.isGlobalStudentLockActive();
+  const isIndividualLock = etudiant && (
+    etudiant.statut_compte === 'Bloqué' ||
+    etudiant.est_bloque ||
+    etudiant.statut === 'Bloqué' ||
+    (etudiant.statut as string) === 'Suspendu'
+  );
+  const isBlocked = isGlobalLock || isIndividualLock;
 
+  if (isBlocked) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center p-4">
+        <div className="max-w-lg w-full bg-white rounded-3xl border border-red-200 shadow-xl p-8 text-center space-y-5 animate-in zoom-in-95 duration-200">
+          <div className="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mx-auto shadow-inner">
+            <Lock className="w-8 h-8" />
+          </div>
+          
+          <div>
+            <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">
+              Accès Bloqué par l'Administration
+            </h2>
+            <p className="text-xs font-bold text-red-600 mt-1">
+              {isGlobalLock 
+                ? "Verrouillage Général de l'Espace Étudiant" 
+                : "Compte Étudiant Bloqué / Suspendu"}
+            </p>
+          </div>
+
+          <div className="p-4 bg-red-50/80 border border-red-200 rounded-2xl text-xs text-slate-700 leading-relaxed font-medium text-left">
+            {isGlobalLock ? (
+              <p>
+                L'accès à l'espace étudiant est actuellement restreint et verrouillé par l'administration. Toutes les colonnes, rubriques et données de votre espace étudiant sont masquées.
+              </p>
+            ) : (
+              <p>
+                Votre compte étudiant a été suspendu ou bloqué par l'administration de l'université. Vos colonnes de bulletins, notes, examens et paiements ne sont plus accessibles.
+              </p>
+            )}
+            <p className="mt-2 text-slate-500 text-[11px] font-semibold">
+              Pour toute demande de régularisation ou déblocage de votre compte, veuillez vous adresser directement au service de la scolarité.
+            </p>
+          </div>
+
+          <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 font-mono">
+            Matricule Étudiant : <span className="font-bold text-slate-900">{etudiant.matricule}</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -303,6 +353,157 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
             anneeAcademique={activeAnnee}
             onPrint={() => window.print()}
           />
+        </div>
+      )}
+
+      {/* TAB EXAMEN & RELEVÉ DE NOTES (Requirement 3) */}
+      {currentTab === 'examen' && (
+        <div className="space-y-6 animate-in fade-in duration-300">
+          
+          {/* Header Bar */}
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2">
+                <Award className="w-5 h-5 text-blue-600" />
+                <span>Espace Examen & Relevé des Notes</span>
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Consultez vos résultats d'examen, votre moyenne générale et votre décision de jury.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <label className="text-xs font-bold text-slate-700 shrink-0">Semestre :</label>
+                <select
+                  value={selectedSemestreId}
+                  onChange={(e) => setSelectedSemestreId(Number(e.target.value))}
+                  className="h-10 bg-slate-50 border border-slate-300 rounded-xl px-3 text-xs font-bold text-blue-600 focus:outline-none focus:border-blue-600"
+                >
+                  {semestres.map(s => (
+                    <option key={s.id} value={s.id}>{s.libelle}</option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                onClick={() => window.print()}
+                className="h-10 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-xs shrink-0"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Imprimer / Télécharger PDF</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Exam Performance KPI Summary */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Moyenne Générale</span>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-2xl font-black text-slate-900 font-mono">
+                  {semesterAverage !== null ? semesterAverage.toFixed(2) : '--'}
+                </span>
+                <span className="text-xs text-slate-500 font-bold">/ 20</span>
+              </div>
+            </div>
+
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Statut Examen</span>
+              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold ${
+                semesterAverage !== null && semesterAverage >= 10
+                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                  : 'bg-red-100 text-red-800 border border-red-200'
+              }`}>
+                {semesterAverage !== null
+                  ? (semesterAverage >= 10 ? 'ADMIS(E)' : 'AJOURNÉ(E)')
+                  : 'En attente'}
+              </span>
+            </div>
+
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Mention du Jury</span>
+              <span className="text-sm font-bold text-slate-800 block">
+                {getMention(semesterAverage)}
+              </span>
+            </div>
+
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Crédits ECTS Validés</span>
+              <div className="flex items-baseline gap-1">
+                <span className="text-2xl font-black text-blue-600 font-mono">{creditsValidated}</span>
+                <span className="text-xs text-slate-500 font-bold">/ {totalCreditsSemester || 30} ECTS</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Detailed Exam Marks Table */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            <div className="p-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+              <h4 className="font-bold text-xs text-slate-900 uppercase tracking-wider">
+                Relevé des Notes par Unité d'Enseignement ({semesterMatieres.length} matières)
+              </h4>
+              <span className="text-xs text-slate-500 font-mono">Session Unifiée LMD</span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse min-w-[640px]">
+                <thead>
+                  <tr className="bg-slate-100/80 text-[11px] font-bold text-slate-600 uppercase tracking-wider border-b border-slate-200">
+                    <th className="px-5 py-3">Code / UE</th>
+                    <th className="px-5 py-3">Matière / Module</th>
+                    <th className="px-5 py-3 text-center">Crédits</th>
+                    <th className="px-5 py-3 text-center">Note CC (/20)</th>
+                    <th className="px-5 py-3 text-center">Note Examen (/20)</th>
+                    <th className="px-5 py-3 text-center">Note Finale (/20)</th>
+                    <th className="px-5 py-3 text-right">Décision UE</th>
+                  </tr>
+                </thead>
+                <tbody className="text-xs divide-y divide-slate-200">
+                  {notesTableData.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-5 py-8 text-center text-slate-400 font-medium">
+                        Aucune note d'examen saisie pour ce semestre.
+                      </td>
+                    </tr>
+                  ) : (
+                    notesTableData.map((row, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="px-5 py-3 font-mono font-bold text-blue-600 whitespace-nowrap">{row.matiere.code}</td>
+                        <td className="px-5 py-3 font-bold text-slate-900">{row.matiere.nom}</td>
+                        <td className="px-5 py-3 text-center font-bold text-slate-700 font-mono">{row.matiere.credits || 3}</td>
+                        <td className="px-5 py-3 text-center font-mono font-semibold text-slate-800">
+                          {row.cc !== null ? row.cc.toFixed(1) : '--'}
+                        </td>
+                        <td className="px-5 py-3 text-center font-mono font-semibold text-slate-800">
+                          {row.exam !== null ? row.exam.toFixed(1) : '--'}
+                        </td>
+                        <td className="px-5 py-3 text-center font-mono font-bold text-sm text-slate-900">
+                          {row.finale !== null ? row.finale.toFixed(2) : '--'}
+                        </td>
+                        <td className="px-5 py-3 text-right whitespace-nowrap">
+                          {row.finale !== null ? (
+                            row.isValidated ? (
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                Validée
+                              </span>
+                            ) : (
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-red-100 text-red-800 border border-red-200">
+                                À Rattraper
+                              </span>
+                            )
+                          ) : (
+                            <span className="text-slate-400 italic">En attente</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
         </div>
       )}
 
@@ -527,10 +728,6 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
                 <div className="flex justify-between">
                   <span className="text-gray-500">Université :</span>
                   <span className="font-semibold text-slate-900 text-right">{universite?.nom || 'USTTB'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Faculté :</span>
-                  <span className="font-semibold text-slate-900 text-right">{studentFaculte?.nom || 'FST'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Filière d'Études :</span>

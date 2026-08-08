@@ -4,6 +4,7 @@ import { DB } from './lib/storage';
 import { Header } from './components/Header';
 import { Sidebar, ActiveTab } from './components/Sidebar';
 import { PHPCodeExporterModal } from './components/PHPCodeExporterModal';
+import { MySQLConfigModal } from './components/MySQLConfigModal';
 
 // Views
 import { LoginView } from './views/LoginView';
@@ -50,6 +51,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [notifications, setNotifications] = useState<NotificationAlerte[]>(DB.getNotifications());
   const [isPHPExporterOpen, setIsPHPExporterOpen] = useState(false);
+  const [isMySQLConfigOpen, setIsMySQLConfigOpen] = useState(false);
 
   const activeAnnee = DB.getActiveAnneeAcademique();
 
@@ -92,6 +94,7 @@ export default function App() {
             notifications={notifications}
             onMarkNotificationRead={handleMarkNotificationRead}
             onOpenPHPExporter={() => setIsPHPExporterOpen(true)}
+            onOpenMySQLConfig={() => setIsMySQLConfigOpen(true)}
             onLogout={handleLogout}
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
@@ -144,6 +147,12 @@ export default function App() {
       <PHPCodeExporterModal
         isOpen={isPHPExporterOpen}
         onClose={() => setIsPHPExporterOpen(false)}
+      />
+
+      {/* MySQL Config & Status Modal */}
+      <MySQLConfigModal
+        isOpen={isMySQLConfigOpen}
+        onClose={() => setIsMySQLConfigOpen(false)}
       />
     </div>
   );

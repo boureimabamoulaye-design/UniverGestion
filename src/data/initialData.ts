@@ -179,7 +179,12 @@ export const INITIAL_ETUDIANTS: Etudiant[] = [
     nationalite: 'Malienne',
     classe_id: 1,
     date_inscription: '2025-10-01',
-    mot_de_passe: 'etudiant123'
+    mot_de_passe: 'etudiant123',
+    tuteur_nom: 'Traoré',
+    tuteur_prenom: 'Ibrahima',
+    tuteur_telephone: '+223 66 12 34 56',
+    statut_compte: 'Actif',
+    est_bloque: false
   }
 ];
 

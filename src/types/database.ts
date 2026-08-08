@@ -76,10 +76,18 @@ export interface Etudiant {
   telephone: string;
   adresse: string;
   classe_id: number;
+  filiere_id?: number;
   date_inscription: string;
   statut: 'Régulier' | 'Inscrit' | 'Suspendu' | 'Diplômé';
   mot_de_passe: string;
   photo_url?: string;
+  // Tuteur Information
+  tuteur_nom?: string;
+  tuteur_prenom?: string;
+  tuteur_telephone?: string;
+  // Compte & Accès
+  statut_compte?: 'Actif' | 'Inactif' | 'Bloqué';
+  est_bloque?: boolean;
 }
 
 export interface Enseignant {
@@ -125,6 +133,9 @@ export interface Inscription {
   date_inscription: string;
   statut: 'Validée' | 'En attente' | 'Annulée';
   frais_inscription: number;
+  type_inscription?: 'Inscrire' | 'Réinscrire' | 'Passage';
+  statut_paiement?: 'Non payé' | 'Partiel' | 'Payé';
+  statut_validation?: 'En attente' | 'Validé' | 'Rejeté';
 }
 
 export interface Note {
@@ -158,27 +169,37 @@ export interface Bulletin {
   semestre_id: number;
   annee_academique_id: number;
   moyenne: number;
+  moyenne_generale?: number;
   total_credits: number;
-  decision: 'Admis' | 'Ajourné' | 'Compensé' | 'En attente';
-  mention: 'Passable' | 'Assez Bien' | 'Bien' | 'Très Bien' | 'N/A';
+  total_credits_valides?: number;
+  decision: 'Admis' | 'Ajourné' | 'Compensé' | 'En attente' | 'Passage sous réserve' | 'Exclu' | string;
+  mention: 'Passable' | 'Assez Bien' | 'Bien' | 'Très Bien' | 'N/A' | string;
   rang: number;
   date_generation: string;
+  remarques_jury?: string;
 }
 
 export interface Paiement {
   id: number;
   etudiant_id: number;
   annee_academique_id: number;
+  filiere_id?: number;
   filiere_code?: string;
+  filiere_nom?: string;
+  classe_id?: number;
+  classe_nom?: string;
   annee_libelle?: string;
   type_frais: 'Inscription' | 'Scolarité' | 'Examen' | 'Autre';
   montant: number;
   montant_paye: number;
   reste_a_payer: number;
-  mode_paiement: 'Espèces' | 'Orange Money' | 'Moov Money' | 'Virement' | 'Chèque';
+  reduction_pct?: number;
+  reduction_montant?: number;
+  mode_paiement: 'Espèces' | 'Orange Money' | 'Moov Money' | 'Virement' | 'Chèque' | 'Wave';
   reference_recu: string;
   date_paiement: string;
   statut: 'Complet' | 'Partiel' | 'En retard' | 'En attente';
+  remarque?: string;
 }
 
 export interface Utilisateur {
@@ -222,7 +243,7 @@ export interface HistoriqueAcces {
 
 export interface CorbeilleItem {
   id: number;
-  type_element: 'ETUDIANT' | 'NOTE' | 'MATIERE' | 'PAIEMENT' | 'INSCRIPTION' | 'ENSEIGNANT' | 'CLASSE' | 'FILIERE' | 'SEMESTRE';
+  type_element: 'ETUDIANT' | 'NOTE' | 'MATIERE' | 'PAIEMENT' | 'INSCRIPTION' | 'ENSEIGNANT' | 'CLASSE' | 'FILIERE' | 'SEMESTRE' | 'UTILISATEUR';
   element_id: number;
   titre: string;
   details: string;

@@ -167,7 +167,14 @@ export const ExcelBulletinView: React.FC<ExcelBulletinViewProps> = ({
 
   const moyenneMajeures = creditsMajeures > 0 ? (pointsMajeures / creditsMajeures).toFixed(2) : '0.00';
   const moyenneMineures = creditsMineures > 0 ? (pointsMineures / creditsMineures).toFixed(2) : '0.00';
-  const moyenneGenerale = totalCreditsGlobaux > 0 ? (pointsTotaux / totalCreditsGlobaux).toFixed(2) : '0.00';
+  // Check if an admin manually saved or overridden bulletin record exists
+  const dbSavedBulletin = DB.getBulletins().find(
+    b => b.etudiant_id === safeEtudiant.id && b.semestre_id === safeSemestreId
+  );
+
+  const moyenneGenerale = dbSavedBulletin?.moyenne_generale !== undefined && dbSavedBulletin?.moyenne_generale !== null
+    ? Number(dbSavedBulletin.moyenne_generale).toFixed(2)
+    : (dbSavedBulletin?.moyenne !== undefined && dbSavedBulletin?.moyenne !== null ? Number(dbSavedBulletin.moyenne).toFixed(2) : (totalCreditsGlobaux > 0 ? (pointsTotaux / totalCreditsGlobaux).toFixed(2) : '0.00'));
 
   const dateEdition = new Date().toLocaleDateString('fr-FR', {
     day: '2-digit',
@@ -175,25 +182,27 @@ export const ExcelBulletinView: React.FC<ExcelBulletinViewProps> = ({
     year: 'numeric'
   });
 
-  // Calculate decision & mention LMD
+  // Calculate decision & mention LMD (or fallback to admin saved override)
   const avgNum = parseFloat(moyenneGenerale);
-  let decisionJury = 'AJOURNÉ';
-  let mentionGenerale = 'Ajourné';
+  let decisionJury = dbSavedBulletin?.decision ? dbSavedBulletin.decision.toUpperCase() : 'AJOURNÉ';
+  let mentionGenerale = dbSavedBulletin?.mention ? dbSavedBulletin.mention : 'Ajourné';
 
-  if (avgNum >= 10) {
-    if (totalCreditsNonValidesGlobaux === 0) {
-      decisionJury = 'ADMIS';
+  if (!dbSavedBulletin?.decision) {
+    if (avgNum >= 10) {
+      if (totalCreditsNonValidesGlobaux === 0) {
+        decisionJury = 'ADMIS';
+      } else {
+        decisionJury = 'ADMIS PAR COMPENSATION';
+      }
+
+      if (avgNum >= 16) mentionGenerale = 'Mention Très Bien';
+      else if (avgNum >= 14) mentionGenerale = 'Mention Bien';
+      else if (avgNum >= 12) mentionGenerale = 'Mention Assez Bien';
+      else mentionGenerale = 'Mention Passable';
     } else {
-      decisionJury = 'ADMIS PAR COMPENSATION';
+      decisionJury = 'AJOURNÉ';
+      mentionGenerale = 'Sans Mention';
     }
-
-    if (avgNum >= 16) mentionGenerale = 'Mention Très Bien';
-    else if (avgNum >= 14) mentionGenerale = 'Mention Bien';
-    else if (avgNum >= 12) mentionGenerale = 'Mention Assez Bien';
-    else mentionGenerale = 'Mention Passable';
-  } else {
-    decisionJury = 'AJOURNÉ';
-    mentionGenerale = 'Sans Mention';
   }
 
   // Calculate annual stats across all semestres of the academic year for this student/filière
@@ -565,14 +574,14 @@ export const ExcelBulletinView: React.FC<ExcelBulletinViewProps> = ({
                   {moyenneGenerale}
                 </td>
                 <td className="p-1.5 text-center align-middle font-mono border-r border-slate-400 whitespace-nowrap">
-                  {totalCreditsValidesGlobaux} / {totalCreditsGlobaux}
+                  {dbSavedBulletin?.total_credits_valides ?? totalCreditsValidesGlobaux} / {totalCreditsGlobaux || 30}
                 </td>
                 <td className="p-1.5 text-center align-middle font-semibold border-r border-slate-400 whitespace-nowrap">
                   {mentionGenerale.replace('Mention ', '')}
                 </td>
                 <td className="p-1.5 text-center align-middle uppercase whitespace-nowrap">
-                  <span className={decisionJury.startsWith('ADMIS') ? 'text-emerald-700 font-extrabold' : 'text-red-700 font-extrabold'}>
-                    {decisionJury.startsWith('ADMIS') ? 'Validé' : 'Ajourné'}
+                  <span className={decisionJury.includes('ADMIS') || decisionJury.includes('RÉSERVE') ? 'text-emerald-700 font-extrabold' : 'text-red-700 font-extrabold'}>
+                    {decisionJury}
                   </span>
                 </td>
               </tr>
@@ -580,6 +589,18 @@ export const ExcelBulletinView: React.FC<ExcelBulletinViewProps> = ({
             </tbody>
           </table>
         </div>
+
+        {/* Jury Remarques & Observations */}
+        {dbSavedBulletin?.remarques_jury && (
+          <div className="mt-3 p-3 bg-slate-50 border border-slate-300 rounded-xs text-xs">
+            <span className="font-extrabold text-slate-900 uppercase tracking-wider block mb-1">
+              OBSERVATIONS ET APPRÉCIATIONS DU JURY :
+            </span>
+            <p className="text-slate-800 italic font-medium">
+              "{dbSavedBulletin.remarques_jury}"
+            </p>
+          </div>
+        )}
 
       </div>
     </div>

@@ -67,6 +67,7 @@ const STORAGE_KEYS = {
   HISTORIQUE: 'unigestion_historique',
   CORBEILLE: 'unigestion_corbeille',
   SUPPORTS_COURS: 'unigestion_supports_cours',
+  GLOBAL_STUDENT_LOCK: 'unigestion_global_student_lock',
 };
 
 function getItem<T>(key: string, defaultValue: T): T {
@@ -363,10 +364,26 @@ export class DB {
 
   static saveEtudiant(item: Omit<Etudiant, 'id'> & { id?: number }): Etudiant {
     const list = this.getEtudiants();
+    const classes = this.getClasses();
+    
+    // Auto-link filiere_id from classe_id
+    let filiere_id = item.filiere_id;
+    if (item.classe_id) {
+      const cls = classes.find(c => c.id === Number(item.classe_id));
+      if (cls && cls.filiere_id) {
+        filiere_id = cls.filiere_id;
+      }
+    }
+
+    const itemWithFiliere = {
+      ...item,
+      ...(filiere_id ? { filiere_id } : {})
+    };
+
     let result: Etudiant;
     if (item.id) {
       const idx = list.findIndex(e => e.id === item.id);
-      if (idx !== -1) list[idx] = { ...list[idx], ...item };
+      if (idx !== -1) list[idx] = { ...list[idx], ...itemWithFiliere };
       result = list[idx];
     } else {
       const nextId = Math.max(0, ...list.map(e => e.id)) + 1;
@@ -374,7 +391,7 @@ export class DB {
       const activeYear = this.getActiveAnneeAcademique();
       const yr = activeYear.code.substring(0, 4);
       const matricule = item.matricule || `${yr}-USTTB-${String(nextId).padStart(3, '0')}`;
-      result = { ...item, id: nextId, matricule, mot_de_passe: item.mot_de_passe || 'etudiant123' } as Etudiant;
+      result = { ...itemWithFiliere, id: nextId, matricule, mot_de_passe: item.mot_de_passe || 'etudiant123' } as Etudiant;
       list.push(result);
 
       // Auto-create inscription for current active year
@@ -436,6 +453,65 @@ export class DB {
     setItem(STORAGE_KEYS.MATIERES, this.getMatieres().filter(m => m.id !== id));
   }
 
+  // Global Student Lock
+  static isGlobalStudentLockActive(): boolean {
+    return getItem(STORAGE_KEYS.GLOBAL_STUDENT_LOCK, false);
+  }
+
+  static setGlobalStudentLock(blocked: boolean): void {
+    setItem(STORAGE_KEYS.GLOBAL_STUDENT_LOCK, blocked);
+    this.logAccess('SECURITE', `Accès global espace étudiant ${blocked ? 'VERROUILLÉ / BLOQUÉ' : 'DÉVERROUILLÉ / ACTIVÉ'}`);
+  }
+
+  // Filiere Authorized Access Control
+  static getEtudiantAuthorizedFilieres(etudiantId: number): Filiere[] {
+    const inscriptions = this.getInscriptions().filter(i => i.etudiant_id === etudiantId);
+    const classes = this.getClasses();
+    const filieres = this.getFilieres();
+
+    const filiereIds = new Set<number>();
+    inscriptions.forEach(ins => {
+      const cls = classes.find(c => c.id === ins.classe_id);
+      if (cls && cls.filiere_id) {
+        filiereIds.add(cls.filiere_id);
+      }
+    });
+
+    const student = this.getEtudiants().find(e => e.id === etudiantId);
+    if (student) {
+      if (student.filiere_id) {
+        filiereIds.add(student.filiere_id);
+      }
+      if (student.classe_id) {
+        const mainClass = classes.find(c => c.id === student.classe_id);
+        if (mainClass && mainClass.filiere_id) {
+          filiereIds.add(mainClass.filiere_id);
+        }
+      }
+    }
+
+    if (filiereIds.size === 0) {
+      return filieres; // Allow access if no specific constraint
+    }
+
+    return filieres.filter(f => filiereIds.has(f.id));
+  }
+
+  static isStudentAuthorizedForFiliere(etudiantId: number, filiereId: number): boolean {
+    const authorized = this.getEtudiantAuthorizedFilieres(etudiantId);
+    if (!authorized || authorized.length === 0) return true;
+    return authorized.some(f => f.id === filiereId);
+  }
+
+  static isStudentAuthorizedForClasse(etudiantId: number, classeId: number): boolean {
+    const cls = this.getClasses().find(c => c.id === classeId);
+    if (!cls) return true;
+    if (cls.filiere_id) {
+      return this.isStudentAuthorizedForFiliere(etudiantId, cls.filiere_id);
+    }
+    return true;
+  }
+
   static saveInscription(item: Omit<Inscription, 'id'> & { id?: number }): Inscription {
     const list = this.getInscriptions();
     let result: Inscription;
@@ -449,6 +525,41 @@ export class DB {
       list.push(result);
     }
     setItem(STORAGE_KEYS.INSCRIPTIONS, list);
+
+    // Auto-create/sync corresponding payment record when inscription is active
+    if (result.statut === 'Validée') {
+      const classes = this.getClasses();
+      const filieres = this.getFilieres();
+      const annees = this.getAnneesAcademiques();
+      const classe = classes.find(c => c.id === result.classe_id);
+      const filiere = classe ? filieres.find(f => f.id === classe.filiere_id) : undefined;
+      const annee = annees.find(a => a.id === result.annee_academique_id);
+
+      const paiements = this.getPaiements();
+      const existingPay = paiements.find(p => p.etudiant_id === result.etudiant_id && p.annee_academique_id === result.annee_academique_id && p.classe_id === result.classe_id);
+
+      if (!existingPay) {
+        this.savePaiement({
+          etudiant_id: result.etudiant_id,
+          annee_academique_id: result.annee_academique_id,
+          filiere_id: filiere?.id,
+          filiere_code: filiere?.code || 'IG1',
+          filiere_nom: filiere?.nom || 'Informatique & Télécoms',
+          classe_id: classe?.id,
+          classe_nom: classe?.nom || 'Licence 1',
+          annee_libelle: annee?.libelle || '2025-2026',
+          type_frais: 'Inscription',
+          montant: result.frais_inscription || 150000,
+          montant_paye: result.frais_inscription || 150000,
+          reste_a_payer: 0,
+          mode_paiement: 'Orange Money',
+          reference_recu: `INS-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
+          date_paiement: result.date_inscription || new Date().toISOString().split('T')[0],
+          statut: 'Complet'
+        });
+      }
+    }
+
     return result;
   }
 
@@ -813,6 +924,8 @@ export class DB {
         this.saveFiliere(data);
       } else if (item.type_element === 'SEMESTRE') {
         this.saveSemestre(data);
+      } else if (item.type_element === 'UTILISATEUR') {
+        this.saveUtilisateur(data);
       }
 
       // remove from corbeille

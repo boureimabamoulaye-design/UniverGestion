@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { DB } from '../lib/storage';
-import { Bulletin } from '../types/database';
+import { Bulletin, Note, Matiere } from '../types/database';
 import { Modal } from '../components/Modal';
-import { FileCheck2, Printer, Download, Eye, Award, CheckCircle } from 'lucide-react';
+import { FileCheck2, Printer, Download, Eye, Edit3, Save, RefreshCw, CheckCircle, AlertTriangle } from 'lucide-react';
 import { StudentSearchSelect } from '../components/StudentSearchSelect';
 import { ExcelBulletinView } from '../components/ExcelBulletinView';
 
@@ -20,8 +20,33 @@ export const BulletinsView: React.FC = () => {
   const [selectedFiliereId, setSelectedFiliereId] = useState<number | 'ALL'>('ALL');
   const [selectedStudentId, setSelectedStudentId] = useState<number>(etudiants[0]?.id || 1);
   const [selectedSemestreId, setSelectedSemestreId] = useState<number>(semestres[0]?.id || 1);
+  
   const [viewingBulletin, setViewingBulletin] = useState<Bulletin | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+
+  // Bulletin Editing Modal state (Requirement 8)
+  const [editingBulletin, setEditingBulletin] = useState<Bulletin | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  // Form State for Editing Bulletin
+  const [editFormData, setEditFormData] = useState({
+    moyenne: 12,
+    total_credits: 30,
+    decision: 'Admis',
+    mention: 'Assez Bien',
+    remarques_jury: '',
+  });
+
+  // Local state for editing subject marks within the bulletin
+  const [editSubjectNotes, setEditSubjectNotes] = useState<{
+    matiere_id: number;
+    code: string;
+    nom: string;
+    credits: number;
+    note_cc: number;
+    note_examen: number;
+    note_finale: number;
+  }[]>([]);
 
   // Filter students by selected filiere dropdown
   const filteredEtudiants = selectedFiliereId === 'ALL'
@@ -59,9 +84,14 @@ export const BulletinsView: React.FC = () => {
 
     const moyenneGenerale = totalCredits > 0 ? parseFloat((totalPoints / totalCredits).toFixed(2)) : 12.5;
 
-    let decision: 'Admis' | 'Ajourné' | 'Compensé' | 'En attente' = 'Admis';
+    let decision: string = 'Admis';
     if (moyenneGenerale < 10) decision = 'Ajourné';
     else if (moyenneGenerale >= 10 && totalCreditsValides < 30) decision = 'Compensé';
+
+    let mention = 'Passable';
+    if (moyenneGenerale >= 16) mention = 'Très Bien';
+    else if (moyenneGenerale >= 14) mention = 'Bien';
+    else if (moyenneGenerale >= 12) mention = 'Assez Bien';
 
     const newBulletin = DB.saveBulletin({
       etudiant_id: student.id,
@@ -69,16 +99,135 @@ export const BulletinsView: React.FC = () => {
       semestre_id: Number(selectedSemestreId),
       annee_academique_id: activeAnnee.id,
       moyenne: moyenneGenerale,
-      total_credits: totalCreditsValides > 0 ? totalCreditsValides : 24,
+      moyenne_generale: moyenneGenerale,
+      total_credits: totalCreditsValides > 0 ? totalCreditsValides : 30,
+      total_credits_valides: totalCreditsValides > 0 ? totalCreditsValides : 30,
       rang: 1,
       decision,
-      mention: moyenneGenerale >= 16 ? 'Très Bien' : moyenneGenerale >= 14 ? 'Bien' : moyenneGenerale >= 12 ? 'Assez Bien' : 'Passable',
-      date_generation: new Date().toISOString().split('T')[0]
+      mention,
+      date_generation: new Date().toISOString().split('T')[0],
+      remarques_jury: 'Bulletin officiel délibéré.'
     });
 
     setBulletinsList(DB.getBulletins());
     setViewingBulletin(newBulletin);
     setIsDetailOpen(true);
+  };
+
+  // Open Edit Bulletin Modal (Requirement 8)
+  const handleOpenEditModal = (bulletin: Bulletin) => {
+    setEditingBulletin(bulletin);
+    setEditFormData({
+      moyenne: bulletin.moyenne_generale || bulletin.moyenne || 10,
+      total_credits: bulletin.total_credits_valides || bulletin.total_credits || 30,
+      decision: bulletin.decision || 'Admis',
+      mention: bulletin.mention || 'Passable',
+      remarques_jury: bulletin.remarques_jury || ''
+    });
+
+    // Prepare subject notes list for editing
+    const student = etudiants.find(e => e.id === bulletin.etudiant_id);
+    const semesterMatieres = matieres.filter(m => m.semestre_id === bulletin.semestre_id);
+    const studentNotes = DB.getNotes().filter(n => n.etudiant_id === bulletin.etudiant_id && n.semestre_id === bulletin.semestre_id);
+
+    const editableSubjects = semesterMatieres.map(mat => {
+      const noteObj = studentNotes.find(n => n.matiere_id === mat.id);
+      const cc = noteObj ? noteObj.note_cc : 12;
+      const exam = noteObj ? noteObj.note_examen : 12;
+      const finale = noteObj ? noteObj.note_finale : Math.round((cc * 0.4 + exam * 0.6) * 100) / 100;
+
+      return {
+        matiere_id: mat.id,
+        code: mat.code,
+        nom: mat.nom,
+        credits: mat.credits || 3,
+        note_cc: cc,
+        note_examen: exam,
+        note_finale: finale
+      };
+    });
+
+    setEditSubjectNotes(editableSubjects);
+    setIsEditModalOpen(true);
+  };
+
+  // Recalculate average automatically when subject marks change
+  const handleSubjectNoteChange = (index: number, field: 'note_cc' | 'note_examen', val: number) => {
+    const updated = [...editSubjectNotes];
+    const item = { ...updated[index] };
+
+    if (field === 'note_cc') item.note_cc = Math.max(0, Math.min(20, val));
+    if (field === 'note_examen') item.note_examen = Math.max(0, Math.min(20, val));
+
+    item.note_finale = Math.round((item.note_cc * 0.4 + item.note_examen * 0.6) * 100) / 100;
+    updated[index] = item;
+    setEditSubjectNotes(updated);
+
+    // Auto recalculate overall average & credits
+    let pts = 0;
+    let creds = 0;
+    let valides = 0;
+    updated.forEach(s => {
+      pts += s.note_finale * s.credits;
+      creds += s.credits;
+      if (s.note_finale >= 10) valides += s.credits;
+    });
+
+    const newAvg = creds > 0 ? parseFloat((pts / creds).toFixed(2)) : 10;
+    let newDec = newAvg >= 10 ? 'Admis' : 'Ajourné';
+    let newMen = newAvg >= 16 ? 'Très Bien' : newAvg >= 14 ? 'Bien' : newAvg >= 12 ? 'Assez Bien' : 'Passable';
+
+    setEditFormData(prev => ({
+      ...prev,
+      moyenne: newAvg,
+      total_credits: valides,
+      decision: newDec,
+      mention: newAvg < 10 ? 'Sans Mention' : newMen
+    }));
+  };
+
+  // Save modified bulletin and subject notes into DB
+  const handleSaveEditedBulletin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingBulletin) return;
+
+    // 1. Save all updated subject notes into DB
+    editSubjectNotes.forEach(item => {
+      const existingNote = DB.getNotes().find(
+        n => n.etudiant_id === editingBulletin.etudiant_id && n.matiere_id === item.matiere_id && n.semestre_id === editingBulletin.semestre_id
+      );
+
+      DB.saveNote({
+        ...(existingNote ? { id: existingNote.id } : {}),
+        etudiant_id: editingBulletin.etudiant_id,
+        matiere_id: item.matiere_id,
+        semestre_id: editingBulletin.semestre_id,
+        annee_academique_id: editingBulletin.annee_academique_id,
+        note_cc: item.note_cc,
+        note_examen: item.note_examen,
+        note_finale: item.note_finale,
+        appreciation: item.note_finale >= 10 ? 'Matière Validée' : 'Ajournée'
+      });
+    });
+
+    // 2. Save updated Bulletin record
+    const updatedRecord = DB.saveBulletin({
+      ...editingBulletin,
+      moyenne: Number(editFormData.moyenne),
+      moyenne_generale: Number(editFormData.moyenne),
+      total_credits: Number(editFormData.total_credits),
+      total_credits_valides: Number(editFormData.total_credits),
+      decision: editFormData.decision,
+      mention: editFormData.mention,
+      remarques_jury: editFormData.remarques_jury,
+      date_generation: new Date().toISOString().split('T')[0]
+    });
+
+    DB.logAccess('MODIFICATION', `Bulletin de l'étudiant #${editingBulletin.etudiant_id} modifié par l'administration (Moyenne: ${editFormData.moyenne}, Décision: ${editFormData.decision})`);
+
+    setBulletinsList(DB.getBulletins());
+    setViewingBulletin(updatedRecord);
+    setIsEditModalOpen(false);
   };
 
   const handlePrint = () => {
@@ -91,8 +240,8 @@ export const BulletinsView: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-[#1A1A1A]">Édition & Génération des Bulletins Semestriels</h2>
-          <p className="text-xs text-gray-500 mt-1">Calcul automatique de la moyenne semestrielle, des crédits ECTS et rangs LMD.</p>
+          <h2 className="text-xl font-bold text-[#1A1A1A]">Édition & Modification des Bulletins Semestriels</h2>
+          <p className="text-xs text-gray-500 mt-1">Calcul automatique, délibération de jury et modification manuelle des relevés.</p>
         </div>
       </div>
 
@@ -146,50 +295,70 @@ export const BulletinsView: React.FC = () => {
 
       {/* Existing Bulletins Table */}
       <div className="bg-white rounded-[20px] border border-[#E5E7EB] shadow-xs overflow-hidden">
-        <div className="p-5 border-b border-gray-100 font-bold text-sm text-[#1A1A1A]">
-          Bulletins Récents Émis
+        <div className="p-5 border-b border-gray-100 font-bold text-sm text-[#1A1A1A] flex items-center justify-between">
+          <span>Bulletins Émis ({bulletinsList.length})</span>
+          <span className="text-xs text-gray-400 font-normal">Saisie & Modification directe activée</span>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-left border-collapse min-w-[700px]">
             <thead>
               <tr className="bg-gray-50 text-[11px] font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
                 <th className="px-6 py-4">Matricule</th>
                 <th className="px-6 py-4">Étudiant</th>
                 <th className="px-6 py-4">Semestre</th>
-                <th className="px-6 py-4 text-center">Moyenne Générale</th>
+                <th className="px-6 py-4 text-center">Moyenne Général</th>
                 <th className="px-6 py-4 text-center">Crédits Validés</th>
                 <th className="px-6 py-4">Décision Conseil</th>
-                <th className="px-6 py-4 text-right">Action</th>
+                <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="text-xs divide-y divide-gray-100">
               {bulletinsList.map((b) => {
                 const st = etudiants.find(e => e.id === b.etudiant_id);
                 const sem = semestres.find(s => s.id === b.semestre_id);
+                const moy = b.moyenne_generale || b.moyenne || 0;
+                const creds = b.total_credits_valides || b.total_credits || 0;
+
                 return (
                   <tr key={b.id} className="hover:bg-gray-50/50 transition-colors">
                     <td className="px-6 py-4 font-mono font-bold text-[#0066FF]">{st?.matricule}</td>
                     <td className="px-6 py-4 font-semibold text-[#1A1A1A]">{st?.prenom} {st?.nom}</td>
                     <td className="px-6 py-4 text-gray-600 font-medium">{sem?.libelle}</td>
                     <td className="px-6 py-4 text-center font-bold text-[#0066FF] font-mono text-sm">
-                      {b.moyenne_generale} / 20
+                      {moy.toFixed(2)} / 20
                     </td>
-                    <td className="px-6 py-4 text-center font-bold text-emerald-600">
-                      {b.total_credits_valides} / 30 ECTS
+                    <td className="px-6 py-4 text-center font-bold text-emerald-600 font-mono">
+                      {creds} / 30 ECTS
                     </td>
                     <td className="px-6 py-4">
                       <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                        b.decision === 'Admis' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'
+                        b.decision === 'Admis' || b.decision === 'Passage sous réserve' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'
                       }`}>
                         {b.decision} ({b.mention})
                       </span>
+                      {b.remarques_jury && (
+                        <span className="block text-[10px] text-gray-400 italic mt-0.5 max-w-[180px] truncate">
+                          {b.remarques_jury}
+                        </span>
+                      )}
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-6 py-4 text-right space-x-1 whitespace-nowrap">
+                      {/* Modifier Button (Requirement 8) */}
+                      <button
+                        onClick={() => handleOpenEditModal(b)}
+                        title="Modifier directement le bulletin"
+                        className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-[10px] text-xs font-bold transition-colors inline-flex items-center gap-1"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>Modifier</span>
+                      </button>
+
                       <button
                         onClick={() => { setViewingBulletin(b); setIsDetailOpen(true); }}
-                        className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-[#0066FF] rounded-[10px] text-xs font-bold transition-colors"
+                        className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-[#0066FF] rounded-[10px] text-xs font-bold transition-colors inline-flex items-center gap-1"
                       >
-                        Consulter / Imprimer
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>Consulter</span>
                       </button>
                     </td>
                   </tr>
@@ -199,6 +368,182 @@ export const BulletinsView: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* MODAL MODIFICATION DU BULLETIN (Requirement 8) */}
+      {editingBulletin && isEditModalOpen && (() => {
+        const student = etudiants.find(e => e.id === editingBulletin.etudiant_id);
+        const semester = semestres.find(s => s.id === editingBulletin.semestre_id);
+
+        return (
+          <Modal
+            isOpen={isEditModalOpen}
+            onClose={() => setIsEditModalOpen(false)}
+            title={`Modifier le Bulletin : ${student?.prenom} ${student?.nom} (${semester?.libelle})`}
+            maxWidth="max-w-3xl"
+          >
+            <form onSubmit={handleSaveEditedBulletin} className="space-y-5 text-xs">
+              
+              <div className="p-3.5 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 font-semibold flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>
+                  Modifications Administrateur : Vous pouvez ajuster les notes individuellement ou outrepasser directement la moyenne et la décision du jury.
+                </span>
+              </div>
+
+              {/* Subject Marks Editor Table */}
+              <div className="space-y-2">
+                <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">
+                  1. Modification des Notes de Matières (Réajustement automatique)
+                </h4>
+                <div className="border border-slate-200 rounded-xl overflow-hidden">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-100 text-[10px] font-bold text-slate-600 uppercase">
+                        <th className="px-3 py-2">Code UE</th>
+                        <th className="px-3 py-2">Matière</th>
+                        <th className="px-3 py-2 text-center">Note CC (/20)</th>
+                        <th className="px-3 py-2 text-center">Note Exam (/20)</th>
+                        <th className="px-3 py-2 text-center">Note Finale</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 bg-white">
+                      {editSubjectNotes.map((item, idx) => (
+                        <tr key={idx}>
+                          <td className="px-3 py-2 font-mono font-bold text-blue-600">{item.code}</td>
+                          <td className="px-3 py-2 font-semibold text-slate-900">{item.nom}</td>
+                          <td className="px-3 py-2 text-center">
+                            <input
+                              type="number"
+                              step="0.25"
+                              min="0"
+                              max="20"
+                              value={item.note_cc}
+                              onChange={(e) => handleSubjectNoteChange(idx, 'note_cc', parseFloat(e.target.value) || 0)}
+                              className="w-16 h-8 text-center bg-slate-50 border border-slate-300 rounded font-mono font-bold"
+                            />
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            <input
+                              type="number"
+                              step="0.25"
+                              min="0"
+                              max="20"
+                              value={item.note_examen}
+                              onChange={(e) => handleSubjectNoteChange(idx, 'note_examen', parseFloat(e.target.value) || 0)}
+                              className="w-16 h-8 text-center bg-slate-50 border border-slate-300 rounded font-mono font-bold"
+                            />
+                          </td>
+                          <td className="px-3 py-2 text-center font-mono font-extrabold text-slate-900">
+                            {item.note_finale.toFixed(2)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Global Bulletin Decision & Override Settings */}
+              <div className="space-y-2 pt-2 border-t border-slate-200">
+                <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">
+                  2. Ajustement des Paramètres Globaux du Bulletin & Délibération
+                </h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Moyenne Générale (/20) *</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="20"
+                      value={editFormData.moyenne}
+                      onChange={(e) => setEditFormData({ ...editFormData, moyenne: parseFloat(e.target.value) || 0 })}
+                      className="w-full h-10 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-blue-600"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Crédits Validés (ECTS) *</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="60"
+                      value={editFormData.total_credits}
+                      onChange={(e) => setEditFormData({ ...editFormData, total_credits: parseInt(e.target.value) || 0 })}
+                      className="w-full h-10 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-emerald-600"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Décision du Conseil / Jury *</label>
+                    <select
+                      value={editFormData.decision}
+                      onChange={(e) => setEditFormData({ ...editFormData, decision: e.target.value })}
+                      className="w-full h-10 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900"
+                    >
+                      <option value="Admis">Admis</option>
+                      <option value="Ajourné">Ajourné</option>
+                      <option value="Compensé">Compensé</option>
+                      <option value="Passage sous réserve">Passage sous réserve</option>
+                      <option value="Exclu">Exclu</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Mention Attribuée *</label>
+                    <select
+                      value={editFormData.mention}
+                      onChange={(e) => setEditFormData({ ...editFormData, mention: e.target.value })}
+                      className="w-full h-10 px-3 bg-white border border-slate-300 rounded-xl font-semibold text-slate-900"
+                    >
+                      <option value="Très Bien">Très Bien</option>
+                      <option value="Bien">Bien</option>
+                      <option value="Assez Bien">Assez Bien</option>
+                      <option value="Passable">Passable</option>
+                      <option value="Sans Mention">Sans Mention / Ajourné</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Remarques & Appréciations du Jury</label>
+                    <input
+                      type="text"
+                      value={editFormData.remarques_jury}
+                      onChange={(e) => setEditFormData({ ...editFormData, remarques_jury: e.target.value })}
+                      placeholder="Ex : Passage sous réserve, Félicitations du Conseil..."
+                      className="w-full h-10 px-3 bg-white border border-slate-300 rounded-xl text-slate-800"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer Actions */}
+              <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="h-10 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="h-10 px-6 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl flex items-center gap-2 shadow-sm"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>Enregistrer la Modification</span>
+                </button>
+              </div>
+
+            </form>
+          </Modal>
+        );
+      })()}
 
       {/* Modal Printable Official Transcript (Style Excel) */}
       {viewingBulletin && (() => {

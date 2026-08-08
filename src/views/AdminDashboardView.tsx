@@ -22,6 +22,7 @@ interface AdminDashboardViewProps {
 }
 
 export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ setActiveTab }) => {
+  const [isGlobalLocked, setIsGlobalLocked] = React.useState(DB.isGlobalStudentLockActive());
   const etudiants = DB.getEtudiants();
   const enseignants = DB.getEnseignants();
   const filieres = DB.getFilieres();
@@ -30,7 +31,12 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ setActiv
   const inscriptions = DB.getInscriptions();
   const paiements = DB.getPaiements();
   const bulletins = DB.getBulletins();
-  const notes = DB.getNotes();
+
+  const handleToggleGlobalLock = () => {
+    const nextState = !isGlobalLocked;
+    DB.setGlobalStudentLock(nextState);
+    setIsGlobalLocked(nextState);
+  };
 
   // Total Payments this month
   const totalPaiementsMois = paiements.reduce((sum, p) => sum + p.montant_paye, 0);
@@ -47,7 +53,48 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ setActiv
   ];
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
+    <div className="space-y-6 animate-in fade-in duration-300">
+
+      {/* Global Student Access Lock Banner */}
+      <div className={`p-4 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all ${
+        isGlobalLocked ? 'bg-red-50 border-red-200 text-red-900' : 'bg-slate-900 border-slate-800 text-white shadow-md'
+      }`}>
+        <div className="flex items-center gap-3">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+            isGlobalLocked ? 'bg-red-600 text-white' : 'bg-slate-800 text-emerald-400'
+          }`}>
+            <Clock className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="font-extrabold text-sm">
+                {isGlobalLocked ? 'ACCÈS ÉTUDIANTS BLOQUÉ (VERROUILLAGE GLOBAL)' : 'Accès Portail Étudiant Actif'}
+              </h3>
+              <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
+                isGlobalLocked ? 'bg-red-600 text-white' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+              }`}>
+                {isGlobalLocked ? 'VERROUILLÉ' : 'ACCÈS AUTORISÉ'}
+              </span>
+            </div>
+            <p className="text-xs opacity-80 mt-0.5">
+              {isGlobalLocked
+                ? 'Aucun étudiant ne peut actuellement se connecter. Un message d\'accès indisponible est affiché à la connexion.'
+                : 'Les étudiants autorisés peuvent se connecter normalement à leur espace personnel.'}
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={handleToggleGlobalLock}
+          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-2 shrink-0 ${
+            isGlobalLocked
+              ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+              : 'bg-red-600 hover:bg-red-700 text-white'
+          }`}
+        >
+          {isGlobalLocked ? 'Réactiver l\'accès Étudiants' : 'Bloquer l\'accès Étudiants'}
+        </button>
+      </div>
       
       {/* Title & Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-[20px] border border-[#E5E7EB] shadow-xs">
