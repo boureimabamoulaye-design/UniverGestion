@@ -101,6 +101,35 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
   const [adresse, setAdresse] = useState(etudiant.adresse || '');
   const [isSaved, setIsSaved] = useState(false);
 
+  // Student Password Change State
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+
+  const handleChangePassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPassword || newPassword.trim().length < 3) {
+      setPasswordError('Le mot de passe doit contenir au moins 3 caractères.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Les mots de passe ne correspondent pas.');
+      return;
+    }
+
+    DB.saveEtudiant({
+      ...etudiant,
+      mot_de_passe: newPassword.trim()
+    });
+
+    setPasswordSuccess(true);
+    setPasswordError('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setTimeout(() => setPasswordSuccess(false), 4000);
+  };
+
   // Modals
   const [isExcelBulletinModalOpen, setIsExcelBulletinModalOpen] = useState(false);
   const [viewingReceipt, setViewingReceipt] = useState<Paiement | null>(null);
@@ -768,6 +797,67 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
                   <span className="font-medium text-slate-900">{etudiant.adresse || 'Hamdallaye ACI 2000, Bamako'}</span>
                 </div>
               </div>
+            </div>
+
+            {/* Block 4: Modification de Mot de Passe */}
+            <div className="md:col-span-2 p-5 bg-amber-50/50 rounded-[16px] border border-amber-200/80 space-y-3">
+              <h4 className="text-xs font-bold text-amber-900 uppercase tracking-wider border-b border-amber-200 pb-2 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Lock className="w-4 h-4 text-amber-600" />
+                  <span>Sécurité & Changement de Mot de Passe</span>
+                </span>
+                <span className="text-[10px] text-amber-800 font-mono font-medium">
+                  Matricule : <b>{etudiant.matricule}</b>
+                </span>
+              </h4>
+
+              <form onSubmit={handleChangePassword} className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Nouveau Mot de Passe</label>
+                    <input
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => { setNewPassword(e.target.value); setPasswordError(''); }}
+                      placeholder="Nouveau mot de passe..."
+                      className="w-full h-10 px-3 bg-white border border-slate-300 rounded-xl text-xs font-medium focus:outline-none focus:border-amber-600"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Confirmer le Nouveau Mot de Passe</label>
+                    <input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => { setConfirmPassword(e.target.value); setPasswordError(''); }}
+                      placeholder="Répétez le mot de passe..."
+                      className="w-full h-10 px-3 bg-white border border-slate-300 rounded-xl text-xs font-medium focus:outline-none focus:border-amber-600"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {passwordError && (
+                  <p className="text-xs text-red-600 font-bold bg-red-100 p-2 rounded-lg">{passwordError}</p>
+                )}
+
+                {passwordSuccess && (
+                  <p className="text-xs text-emerald-800 font-bold bg-emerald-100 p-2 rounded-lg flex items-center gap-1">
+                    <CheckCircle className="w-4 h-4 text-emerald-600" />
+                    <span>Votre mot de passe a été mis à jour avec succès !</span>
+                  </p>
+                )}
+
+                <div className="pt-1">
+                  <button
+                    type="submit"
+                    className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs flex items-center gap-2 transition-all active:scale-95 shadow-xs"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>Mettre à jour mon mot de passe</span>
+                  </button>
+                </div>
+              </form>
             </div>
 
           </div>

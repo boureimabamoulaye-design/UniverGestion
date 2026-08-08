@@ -85,7 +85,8 @@ export const EtudiantsView: React.FC = () => {
         tuteur_prenom: item.tuteur_prenom || '',
         tuteur_telephone: item.tuteur_telephone || '',
         statut_compte: item.statut_compte || (item.est_bloque ? 'Bloqué' : 'Actif'),
-        est_bloque: item.est_bloque || item.statut_compte === 'Bloqué'
+        est_bloque: item.est_bloque || item.statut_compte === 'Bloqué',
+        mot_de_passe: item.mot_de_passe || 'etudiant123'
       });
     } else {
       setEditingItem(null);
@@ -107,7 +108,8 @@ export const EtudiantsView: React.FC = () => {
         tuteur_prenom: '',
         tuteur_telephone: '',
         statut_compte: 'Actif',
-        est_bloque: false
+        est_bloque: false,
+        mot_de_passe: 'etudiant123'
       });
     }
     setIsModalOpen(true);
@@ -121,7 +123,7 @@ export const EtudiantsView: React.FC = () => {
       ...(editingItem ? { id: editingItem.id } : {}),
       ...formData,
       classe_id: Number(formData.classe_id),
-      mot_de_passe: editingItem ? editingItem.mot_de_passe : 'etudiant123',
+      mot_de_passe: formData.mot_de_passe || 'etudiant123',
       date_inscription: editingItem ? editingItem.date_inscription : new Date().toISOString().split('T')[0],
       est_bloque: formData.statut_compte === 'Bloqué'
     });
@@ -580,6 +582,32 @@ export const EtudiantsView: React.FC = () => {
                   placeholder="+223 66 00 11 22"
                   className="w-full h-10 px-3 bg-white border border-slate-300 rounded-xl font-mono"
                 />
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION MOT DE PASSE DU COMPTE */}
+          <div className="p-3.5 bg-amber-50/60 rounded-2xl border border-amber-200/80 space-y-2">
+            <h4 className="font-bold text-xs text-amber-900 flex items-center gap-1.5">
+              <Lock className="w-4 h-4 text-amber-600" />
+              Mot de Passe de Connexion de l'Étudiant
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1 text-xs">Mot de passe de l'étudiant *</label>
+                <input
+                  type="text"
+                  value={formData.mot_de_passe || ''}
+                  onChange={(e) => setFormData({ ...formData, mot_de_passe: e.target.value })}
+                  placeholder="Mot de passe..."
+                  className="w-full h-10 px-3 bg-white border border-slate-300 rounded-xl font-mono text-xs font-bold text-slate-900 focus:outline-none focus:border-amber-600"
+                  required
+                />
+              </div>
+              <div className="flex items-center">
+                <p className="text-[11px] text-amber-800 leading-tight">
+                  L'étudiant utilisera ce mot de passe pour se connecter à son portail avec son matricule (ex: <b>{formData.matricule}</b>) ou son email.
+                </p>
               </div>
             </div>
           </div>
