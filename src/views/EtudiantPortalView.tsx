@@ -118,6 +118,7 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
       return;
     }
 
+    etudiant.mot_de_passe = newPassword.trim();
     DB.saveEtudiant({
       ...etudiant,
       mot_de_passe: newPassword.trim()
@@ -139,6 +140,8 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
 
   const handleUpdateProfile = (e: React.FormEvent) => {
     e.preventDefault();
+    etudiant.telephone = phone;
+    etudiant.adresse = adresse;
     DB.saveEtudiant({
       ...etudiant,
       telephone: phone,
@@ -290,41 +293,50 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
 
   if (isBlocked) {
     return (
-      <div className="min-h-[70vh] flex items-center justify-center p-4">
-        <div className="max-w-lg w-full bg-white rounded-3xl border border-red-200 shadow-xl p-8 text-center space-y-5 animate-in zoom-in-95 duration-200">
-          <div className="w-16 h-16 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mx-auto shadow-inner">
-            <Lock className="w-8 h-8" />
+      <div className="min-h-[75vh] flex items-center justify-center p-4">
+        <div className="max-w-xl w-full bg-white rounded-3xl border border-red-200 shadow-2xl p-8 sm:p-10 text-center space-y-6 animate-in zoom-in-95 duration-200">
+          
+          <div className="w-20 h-20 bg-red-100 text-red-600 rounded-3xl flex items-center justify-center mx-auto shadow-inner border border-red-200">
+            <Lock className="w-10 h-10" />
           </div>
           
-          <div>
-            <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">
-              Accès Bloqué par l'Administration
+          <div className="space-y-1">
+            <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">
+              Accès Restreint & Compte Indisponible
             </h2>
-            <p className="text-xs font-bold text-red-600 mt-1">
+            <p className="text-xs font-bold text-red-600 uppercase tracking-wider">
               {isGlobalLock 
-                ? "Verrouillage Général de l'Espace Étudiant" 
-                : "Compte Étudiant Bloqué / Suspendu"}
+                ? "Verrouillage Général de l'Espace Étudiant Actif" 
+                : "Statut 'Bloqué' ou 'Suspendu' Détecté"}
             </p>
           </div>
 
-          <div className="p-4 bg-red-50/80 border border-red-200 rounded-2xl text-xs text-slate-700 leading-relaxed font-medium text-left">
-            {isGlobalLock ? (
-              <p>
-                L'accès à l'espace étudiant est actuellement restreint et verrouillé par l'administration. Toutes les colonnes, rubriques et données de votre espace étudiant sont masquées.
-              </p>
-            ) : (
-              <p>
-                Votre compte étudiant a été suspendu ou bloqué par l'administration de l'université. Vos colonnes de bulletins, notes, examens et paiements ne sont plus accessibles.
-              </p>
-            )}
-            <p className="mt-2 text-slate-500 text-[11px] font-semibold">
-              Pour toute demande de régularisation ou déblocage de votre compte, veuillez vous adresser directement au service de la scolarité.
+          <div className="p-5 bg-red-50/90 border border-red-200/90 rounded-2xl text-xs text-slate-800 leading-relaxed font-medium text-left space-y-3">
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div>
+                {isGlobalLock ? (
+                  <p>
+                    L'accès à l'ensemble du portail étudiant est temporairement verrouillé par l'administration générale de l'université. Toutes les fonctionnalités (bulletins, notes, paiements et profil) sont masquées.
+                  </p>
+                ) : (
+                  <p>
+                    Le statut de votre dossier étudiant est actuellement défini comme <b>Bloqué / Suspendu</b> dans le système académique. Votre interface portail a été restreinte par mesure de sécurité administrative.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <p className="text-slate-600 text-[11px] font-medium border-t border-red-200/60 pt-2.5">
+              Pour débloquer votre accès ou obtenir plus d'informations concernant votre situation administrative ou financière, veuillez vous adresser directement au <b>Service de la Scolarité et des Examens</b>.
             </p>
           </div>
 
-          <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 font-mono">
-            Matricule Étudiant : <span className="font-bold text-slate-900">{etudiant.matricule}</span>
+          <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between text-[11px] text-slate-500 font-mono gap-2">
+            <span>Étudiant : <b>{etudiant.prenom} {etudiant.nom}</b></span>
+            <span>Matricule : <b className="text-slate-900 font-bold">{etudiant.matricule}</b></span>
           </div>
+
         </div>
       </div>
     );

@@ -62,7 +62,8 @@ export const EtudiantsView: React.FC = () => {
     tuteur_telephone: '',
     // Account lock status (Requirement 7)
     statut_compte: 'Actif' as 'Actif' | 'Inactif' | 'Bloqué',
-    est_bloque: false
+    est_bloque: false,
+    mot_de_passe: 'etudiant123'
   });
 
   const handleOpenModal = (item?: Etudiant) => {
