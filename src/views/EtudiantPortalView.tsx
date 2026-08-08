@@ -101,6 +101,43 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
   const [adresse, setAdresse] = useState(etudiant.adresse || '');
   const [isSaved, setIsSaved] = useState(false);
 
+  // Backend authorization state
+  const [backendAuthDeniedReason, setBackendAuthDeniedReason] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function verifyBackendStudentAccess() {
+      try {
+        const response = await fetch('/api/etudiant/authorize', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            etudiant_id: etudiant.id,
+            filiere_id: studentFiliere?.id || etudiant.filiere_id || 1,
+            classe_id: etudiant.classe_id
+          })
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok || data.authorized === false) {
+          if (isMounted) {
+            setBackendAuthDeniedReason(data.message || "Accès non autorisé rejeté par le serveur backend.");
+          }
+        } else {
+          if (isMounted) {
+            setBackendAuthDeniedReason(null);
+          }
+        }
+      } catch (err) {
+        // Fallback: local check remains active
+      }
+    }
+
+    verifyBackendStudentAccess();
+    return () => { isMounted = false; };
+  }, [etudiant.id, studentFiliere?.id, etudiant.filiere_id, etudiant.classe_id, dbTick]);
+
   // Student Password Change State
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -289,7 +326,7 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
     etudiant.statut === 'Bloqué' ||
     (etudiant.statut as string) === 'Suspendu'
   );
-  const isBlocked = isGlobalLock || isIndividualLock;
+  const isBlocked = isGlobalLock || isIndividualLock || !!backendAuthDeniedReason;
 
   if (isBlocked) {
     return (
@@ -305,9 +342,11 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
               Accès Restreint & Compte Indisponible
             </h2>
             <p className="text-xs font-bold text-red-600 uppercase tracking-wider">
-              {isGlobalLock 
-                ? "Verrouillage Général de l'Espace Étudiant Actif" 
-                : "Statut 'Bloqué' ou 'Suspendu' Détecté"}
+              {backendAuthDeniedReason
+                ? "Contrôle d'Accès Sécurisé Backend - Accès Refusé"
+                : isGlobalLock 
+                  ? "Verrouillage Général de l'Espace Étudiant Actif" 
+                  : "Statut 'Bloqué' ou 'Suspendu' Détecté"}
             </p>
           </div>
 
@@ -315,7 +354,11 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
             <div className="flex items-start gap-2.5">
               <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
               <div>
-                {isGlobalLock ? (
+                {backendAuthDeniedReason ? (
+                  <p>
+                    <b>Validation du Serveur Backend MySQL :</b> {backendAuthDeniedReason}
+                  </p>
+                ) : isGlobalLock ? (
                   <p>
                     L'accès à l'ensemble du portail étudiant est temporairement verrouillé par l'administration générale de l'université. Toutes les fonctionnalités (bulletins, notes, paiements et profil) sont masquées.
                   </p>

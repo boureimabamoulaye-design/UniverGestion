@@ -47,7 +47,7 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-// Download PHP connection test script
+// Download PHP connection test script & PHP Access Control script
 app.get("/test_db.php", (req, res) => {
   const phpPath = path.join(process.cwd(), "test_db.php");
   if (fs.existsSync(phpPath)) {
@@ -56,6 +56,163 @@ app.get("/test_db.php", (req, res) => {
     res.sendFile(phpPath);
   } else {
     res.status(404).send("Fichier test_db.php non trouvé.");
+  }
+});
+
+app.get("/check_student_access.php", (req, res) => {
+  const phpPath = path.join(process.cwd(), "check_student_access.php");
+  if (fs.existsSync(phpPath)) {
+    res.setHeader("Content-Type", "application/x-httpd-php");
+    res.setHeader("Content-Disposition", "inline; filename=check_student_access.php");
+    res.sendFile(phpPath);
+  } else {
+    res.status(404).send("Fichier check_student_access.php non trouvé.");
+  }
+});
+
+// BACKEND SECURITY ACCESS CONTROL VALIDATION API
+app.post("/api/etudiant/authorize", async (req, res) => {
+  const { etudiant_id, filiere_id, classe_id } = req.body;
+
+  if (!etudiant_id || !filiere_id) {
+    return res.status(400).json({
+      authorized: false,
+      reason: "MISSING_PARAMS",
+      message: "Les identifiants 'etudiant_id' et 'filiere_id' sont obligatoires pour la validation de sécurité backend."
+    });
+  }
+
+  try {
+    const pool = getMysqlPool();
+    if (pool) {
+      // Direct MySQL Validation
+      const [paramRows]: any = await pool.query(
+        "SELECT valeur FROM parametres WHERE cle = 'global_student_lock' LIMIT 1"
+      );
+      if (paramRows.length > 0 && (paramRows[0].valeur === 'true' || paramRows[0].valeur === '1')) {
+        return res.status(403).json({
+          authorized: false,
+          reason: "GLOBAL_LOCK",
+          message: "Accès refusé par le serveur backend : Verrouillage général de l'espace étudiant actif au niveau supérieur de l'université."
+        });
+      }
+
+      const [etudRows]: any = await pool.query(
+        "SELECT id, matricule, nom, prenom, filiere_id, classe_id, statut, est_bloque, statut_compte FROM etudiants WHERE id = ? LIMIT 1",
+        [etudiant_id]
+      );
+
+      if (etudRows.length === 0) {
+        return res.status(404).json({
+          authorized: false,
+          reason: "NOT_FOUND",
+          message: "Étudiant introuvable dans la base de données MySQL backend."
+        });
+      }
+
+      const student = etudRows[0];
+      if (student.est_bloque || student.statut_compte === 'Bloqué' || student.statut === 'Suspendu') {
+        return res.status(403).json({
+          authorized: false,
+          reason: "ACCOUNT_BLOCKED",
+          message: "Accès refusé par le serveur backend : Votre compte étudiant est marqué comme bloqué ou suspendu dans la base de données MySQL."
+        });
+      }
+
+      if (student.filiere_id != filiere_id) {
+        const [inscrRows]: any = await pool.query(
+          "SELECT id FROM inscriptions WHERE etudiant_id = ? AND filiere_id = ? AND statut = 'Validée' LIMIT 1",
+          [etudiant_id, filiere_id]
+        );
+
+        if (inscrRows.length === 0) {
+          return res.status(403).json({
+            authorized: false,
+            reason: "UNAUTHORIZED_FILIERE",
+            message: `Accès refusé par le serveur backend : L'étudiant ${student.matricule} n'a aucune inscription validée pour la filière ID ${filiere_id}.`
+          });
+        }
+      }
+
+      return res.json({
+        authorized: true,
+        message: "Accès validé et autorisé par le serveur backend MySQL.",
+        etudiant: {
+          id: student.id,
+          matricule: student.matricule,
+          nom: student.nom,
+          prenom: student.prenom
+        }
+      });
+
+    } else if (fs.existsSync(DATA_FILE)) {
+      // Fallback JSON Storage Validation
+      const db = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
+      
+      if (db.global_student_lock === true || db.global_student_lock === 'true') {
+        return res.status(403).json({
+          authorized: false,
+          reason: "GLOBAL_LOCK",
+          message: "Accès refusé par le serveur backend : Verrouillage général de l'espace étudiant actif."
+        });
+      }
+
+      const etudiants = db.etudiants || [];
+      const student = etudiants.find((e: any) => Number(e.id) === Number(etudiant_id));
+
+      if (!student) {
+        return res.status(404).json({
+          authorized: false,
+          reason: "NOT_FOUND",
+          message: "Étudiant introuvable dans le système backend."
+        });
+      }
+
+      if (student.est_bloque || student.statut_compte === 'Bloqué' || student.statut === 'Suspendu') {
+        return res.status(403).json({
+          authorized: false,
+          reason: "ACCOUNT_BLOCKED",
+          message: "Accès refusé par le serveur backend : Le statut de l'étudiant est Bloqué ou Suspendu."
+        });
+      }
+
+      const isFiliereMatch = Number(student.filiere_id) === Number(filiere_id);
+      const inscriptions = db.inscriptions || [];
+      const isInscriptionMatch = inscriptions.some(
+        (i: any) => Number(i.etudiant_id) === Number(etudiant_id) && Number(i.filiere_id) === Number(filiere_id) && i.statut === 'Validée'
+      );
+
+      if (!isFiliereMatch && !isInscriptionMatch) {
+        return res.status(403).json({
+          authorized: false,
+          reason: "UNAUTHORIZED_FILIERE",
+          message: `Accès refusé par le serveur backend : Accès non autorisé à la filière ID ${filiere_id}.`
+        });
+      }
+
+      return res.json({
+        authorized: true,
+        message: "Accès validé et autorisé par le backend.",
+        etudiant: {
+          id: student.id,
+          matricule: student.matricule,
+          nom: student.nom,
+          prenom: student.prenom
+        }
+      });
+    }
+
+    return res.json({
+      authorized: true,
+      message: "Contrôle d'accès passé par défaut."
+    });
+
+  } catch (error: any) {
+    return res.status(500).json({
+      authorized: false,
+      reason: "SERVER_ERROR",
+      message: "Erreur serveur lors de la validation du contrôle d'accès : " + error.message
+    });
   }
 });
 
