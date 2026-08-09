@@ -113,7 +113,7 @@ export const FilieresView: React.FC = () => {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Rechercher une filière par code, nom, domaine..."
+            placeholder="Rechercher une filière par code, nom..."
             className="w-full h-[44px] bg-[#F9FAFB] border border-[#E5E7EB] rounded-[14px] pl-10 pr-4 text-sm focus:outline-none focus:border-[#0066FF]"
           />
           <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -129,9 +129,7 @@ export const FilieresView: React.FC = () => {
                 <th className="px-6 py-4">Code</th>
                 <th className="px-6 py-4">Filière / Spécialité</th>
                 <th className="px-6 py-4">Prix / Frais (FCFA)</th>
-                <th className="px-6 py-4">Statut</th>
                 <th className="px-6 py-4">Classes Rattachées</th>
-                <th className="px-6 py-4">Domaine d'études</th>
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
@@ -149,11 +147,6 @@ export const FilieresView: React.FC = () => {
                       {(item.frais_scolarite || 0).toLocaleString()} FCFA
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${item.statut === 'Inactif' ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-emerald-50 text-emerald-600 border border-emerald-200'}`}>
-                        {item.statut || 'Actif'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
                       {connectedClasses.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
                           {connectedClasses.map(c => (
@@ -165,9 +158,6 @@ export const FilieresView: React.FC = () => {
                       ) : (
                         <span className="text-gray-400 font-italic text-[11px]">Aucune classe</span>
                       )}
-                    </td>
-                    <td className="px-6 py-4 text-gray-600">
-                      <span className="font-semibold block text-[#1A1A1A]">{item.domaine || 'Sciences & Technologies'}</span>
                     </td>
                     <td className="px-6 py-4 text-right space-x-2">
                       <button
@@ -223,17 +213,6 @@ export const FilieresView: React.FC = () => {
           </div>
 
           <div>
-            <label className="block font-semibold text-gray-700 mb-1">Domaine d'études</label>
-            <input
-              type="text"
-              value={formData.domaine}
-              onChange={(e) => setFormData({ ...formData, domaine: e.target.value })}
-              placeholder="Ex: Sciences & Technologies"
-              className="w-full h-[44px] px-3 border border-[#E5E7EB] rounded-[14px]"
-            />
-          </div>
-
-          <div>
             <label className="block font-semibold text-gray-700 mb-1">Prix / Frais de la filière (FCFA) *</label>
             <input
               type="number"
@@ -244,18 +223,6 @@ export const FilieresView: React.FC = () => {
               required
               min={0}
             />
-          </div>
-
-          <div>
-            <label className="block font-semibold text-gray-700 mb-1">Statut de la filière *</label>
-            <select
-              value={formData.statut}
-              onChange={(e) => setFormData({ ...formData, statut: e.target.value as 'Actif' | 'Inactif' })}
-              className="w-full h-[44px] px-3 border border-[#E5E7EB] rounded-[14px] bg-white"
-            >
-              <option value="Actif">Actif</option>
-              <option value="Inactif">Inactif</option>
-            </select>
           </div>
 
           <div>

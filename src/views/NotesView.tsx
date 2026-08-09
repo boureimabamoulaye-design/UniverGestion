@@ -26,7 +26,7 @@ interface DraftGrade {
 }
 
 export const NotesView: React.FC = () => {
-  const notesList = DB.getNotes();
+  const [notesList, setNotesList] = useState(() => DB.getNotes());
   const annees = DB.getAnneesAcademiques();
   const filieres = DB.getFilieres();
   const classes = DB.getClasses();
@@ -382,6 +382,8 @@ export const NotesView: React.FC = () => {
       });
     });
 
+    setNotesList(DB.getNotes());
+    setDraftGrades({});
     setIsSaved(true);
     setLastSavedTime(new Date().toLocaleTimeString());
     DB.logAccess(
@@ -624,40 +626,21 @@ export const NotesView: React.FC = () => {
               <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
             </div>
 
-            {/* Filter Grade Status Buttons */}
-            <div className="flex items-center gap-1 bg-gray-200/70 p-1 rounded-[8px] shrink-0">
-              <button
-                onClick={() => { setGradeFilter('ALL'); setCurrentPage(1); }}
-                className={`px-2.5 py-1 text-xs font-bold rounded-[6px] transition-all ${
-                  gradeFilter === 'ALL'
-                    ? 'bg-white text-slate-900 shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
+            {/* Filter Grade Status Dropdown */}
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xs font-semibold text-slate-600 hidden sm:inline">Statut :</span>
+              <select
+                value={gradeFilter}
+                onChange={(e) => {
+                  setGradeFilter(e.target.value as 'ALL' | 'AVEC_NOTE' | 'SANS_NOTE');
+                  setCurrentPage(1);
+                }}
+                className="h-[36px] bg-white border border-gray-300 rounded-[8px] px-3 text-xs font-bold text-slate-800 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 shrink-0 cursor-pointer shadow-2xs"
               >
-                Tous ({filiereStudents.length})
-              </button>
-              <button
-                onClick={() => { setGradeFilter('AVEC_NOTE'); setCurrentPage(1); }}
-                className={`px-2.5 py-1 text-xs font-bold rounded-[6px] transition-all flex items-center gap-1 ${
-                  gradeFilter === 'AVEC_NOTE'
-                    ? 'bg-emerald-600 text-white shadow-2xs'
-                    : 'text-emerald-700 hover:text-emerald-800'
-                }`}
-              >
-                <CheckCircle2 className="w-3 h-3" />
-                Avec notes ({avecNoteCount})
-              </button>
-              <button
-                onClick={() => { setGradeFilter('SANS_NOTE'); setCurrentPage(1); }}
-                className={`px-2.5 py-1 text-xs font-bold rounded-[6px] transition-all flex items-center gap-1 ${
-                  gradeFilter === 'SANS_NOTE'
-                    ? 'bg-amber-600 text-white shadow-2xs'
-                    : 'text-amber-700 hover:text-amber-800'
-                }`}
-              >
-                <AlertTriangle className="w-3 h-3" />
-                Sans note ({sansNoteCount})
-              </button>
+                <option value="ALL">Tous ({filiereStudents.length})</option>
+                <option value="AVEC_NOTE">Avec notes ({avecNoteCount})</option>
+                <option value="SANS_NOTE">Sans note ({sansNoteCount})</option>
+              </select>
             </div>
           </div>
 
