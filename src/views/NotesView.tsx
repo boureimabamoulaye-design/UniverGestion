@@ -495,7 +495,7 @@ export const NotesView: React.FC = () => {
         <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
           <button
             onClick={() => setIsImportModalOpen(true)}
-            className="h-[38px] sm:h-[36px] px-2.5 sm:px-3 bg-white hover:bg-slate-50 text-slate-700 border border-gray-300 rounded-[8px] sm:rounded-[6px] text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+            className="h-[40px] px-3.5 bg-white hover:bg-slate-50 text-slate-700 border border-gray-300 rounded-[14px] text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-xs"
           >
             <Upload className="w-3.5 h-3.5 text-slate-500 shrink-0" />
             <span className="truncate">Importer CSV</span>
@@ -503,7 +503,7 @@ export const NotesView: React.FC = () => {
 
           <button
             onClick={handleExportCsv}
-            className="h-[38px] sm:h-[36px] px-2.5 sm:px-3 bg-white hover:bg-slate-50 text-slate-700 border border-gray-300 rounded-[8px] sm:rounded-[6px] text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+            className="h-[40px] px-3.5 bg-white hover:bg-slate-50 text-slate-700 border border-gray-300 rounded-[14px] text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-xs"
           >
             <FileSpreadsheet className="w-3.5 h-3.5 text-slate-600 shrink-0" />
             <span className="truncate">Exporter Excel</span>
@@ -511,7 +511,7 @@ export const NotesView: React.FC = () => {
 
           <button
             onClick={() => setIsPrintModalOpen(true)}
-            className="h-[38px] sm:h-[36px] px-2.5 sm:px-3 bg-white hover:bg-slate-50 text-slate-700 border border-gray-300 rounded-[8px] sm:rounded-[6px] text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+            className="h-[40px] px-3.5 bg-white hover:bg-slate-50 text-slate-700 border border-gray-300 rounded-[14px] text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-xs"
           >
             <Printer className="w-3.5 h-3.5 text-slate-600 shrink-0" />
             <span className="truncate">Imprimer PV</span>
@@ -519,7 +519,7 @@ export const NotesView: React.FC = () => {
 
           <button
             onClick={handleSaveAllGrades}
-            className="h-[38px] sm:h-[36px] px-3 sm:px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-[8px] sm:rounded-[6px] text-xs font-semibold flex items-center justify-center gap-1.5 transition-all shadow-xs"
+            className="h-[40px] px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-[14px] text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-md active:scale-95"
           >
             <Save className="w-3.5 h-3.5 shrink-0" />
             <span className="truncate">Enregistrer Tout</span>
@@ -528,7 +528,7 @@ export const NotesView: React.FC = () => {
       </div>
 
       {/* STRICT 3 MAIN SELECTION FILTERS */}
-      <div className="bg-white p-4 sm:p-5 rounded-[12px] border border-gray-300 shadow-xs grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="bg-white p-4 sm:p-5 rounded-[16px] border border-gray-300 shadow-xs grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* 1. Année Scolaire */}
         <div>
           <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
@@ -538,7 +538,7 @@ export const NotesView: React.FC = () => {
           <select
             value={selectedAnnee}
             onChange={(e) => { setSelectedAnnee(Number(e.target.value)); setDraftGrades({}); }}
-            className="w-full h-[38px] bg-white border border-gray-300 rounded-[6px] px-3 text-xs font-semibold text-slate-900 focus:outline-none focus:border-slate-600 transition-colors"
+            className="w-full h-[42px] bg-white border border-gray-300 rounded-[14px] px-3 text-xs font-semibold text-slate-900 focus:outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600 transition-colors"
           >
             {annees.map(a => (
               <option key={a.id} value={a.id}>{a.libelle || a.code}</option>
@@ -555,7 +555,7 @@ export const NotesView: React.FC = () => {
           <select
             value={selectedFiliere}
             onChange={(e) => { setSelectedFiliere(Number(e.target.value)); setDraftGrades({}); setCurrentPage(1); }}
-            className="w-full h-[38px] bg-white border border-gray-300 rounded-[6px] px-3 text-xs font-semibold text-slate-900 focus:outline-none focus:border-slate-600 transition-colors"
+            className="w-full h-[42px] bg-white border border-gray-300 rounded-[14px] px-3 text-xs font-semibold text-slate-900 focus:outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600 transition-colors"
           >
             {filieres.map(f => (
               <option key={f.id} value={f.id}>{f.code} - {f.nom}</option>
@@ -572,7 +572,7 @@ export const NotesView: React.FC = () => {
           <select
             value={selectedSemestre}
             onChange={(e) => { setSelectedSemestre(Number(e.target.value)); setDraftGrades({}); }}
-            className="w-full h-[38px] bg-white border border-gray-300 rounded-[6px] px-3 text-xs font-semibold text-slate-900 focus:outline-none focus:border-slate-600 transition-colors"
+            className="w-full h-[42px] bg-white border border-gray-300 rounded-[14px] px-3 text-xs font-semibold text-slate-900 focus:outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600 transition-colors"
           >
             {semestres.map(s => (
               <option key={s.id} value={s.id}>{s.libelle}</option>
@@ -917,6 +917,35 @@ export const NotesView: React.FC = () => {
               </tbody>
             </table>
           )}
+        </div>
+      </div>
+
+      {/* BOTTOM SAVE BAR FOR COLLECTIVE ENTRY */}
+      <div className="bg-white p-4 sm:p-5 rounded-[16px] border border-gray-300 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 sticky bottom-4 z-20">
+        <div className="flex items-center gap-3">
+          <div className={`w-3 h-3 rounded-full shrink-0 ${isSaved ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+          <div className="text-xs">
+            {isSaved ? (
+              <span className="text-emerald-700 font-bold flex items-center gap-1.5">
+                <Check className="w-4 h-4" /> Toutes les notes saisies ont été enregistrées avec succès {lastSavedTime && `à ${lastSavedTime}`}
+              </span>
+            ) : (
+              <span className="text-slate-600 font-medium">
+                Saisissez les notes ci-dessus puis cliquez sur <strong className="text-slate-900">Enregistrer Tout</strong> pour valider les notes de la classe.
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 w-full sm:w-auto shrink-0">
+          <button
+            type="button"
+            onClick={handleSaveAllGrades}
+            className="w-full sm:w-auto h-[44px] px-6 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-[14px] text-xs flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 cursor-pointer"
+          >
+            <Save className="w-4 h-4" />
+            <span>Enregistrer Tout</span>
+          </button>
         </div>
       </div>
 
