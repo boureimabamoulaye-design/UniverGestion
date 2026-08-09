@@ -25,7 +25,7 @@ export const InscriptionsView: React.FC = () => {
 
   // Single Inscription Form
   const [indivForm, setIndivForm] = useState({
-    etudiant_id: etudiants[0]?.id || 1,
+    etudiant_id: null as number | null,
     classe_id: classes[0]?.id || 1,
     annee_academique_id: activeAnnee.id,
     type_inscription: 'Inscrire' as 'Inscrire' | 'Réinscrire' | 'Passage',
@@ -33,6 +33,19 @@ export const InscriptionsView: React.FC = () => {
     statut_validation: 'Validé' as 'En attente' | 'Validé' | 'Rejeté',
     frais_inscription: 150000
   });
+
+  const handleOpenIndivModal = () => {
+    setIndivForm({
+      etudiant_id: null,
+      classe_id: classes[0]?.id || 1,
+      annee_academique_id: activeAnnee.id,
+      type_inscription: 'Inscrire',
+      statut_paiement: 'Payé',
+      statut_validation: 'Validé',
+      frais_inscription: 150000
+    });
+    setIsIndivModalOpen(true);
+  };
 
   // Collective Inscription Form & State
   const [collectiveForm, setCollectiveForm] = useState({
@@ -77,6 +90,10 @@ export const InscriptionsView: React.FC = () => {
 
   const handleIndivSave = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!indivForm.etudiant_id) {
+      alert("Veuillez sélectionner un étudiant.");
+      return;
+    }
     const etudiant = etudiants.find(e => e.id === Number(indivForm.etudiant_id));
     const targetClass = classes.find(c => c.id === Number(indivForm.classe_id));
     if (!etudiant) return;
@@ -211,7 +228,7 @@ export const InscriptionsView: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setIsIndivModalOpen(true)}
+            onClick={handleOpenIndivModal}
             className="h-[44px] px-5 bg-blue-600 hover:bg-blue-700 text-white rounded-[14px] text-xs font-bold flex items-center gap-2 transition-colors shadow-xs"
           >
             <UserPlus className="w-4 h-4" />

@@ -33,7 +33,7 @@ export const PaiementsView: React.FC = () => {
   const [deletingPaiement, setDeletingPaiement] = useState<Paiement | null>(null);
 
   const [formData, setFormData] = useState({
-    etudiant_id: etudiants[0]?.id || 1,
+    etudiant_id: 0 as number,
     type_frais: 'Scolarité' as 'Inscription' | 'Scolarité' | 'Rattrapage' | 'Diplôme' | 'Examen' | 'Autre',
     filiere_id: filieres[0]?.id || 1,
     filiere_code: filieres[0]?.code || 'IGL',
@@ -56,26 +56,20 @@ export const PaiementsView: React.FC = () => {
   const prixFiliere = currentFiliere?.frais_scolarite || 350000;
   
   // Total previous payments for this student (excluding current payment if editing)
-  const totalDejaPaye = list
+  const totalDejaPaye = formData.etudiant_id ? list
     .filter(p => p.etudiant_id === Number(formData.etudiant_id) && p.id !== editingId)
-    .reduce((sum, p) => sum + (p.montant_paye || 0), 0);
+    .reduce((sum, p) => sum + (p.montant_paye || 0), 0) : 0;
 
   const totalPayeApresReglement = totalDejaPaye + Number(formData.montant_paye || 0);
   const resteAPayer = Math.max(0, prixFiliere - totalPayeApresReglement);
 
   const handleOpenCreateModal = () => {
     setEditingId(null);
-    const firstEtud = etudiants[0];
-    const firstEtudClass = DB.getClasses().find(c => c.id === firstEtud?.classe_id);
-    const firstFiliere = filieres.find(f => f.id === (firstEtud as any)?.filiere_id) ||
-                         filieres.find(f => f.id === firstEtudClass?.filiere_id) ||
-                         filieres[0];
-
     setFormData({
-      etudiant_id: firstEtud?.id || 1,
+      etudiant_id: 0,
       type_frais: 'Scolarité',
-      filiere_id: firstFiliere?.id || 1,
-      filiere_code: firstFiliere?.code || 'IGL',
+      filiere_id: filieres[0]?.id || 1,
+      filiere_code: filieres[0]?.code || 'IGL',
       annee_academique_id: activeAnnee?.id || 1,
       montant_paye: 100000,
       mode_paiement: 'Orange Money',
@@ -106,6 +100,10 @@ export const PaiementsView: React.FC = () => {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.etudiant_id) {
+      alert("Veuillez sélectionner un étudiant.");
+      return;
+    }
 
     const existingItem = editingId ? list.find(p => p.id === editingId) : null;
     const randomRef = existingItem?.reference_recu || `REC-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
