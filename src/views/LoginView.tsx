@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { AuthUser } from '../types/database';
 import { DB } from '../lib/storage';
-import { GraduationCap, Shield, Lock, Mail, ArrowRight, AlertTriangle, Building2, Database, Server, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { GraduationCap, Shield, Lock, ArrowRight, AlertTriangle, Building2, RefreshCw } from 'lucide-react';
 
 interface LoginViewProps {
   onLoginSuccess: (user: AuthUser) => void;
@@ -14,36 +14,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
   const [selectedFiliereId, setSelectedFiliereId] = useState<number | ''>(1);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-
-  // MySQL WAMP Status check
-  const [wampStatus, setWampStatus] = useState<{ connected: boolean; message: string; checking: boolean }>({
-    connected: false,
-    message: '',
-    checking: true
-  });
-
-  const checkWampConnection = async () => {
-    setWampStatus(prev => ({ ...prev, checking: true }));
-    try {
-      const res = await fetch('/api/mysql/status');
-      const data = await res.json();
-      setWampStatus({
-        connected: !!data.connected,
-        message: data.message || '',
-        checking: false
-      });
-    } catch {
-      setWampStatus({
-        connected: false,
-        message: 'Serveur MySQL WAMP non détecté sur port 3306.',
-        checking: false
-      });
-    }
-  };
-
-  useEffect(() => {
-    checkWampConnection();
-  }, []);
 
   const filieres = DB.getFilieres();
   const universite = DB.getUniversites()[0];
@@ -65,7 +35,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
     setIsLoading(true);
 
     try {
-      // STRICT REQUIREMENT: Authenticate exclusively against MySQL WAMP database
+      // Authenticate exclusively against MySQL database
       const res = await fetch('/api/mysql/authenticate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -80,15 +50,14 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
       const data = await res.json();
 
       if (res.ok && data.success && data.user) {
-        DB.logAccess('CONNEXION', `Connexion ${role.toLowerCase()} réussie via MySQL WAMP (${login})`, data.user.id);
+        DB.logAccess('CONNEXION', `Connexion ${role.toLowerCase()} réussie (${login})`, data.user.id);
         onLoginSuccess(data.user);
         return;
       } else {
-        // Display strict error from MySQL backend (No mock fallback allowed)
-        setError(data.message || 'Authentification échouée sur le serveur MySQL WAMP.');
+        setError(data.message || 'Identifiants incorrects ou accès refusé.');
       }
-    } catch (err: any) {
-      setError('❌ Erreur de Connexion : Impossible de joindre le serveur MySQL WAMP (localhost:3306). Vous devez démarrer WAMP/phpMyAdmin, importer le fichier universite.sql dans la base unigestion_db, et vérifier que le service MySQL est actif.');
+    } catch {
+      setError('Erreur de connexion au serveur. Impossible d\'accéder à la base de données.');
     } finally {
       setIsLoading(false);
     }
@@ -126,38 +95,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
             <Building2 className="w-3.5 h-3.5" />
             Portail Officiel d'Accès UniGestion ML
           </p>
-        </div>
-
-        {/* WAMP MySQL Status Banner */}
-        <div className={`p-3 rounded-xl border mb-5 text-[11px] font-semibold flex items-center justify-between gap-2 ${
-          wampStatus.connected
-            ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-            : 'bg-amber-50 border-amber-200 text-amber-800'
-        }`}>
-          <div className="flex items-center gap-2">
-            {wampStatus.checking ? (
-              <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-600 shrink-0" />
-            ) : wampStatus.connected ? (
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-            ) : (
-              <Server className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-            )}
-            <span>
-              {wampStatus.checking
-                ? 'Vérification du serveur MySQL WAMP...'
-                : wampStatus.connected
-                ? 'Base MySQL WAMP Connectée (localhost:3306)'
-                : 'Serveur MySQL WAMP requis (Base unigestion_db)'}
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={checkWampConnection}
-            className="p-1 hover:bg-black/5 rounded text-xs font-bold transition-colors shrink-0 cursor-pointer"
-            title="Rafraîchir statut MySQL"
-          >
-            <RefreshCw className="w-3 h-3" />
-          </button>
         </div>
 
         {error && (
@@ -199,7 +136,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
             </div>
             <h3 className="font-extrabold text-sm text-red-900 uppercase tracking-tight">Accès Étudiant Bloqué</h3>
             <p className="text-xs text-red-700 leading-relaxed font-medium">
-              L'accès à l'espace étudiant est actuellement verrouillé par l'administration. Les formulaires de connexion et les colonnes de données sont désactivés.
+              L'accès à l'espace étudiant est actuellement verrouillé par l'administration.
             </p>
           </div>
         ) : (
@@ -261,11 +198,11 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
               {isLoading ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Vérification Base MySQL WAMP...</span>
+                  <span>Connexion en cours...</span>
                 </>
               ) : (
                 <>
-                  <span>Se Connecter via MySQL WAMP</span>
+                  <span>Se Connecter</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
