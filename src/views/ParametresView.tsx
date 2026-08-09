@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DB } from '../lib/storage';
-import { Building2, Upload, CheckCircle2, Image as ImageIcon, Save, RefreshCw } from 'lucide-react';
+import { Building2, Upload, CheckCircle2, Image as ImageIcon, Save, Database, Server, Download, XCircle, RefreshCw, Terminal, Check } from 'lucide-react';
 
 export const ParametresView: React.FC = () => {
   const universites = DB.getUniversites();
@@ -30,6 +30,78 @@ export const ParametresView: React.FC = () => {
   });
 
   const [message, setMessage] = useState<string | null>(null);
+
+  // MySQL Configuration & Test State
+  const [mysqlConfig, setMysqlConfig] = useState({
+    host: 'localhost',
+    port: 3306,
+    user: 'root',
+    password: '',
+    database: 'unigestion_db'
+  });
+
+  const [mysqlStatus, setMysqlStatus] = useState<{
+    tested: boolean;
+    loading: boolean;
+    connected: boolean;
+    message: string;
+  }>({
+    tested: false,
+    loading: false,
+    connected: false,
+    message: ''
+  });
+
+  const checkMysqlStatus = async () => {
+    setMysqlStatus(prev => ({ ...prev, loading: true }));
+    try {
+      const res = await fetch('/api/mysql/status');
+      const data = await res.json();
+      setMysqlStatus({
+        tested: true,
+        loading: false,
+        connected: !!data.connected,
+        message: data.message || 'Statut vérifié.'
+      });
+    } catch (err: any) {
+      setMysqlStatus({
+        tested: true,
+        loading: false,
+        connected: false,
+        message: "Erreur de communication avec le serveur."
+      });
+    }
+  };
+
+  const testCustomMysql = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMysqlStatus(prev => ({ ...prev, loading: true }));
+    try {
+      const res = await fetch('/api/mysql/test-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(mysqlConfig)
+      });
+      const data = await res.json();
+      setMysqlStatus({
+        tested: true,
+        loading: false,
+        connected: !!data.success,
+        message: data.message || data.error || 'Test effectué.'
+      });
+    } catch (err: any) {
+      setMysqlStatus({
+        tested: true,
+        loading: false,
+        connected: false,
+        message: "Impossible d'effectuer le test de connexion MySQL."
+      });
+    }
+  };
+
+  useEffect(() => {
+    checkMysqlStatus();
+  }, []);
 
   // Preset logo options for convenience
   const PRESET_LOGOS = [
@@ -268,6 +340,145 @@ export const ParametresView: React.FC = () => {
                   onChange={(e) => setFormData({ ...formData, pays: e.target.value })}
                   className="w-full h-[44px] px-3 border border-[#E5E7EB] rounded-[14px] text-xs font-medium"
                 />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* MYSQL DATABASE INTEGRATION CARD */}
+        <div className="bg-white p-6 rounded-[20px] border border-[#E5E7EB] shadow-xs space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+            <div className="flex items-center gap-2">
+              <Database className="w-5 h-5 text-blue-600" />
+              <h3 className="font-bold text-base text-[#1A1A1A]">Connexion & Base de Données MySQL</h3>
+            </div>
+            <a
+              href="/api/mysql/schema.sql"
+              download="unigestion_schema.sql"
+              className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-[#0066FF] rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Télécharger Script SQL (universite.sql)</span>
+            </a>
+          </div>
+
+          <div className="bg-[#F8FAFC] p-4 rounded-[16px] border border-[#E2E8F0] space-y-2 text-xs">
+            <h4 className="font-bold text-slate-800 flex items-center gap-1.5 text-xs">
+              <Building2 className="w-4 h-4 text-blue-600" />
+              <span>Procédure d'importation dans WAMP / phpMyAdmin :</span>
+            </h4>
+            <ol className="list-decimal list-inside space-y-1 text-slate-600 font-medium text-[11px] leading-relaxed">
+              <li>Cliquez sur le bouton <strong>"Télécharger Script SQL (universite.sql)"</strong> ci-dessus pour obtenir le fichier de la base de données.</li>
+              <li>Ouvrez votre console <strong>phpMyAdmin</strong> WAMP (<code className="bg-slate-200 px-1 py-0.5 rounded">http://localhost/phpmyadmin</code>).</li>
+              <li>Allez dans l'onglet <strong>"Importer"</strong> et sélectionnez le fichier <code className="bg-slate-200 px-1 py-0.5 rounded">universite.sql</code> (ou <code className="bg-slate-200 px-1 py-0.5 rounded">unigestion_schema.sql</code>).</li>
+              <li>Exécutez l'importation. La base de données <code className="bg-slate-200 px-1 py-0.5 rounded">unigestion_db</code> et ses 10 tables seront automatiquement créées et alimentées.</li>
+              <li>Renseignez ci-dessous les identifiants de votre serveur MySQL local (Hôte, Port 3306, Utilisateur <code className="bg-slate-200 px-1 py-0.5 rounded">root</code>) et cliquez sur <strong>"Tester cette Connexion"</strong>.</li>
+            </ol>
+          </div>
+
+          {/* Connection Status Badge */}
+          <div className={`p-3.5 rounded-[14px] border text-xs font-semibold flex items-center justify-between gap-3 ${
+            mysqlStatus.connected
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+              : 'bg-amber-50 border-amber-200 text-amber-800'
+          }`}>
+            <div className="flex items-center gap-2.5">
+              {mysqlStatus.loading ? (
+                <RefreshCw className="w-4 h-4 animate-spin text-amber-600" />
+              ) : mysqlStatus.connected ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              ) : (
+                <Server className="w-4 h-4 text-amber-600 shrink-0" />
+              )}
+              <span>
+                {mysqlStatus.loading
+                  ? 'Test de la connexion MySQL en cours...'
+                  : mysqlStatus.connected
+                  ? 'MySQL Connecté : Le serveur est opérationnel et réactif.'
+                  : `Serveur MySQL non détecté localement (${mysqlStatus.message || 'Hôte inaccessible'}).`}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={checkMysqlStatus}
+              className="px-3 py-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-800 text-[11px] font-bold rounded-md shadow-2xs transition-colors shrink-0 cursor-pointer"
+            >
+              Tester à nouveau
+            </button>
+          </div>
+
+          {/* Test MySQL Connection Form */}
+          <div className="bg-slate-50 p-4 rounded-[16px] border border-slate-200 space-y-3">
+            <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+              <Terminal className="w-3.5 h-3.5 text-blue-600" />
+              <span>Tester des Identifiants MySQL Personnalisés</span>
+            </h4>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              <div>
+                <label className="block font-semibold text-slate-600 text-[11px] mb-1">Hôte (MYSQL_HOST)</label>
+                <input
+                  type="text"
+                  value={mysqlConfig.host}
+                  onChange={(e) => setMysqlConfig({ ...mysqlConfig, host: e.target.value })}
+                  placeholder="localhost ou IP"
+                  className="w-full h-[38px] px-3 bg-white border border-slate-300 rounded-[10px] text-xs focus:outline-none focus:border-blue-600"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-600 text-[11px] mb-1">Port (MYSQL_PORT)</label>
+                <input
+                  type="number"
+                  value={mysqlConfig.port}
+                  onChange={(e) => setMysqlConfig({ ...mysqlConfig, port: Number(e.target.value) })}
+                  placeholder="3306"
+                  className="w-full h-[38px] px-3 bg-white border border-slate-300 rounded-[10px] text-xs focus:outline-none focus:border-blue-600"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-600 text-[11px] mb-1">Base (MYSQL_DATABASE)</label>
+                <input
+                  type="text"
+                  value={mysqlConfig.database}
+                  onChange={(e) => setMysqlConfig({ ...mysqlConfig, database: e.target.value })}
+                  placeholder="unigestion_db"
+                  className="w-full h-[38px] px-3 bg-white border border-slate-300 rounded-[10px] text-xs focus:outline-none focus:border-blue-600"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-600 text-[11px] mb-1">Utilisateur (MYSQL_USER)</label>
+                <input
+                  type="text"
+                  value={mysqlConfig.user}
+                  onChange={(e) => setMysqlConfig({ ...mysqlConfig, user: e.target.value })}
+                  placeholder="root"
+                  className="w-full h-[38px] px-3 bg-white border border-slate-300 rounded-[10px] text-xs focus:outline-none focus:border-blue-600"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-600 text-[11px] mb-1">Mot de Passe (MYSQL_PASSWORD)</label>
+                <input
+                  type="password"
+                  value={mysqlConfig.password}
+                  onChange={(e) => setMysqlConfig({ ...mysqlConfig, password: e.target.value })}
+                  placeholder="••••••••"
+                  className="w-full h-[38px] px-3 bg-white border border-slate-300 rounded-[10px] text-xs focus:outline-none focus:border-blue-600"
+                />
+              </div>
+
+              <div className="flex items-end">
+                <button
+                  type="button"
+                  onClick={testCustomMysql}
+                  className="w-full h-[38px] bg-blue-600 hover:bg-blue-700 text-white rounded-[10px] font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Server className="w-3.5 h-3.5" />
+                  <span>Tester cette Connexion</span>
+                </button>
               </div>
             </div>
           </div>

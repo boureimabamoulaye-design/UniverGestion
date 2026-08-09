@@ -248,6 +248,123 @@ app.get("/api/mysql/status", async (req, res) => {
   }
 });
 
+// STRICT MYSQL AUTHENTICATION ROUTE (WAMP / PHPMYADMIN ONLY)
+app.post("/api/mysql/authenticate", async (req, res) => {
+  const { role, login, password, filiere_id } = req.body;
+  const config = getMysqlConfig();
+
+  try {
+    const connection = await mysql.createConnection(config);
+    await connection.ping();
+
+    if (role === 'ADMIN') {
+      const [rows]: any = await connection.query(
+        "SELECT * FROM utilisateurs WHERE LOWER(email) = LOWER(?) LIMIT 1",
+        [login.trim()]
+      );
+
+      await connection.end();
+
+      if (!rows || rows.length === 0) {
+        return res.status(401).json({
+          success: false,
+          error: "ADMIN_NOT_FOUND",
+          message: "Compte administrateur introuvable dans la base de données MySQL WAMP. Veuillez vérifier la base 'unigestion_db'."
+        });
+      }
+
+      const user = rows[0];
+      if (user.statut === 'Inactif') {
+        return res.status(403).json({
+          success: false,
+          error: "ADMIN_INACTIVE",
+          message: "Ce compte administrateur est marqué comme inactif dans la base MySQL WAMP."
+        });
+      }
+
+      return res.json({
+        success: true,
+        message: "Authentification Administrateur réussie via la base MySQL WAMP.",
+        user: {
+          id: user.id,
+          nom: user.nom,
+          prenom: user.prenom,
+          email_or_matricule: user.email,
+          role: 'ADMIN',
+          universite_nom: 'USTTB Bamako'
+        }
+      });
+
+    } else {
+      // ETUDIANT
+      const [rows]: any = await connection.query(
+        "SELECT * FROM etudiants WHERE (LOWER(matricule) = LOWER(?) OR LOWER(email) = LOWER(?)) LIMIT 1",
+        [login.trim(), login.trim()]
+      );
+
+      if (!rows || rows.length === 0) {
+        await connection.end();
+        return res.status(401).json({
+          success: false,
+          error: "STUDENT_NOT_FOUND",
+          message: "Étudiant introuvable avec ce matricule/e-mail dans la base de données MySQL WAMP."
+        });
+      }
+
+      const student = rows[0];
+
+      if (student.est_bloque || student.statut_compte === 'Bloqué' || student.statut === 'Suspendu') {
+        await connection.end();
+        return res.status(403).json({
+          success: false,
+          error: "STUDENT_BLOCKED",
+          message: "Accès refusé : Votre compte étudiant est marqué comme bloqué dans la base MySQL WAMP."
+        });
+      }
+
+      // Check Filière if provided
+      if (filiere_id && student.filiere_id && Number(student.filiere_id) !== Number(filiere_id)) {
+        const [inscrRows]: any = await connection.query(
+          "SELECT id FROM inscriptions WHERE etudiant_id = ? AND filiere_id = ? LIMIT 1",
+          [student.id, filiere_id]
+        );
+
+        if (!inscrRows || inscrRows.length === 0) {
+          await connection.end();
+          return res.status(403).json({
+            success: false,
+            error: "UNAUTHORIZED_FILIERE",
+            message: `Accès refusé : L'étudiant ${student.matricule} n'est pas autorisé pour cette filière dans la base MySQL WAMP.`
+          });
+        }
+      }
+
+      await connection.end();
+
+      return res.json({
+        success: true,
+        message: "Authentification Étudiant réussie via la base MySQL WAMP.",
+        user: {
+          id: student.id,
+          nom: student.nom,
+          prenom: student.prenom,
+          email_or_matricule: student.matricule,
+          role: 'ETUDIANT',
+          etudiantDetail: student,
+          universite_nom: 'USTTB Bamako'
+        }
+      });
+    }
+
+  } catch (error: any) {
+    return res.status(503).json({
+      success: false,
+      error: "MYSQL_SERVER_OFFLINE",
+      message: `Impossible de contacter le serveur MySQL WAMP (localhost:3306) : ${error?.message || "Connexion refusée"}. Assurez-vous que WAMP est démarré et que la base 'unigestion_db' ou 'universite' est présente dans phpMyAdmin.`
+    });
+  }
+});
+
 // Test custom MySQL parameters provided in body
 app.post("/api/mysql/test-config", async (req, res) => {
   const { host, port, user, password, database } = req.body;

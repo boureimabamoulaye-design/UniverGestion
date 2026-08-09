@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthUser } from '../types/database';
 import { DB } from '../lib/storage';
-import { GraduationCap, Shield, Lock, Mail, ArrowRight, AlertTriangle, Building2 } from 'lucide-react';
+import { GraduationCap, Shield, Lock, Mail, ArrowRight, AlertTriangle, Building2, Database, Server, RefreshCw, CheckCircle2 } from 'lucide-react';
 
 interface LoginViewProps {
   onLoginSuccess: (user: AuthUser) => void;
@@ -13,11 +13,42 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
   const [password, setPassword] = useState('');
   const [selectedFiliereId, setSelectedFiliereId] = useState<number | ''>(1);
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  // MySQL WAMP Status check
+  const [wampStatus, setWampStatus] = useState<{ connected: boolean; message: string; checking: boolean }>({
+    connected: false,
+    message: '',
+    checking: true
+  });
+
+  const checkWampConnection = async () => {
+    setWampStatus(prev => ({ ...prev, checking: true }));
+    try {
+      const res = await fetch('/api/mysql/status');
+      const data = await res.json();
+      setWampStatus({
+        connected: !!data.connected,
+        message: data.message || '',
+        checking: false
+      });
+    } catch {
+      setWampStatus({
+        connected: false,
+        message: 'Serveur MySQL WAMP non détecté sur port 3306.',
+        checking: false
+      });
+    }
+  };
+
+  useEffect(() => {
+    checkWampConnection();
+  }, []);
 
   const filieres = DB.getFilieres();
   const universite = DB.getUniversites()[0];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -26,85 +57,40 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
       return;
     }
 
-    if (role === 'ADMIN') {
-      const users = DB.getUtilisateurs();
-      const user = users.find(u => 
-        u.email.toLowerCase() === login.toLowerCase().trim() && 
-        u.mot_de_passe === password
-      );
+    if (role === 'ETUDIANT' && !selectedFiliereId) {
+      setError('Veuillez obligatoirement sélectionner votre filière d\'études avant de continuer.');
+      return;
+    }
 
-      if (user) {
-        if (user.statut === 'Inactif') {
-          setError('Ce compte administrateur est inactif. Veuillez contacter le super administrateur.');
-          return;
-        }
+    setIsLoading(true);
 
-        const adminDetail = DB.getAdministrateurs().find(a => a.utilisateur_id === user.id) || DB.getAdministrateurs()[0];
+    try {
+      // STRICT REQUIREMENT: Authenticate exclusively against MySQL WAMP database
+      const res = await fetch('/api/mysql/authenticate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          role,
+          login: login.trim(),
+          password,
+          filiere_id: role === 'ETUDIANT' ? Number(selectedFiliereId) : undefined
+        })
+      });
 
-        DB.logAccess('CONNEXION', `Connexion administrateur réussie (${login})`, user.id);
+      const data = await res.json();
 
-        onLoginSuccess({
-          id: user.id,
-          nom: user.nom,
-          prenom: user.prenom,
-          email_or_matricule: user.email,
-          role: 'ADMIN',
-          adminDetail,
-          universite_nom: universite?.nom || 'USTTB Bamako'
-        });
+      if (res.ok && data.success && data.user) {
+        DB.logAccess('CONNEXION', `Connexion ${role.toLowerCase()} réussie via MySQL WAMP (${login})`, data.user.id);
+        onLoginSuccess(data.user);
         return;
       } else {
-        setError('Email administrateur ou mot de passe incorrect.');
+        // Display strict error from MySQL backend (No mock fallback allowed)
+        setError(data.message || 'Authentification échouée sur le serveur MySQL WAMP.');
       }
-    } else {
-      // ETUDIANT
-      if (DB.isGlobalStudentLockActive()) {
-        setError('Accès temporairement indisponible. Aucun étudiant ne peut accéder à la plateforme pour le moment. Veuillez réessayer ultérieurement ou contacter l\'administration.');
-        return;
-      }
-
-      if (!selectedFiliereId) {
-        setError('Veuillez obligatoirement sélectionner votre filière d\'études avant de continuer.');
-        return;
-      }
-
-      const etudiants = DB.getEtudiants();
-      const etudiant = etudiants.find(e => 
-        (e.matricule.toLowerCase() === login.toLowerCase().trim() || (e.email && e.email.toLowerCase() === login.toLowerCase().trim())) && 
-        (e.mot_de_passe ? e.mot_de_passe === password : password === 'etudiant123')
-      );
-
-      if (etudiant) {
-        // Check Individual Student Account Lock
-        if (etudiant.statut_compte === 'Bloqué' || etudiant.est_bloque || etudiant.statut === 'Suspendu' as any) {
-          setError('Votre compte étudiant est actuellement bloqué ou inaccessible. Veuillez contacter le service académique de l\'administration.');
-          return;
-        }
-
-        // Check Filière Access Rights
-        const isAuth = DB.isStudentAuthorizedForFiliere(etudiant.id, Number(selectedFiliereId));
-        if (!isAuth) {
-          setError(`Accès refusé : Vous n'êtes pas officiellement inscrit dans cette filière. Votre accès est restreint aux filières autorisées.`);
-          return;
-        }
-
-        const targetStudent = { ...etudiant, filiere_id: Number(selectedFiliereId) };
-
-        DB.logAccess('CONNEXION', `Connexion étudiant réussie (Matricule: ${targetStudent.matricule}, Filière ID: ${selectedFiliereId})`, undefined, targetStudent.id);
-
-        onLoginSuccess({
-          id: targetStudent.id,
-          nom: targetStudent.nom,
-          prenom: targetStudent.prenom,
-          email_or_matricule: targetStudent.matricule,
-          role: 'ETUDIANT',
-          etudiantDetail: targetStudent,
-          universite_nom: universite?.nom || 'USTTB Bamako'
-        });
-        return;
-      } else {
-        setError('Matricule étudiant ou mot de passe incorrect.');
-      }
+    } catch (err: any) {
+      setError('❌ Erreur de Connexion : Impossible de joindre le serveur MySQL WAMP (localhost:3306). Vous devez démarrer WAMP/phpMyAdmin, importer le fichier universite.sql dans la base unigestion_db, et vérifier que le service MySQL est actif.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -140,6 +126,38 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
             <Building2 className="w-3.5 h-3.5" />
             Portail Officiel d'Accès UniGestion ML
           </p>
+        </div>
+
+        {/* WAMP MySQL Status Banner */}
+        <div className={`p-3 rounded-xl border mb-5 text-[11px] font-semibold flex items-center justify-between gap-2 ${
+          wampStatus.connected
+            ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+            : 'bg-amber-50 border-amber-200 text-amber-800'
+        }`}>
+          <div className="flex items-center gap-2">
+            {wampStatus.checking ? (
+              <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-600 shrink-0" />
+            ) : wampStatus.connected ? (
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            ) : (
+              <Server className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+            )}
+            <span>
+              {wampStatus.checking
+                ? 'Vérification du serveur MySQL WAMP...'
+                : wampStatus.connected
+                ? 'Base MySQL WAMP Connectée (localhost:3306)'
+                : 'Serveur MySQL WAMP requis (Base unigestion_db)'}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={checkWampConnection}
+            className="p-1 hover:bg-black/5 rounded text-xs font-bold transition-colors shrink-0 cursor-pointer"
+            title="Rafraîchir statut MySQL"
+          >
+            <RefreshCw className="w-3 h-3" />
+          </button>
         </div>
 
         {error && (
@@ -237,10 +255,20 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
 
             <button
               type="submit"
-              className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-md active:scale-[0.99] mt-3 cursor-pointer"
+              disabled={isLoading}
+              className="w-full h-11 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-md active:scale-[0.99] mt-3 cursor-pointer"
             >
-              <span>Se Connecter</span>
-              <ArrowRight className="w-4 h-4" />
+              {isLoading ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Vérification Base MySQL WAMP...</span>
+                </>
+              ) : (
+                <>
+                  <span>Se Connecter via MySQL WAMP</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
             </button>
           </form>
         )}

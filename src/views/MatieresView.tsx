@@ -22,7 +22,8 @@ export const MatieresView: React.FC = () => {
     nom: '',
     filiere_id: filieres[0]?.id || 1,
     semestre_id: semestres[0]?.id || 1,
-    enseignant_id: enseignants[0]?.id || 1,
+    enseignant_nom: '',
+    ue_type: 'Majeure' as 'Majeure' | 'Mineure',
     credits: 3,
     support_fichier_nom: '',
     support_fichier_url: ''
@@ -31,12 +32,15 @@ export const MatieresView: React.FC = () => {
   const handleOpenModal = (item?: Matiere) => {
     if (item) {
       setEditingItem(item);
+      const ens = enseignants.find(e => e.id === item.enseignant_id);
+      const defaultEnsNom = item.enseignant_nom || (ens ? `${ens.titre} ${ens.prenom} ${ens.nom}` : '');
       setFormData({
         code: item.code,
         nom: item.nom,
         filiere_id: item.filiere_id,
         semestre_id: item.semestre_id,
-        enseignant_id: item.enseignant_id,
+        enseignant_nom: defaultEnsNom,
+        ue_type: item.ue_type || 'Majeure',
         credits: item.credits || 3,
         support_fichier_nom: item.support_fichier_nom || '',
         support_fichier_url: item.support_fichier_url || ''
@@ -48,7 +52,8 @@ export const MatieresView: React.FC = () => {
         nom: '',
         filiere_id: filieres[0]?.id || 1,
         semestre_id: semestres[0]?.id || 1,
-        enseignant_id: enseignants[0]?.id || 1,
+        enseignant_nom: '',
+        ue_type: 'Majeure',
         credits: 3,
         support_fichier_nom: '',
         support_fichier_url: ''
@@ -83,7 +88,8 @@ export const MatieresView: React.FC = () => {
       filiere_id: Number(formData.filiere_id),
       niveau_id: 1,
       semestre_id: Number(formData.semestre_id),
-      enseignant_id: Number(formData.enseignant_id),
+      enseignant_nom: formData.enseignant_nom,
+      ue_type: formData.ue_type,
       credits: Number(formData.credits)
     });
 
@@ -177,16 +183,28 @@ export const MatieresView: React.FC = () => {
                 const fil = filieres.find(f => f.id === item.filiere_id);
                 const sem = semestres.find(s => s.id === item.semestre_id);
                 const ens = enseignants.find(e => e.id === item.enseignant_id);
+                const displayTeacher = item.enseignant_nom || (ens ? `${ens.titre} ${ens.prenom} ${ens.nom}` : 'Non assigné');
+                const isMineure = item.ue_type === 'Mineure';
+
                 return (
                   <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
                     <td className="px-6 py-4 font-mono font-bold text-[#0066FF]">{item.code}</td>
-                    <td className="px-6 py-4 font-semibold text-[#1A1A1A] max-w-[220px]">{item.nom}</td>
+                    <td className="px-6 py-4 font-semibold text-[#1A1A1A] max-w-[220px]">
+                      <div>{item.nom}</div>
+                      <span className={`inline-block mt-1 px-2 py-0.5 text-[10px] font-bold rounded-md border ${
+                        isMineure
+                          ? 'bg-purple-50 text-purple-700 border-purple-200'
+                          : 'bg-blue-50 text-[#0066FF] border-blue-200'
+                      }`}>
+                        UE {item.ue_type || 'Majeure'}
+                      </span>
+                    </td>
                     <td className="px-6 py-4 text-gray-600">
                       <span className="font-semibold block text-[#1A1A1A]">{fil?.code || 'INFO'}</span>
                       <span className="text-[10px] text-gray-400">{sem?.libelle || 'Semestre 1'}</span>
                     </td>
-                    <td className="px-6 py-4 text-gray-700">
-                      {ens ? `${ens.titre} ${ens.prenom} ${ens.nom}` : 'Non assigné'}
+                    <td className="px-6 py-4 text-gray-700 font-medium">
+                      {displayTeacher}
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className="font-bold text-emerald-600 px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-md">{item.credits} Crédits ECTS</span>
@@ -249,11 +267,37 @@ export const MatieresView: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
+              <label className="block font-semibold text-gray-700 mb-1">Type d'Unité d'Enseignement (UE) *</label>
+              <select
+                value={formData.ue_type}
+                onChange={(e) => setFormData({ ...formData, ue_type: e.target.value as 'Majeure' | 'Mineure' })}
+                className="w-full h-[44px] px-3 border border-[#E5E7EB] rounded-[14px] bg-white font-medium focus:outline-none focus:border-[#0066FF]"
+              >
+                <option value="Majeure">UE Majeure</option>
+                <option value="Mineure">UE Mineure</option>
+              </select>
+            </div>
+            <div>
+              <label className="block font-semibold text-gray-700 mb-1">Crédits ECTS *</label>
+              <input
+                type="number"
+                min={1}
+                max={30}
+                value={formData.credits}
+                onChange={(e) => setFormData({ ...formData, credits: Number(e.target.value) })}
+                className="w-full h-[44px] px-3 border border-[#E5E7EB] rounded-[14px] focus:outline-none focus:border-[#0066FF]"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
               <label className="block font-semibold text-gray-700 mb-1">Filière *</label>
               <select
                 value={formData.filiere_id}
                 onChange={(e) => setFormData({ ...formData, filiere_id: Number(e.target.value) })}
-                className="w-full h-[44px] px-3 border border-[#E5E7EB] rounded-[14px] bg-white"
+                className="w-full h-[44px] px-3 border border-[#E5E7EB] rounded-[14px] bg-white focus:outline-none focus:border-[#0066FF]"
               >
                 {filieres.map(f => (
                   <option key={f.id} value={f.id}>{f.code} - {f.nom}</option>
@@ -265,7 +309,7 @@ export const MatieresView: React.FC = () => {
               <select
                 value={formData.semestre_id}
                 onChange={(e) => setFormData({ ...formData, semestre_id: Number(e.target.value) })}
-                className="w-full h-[44px] px-3 border border-[#E5E7EB] rounded-[14px] bg-white"
+                className="w-full h-[44px] px-3 border border-[#E5E7EB] rounded-[14px] bg-white focus:outline-none focus:border-[#0066FF]"
               >
                 {semestres.map(s => (
                   <option key={s.id} value={s.id}>{s.libelle}</option>
@@ -274,31 +318,15 @@ export const MatieresView: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block font-semibold text-gray-700 mb-1">Enseignant Titulaire</label>
-              <select
-                value={formData.enseignant_id}
-                onChange={(e) => setFormData({ ...formData, enseignant_id: Number(e.target.value) })}
-                className="w-full h-[44px] px-3 border border-[#E5E7EB] rounded-[14px] bg-white"
-              >
-                {enseignants.map(ens => (
-                  <option key={ens.id} value={ens.id}>{ens.titre} {ens.prenom} {ens.nom}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block font-semibold text-gray-700 mb-1">Crédits ECTS *</label>
-              <input
-                type="number"
-                min={1}
-                max={30}
-                value={formData.credits}
-                onChange={(e) => setFormData({ ...formData, credits: Number(e.target.value) })}
-                className="w-full h-[44px] px-3 border border-[#E5E7EB] rounded-[14px]"
-                required
-              />
-            </div>
+          <div>
+            <label className="block font-semibold text-gray-700 mb-1">Enseignant Titulaire</label>
+            <input
+              type="text"
+              value={formData.enseignant_nom}
+              onChange={(e) => setFormData({ ...formData, enseignant_nom: e.target.value })}
+              placeholder="Ex: Dr. Martin KOFFI"
+              className="w-full h-[44px] px-3 border border-[#E5E7EB] rounded-[14px] focus:outline-none focus:border-[#0066FF]"
+            />
           </div>
 
           {/* Section Upload Support de Cours depuis Galerie / Appareil */}

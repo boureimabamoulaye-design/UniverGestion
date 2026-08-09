@@ -120,7 +120,8 @@ export interface Matiere {
   filiere_id: number;
   niveau_id: number;
   semestre_id: number;
-  enseignant_id: number;
+  enseignant_id?: number;
+  enseignant_nom?: string;
   credits: number;
   ue_nom?: string;
   ue_type?: 'Majeure' | 'Mineure';
