@@ -306,6 +306,13 @@ app.post("/api/mysql/authenticate", async (req, res) => {
 
   const sanitizedLogin = login.trim();
   const pool = getMysqlPool();
+  if (!pool) {
+    return res.status(503).json({
+      success: false,
+      error: "MYSQL_SERVER_OFFLINE",
+      message: "Impossible de se connecter au serveur MySQL (localhost:3306). Veuillez vérifier que le service MySQL WAMP est actif."
+    });
+  }
 
   try {
     if (role === 'ADMIN') {
@@ -371,19 +378,22 @@ app.post("/api/mysql/authenticate", async (req, res) => {
         });
       }
 
-      // Check Filière if provided
-      if (filiere_id && student.filiere_id && Number(student.filiere_id) !== Number(filiere_id)) {
-        const [inscrRows]: any = await pool.query(
-          "SELECT id FROM inscriptions WHERE etudiant_id = ? AND filiere_id = ? LIMIT 1",
-          [Number(student.id), Number(filiere_id)]
-        );
+      // Check Filière: authorize if direct match OR if enrolled in inscriptions table
+      if (filiere_id) {
+        const directMatch = student.filiere_id && Number(student.filiere_id) === Number(filiere_id);
+        if (!directMatch) {
+          const [inscrRows]: any = await pool.query(
+            "SELECT id FROM inscriptions WHERE etudiant_id = ? AND filiere_id = ? LIMIT 1",
+            [Number(student.id), Number(filiere_id)]
+          );
 
-        if (!inscrRows || inscrRows.length === 0) {
-          return res.status(403).json({
-            success: false,
-            error: "UNAUTHORIZED_FILIERE",
-            message: `Accès refusé : L'étudiant ${student.matricule} n'est pas autorisé pour cette filière dans la base MySQL.`
-          });
+          if (!inscrRows || inscrRows.length === 0) {
+            return res.status(403).json({
+              success: false,
+              error: "UNAUTHORIZED_FILIERE",
+              message: `Accès refusé : L'étudiant ${student.matricule} n'est pas autorisé pour cette filière dans la base MySQL.`
+            });
+          }
         }
       }
 
