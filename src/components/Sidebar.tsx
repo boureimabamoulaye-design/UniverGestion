@@ -47,7 +47,6 @@ export type ActiveTab =
   | 'paiements'
   | 'annees'
   | 'utilisateurs'
-  | 'rapports'
   | 'corbeille'
   | 'parametres'
   | 'profil_etudiant';
@@ -90,7 +89,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'paiements', label: 'Paiements', icon: CreditCard },
     { id: 'annees', label: 'Années Académiques', icon: Clock },
     { id: 'utilisateurs', label: 'Utilisateurs', icon: Users },
-    { id: 'rapports', label: 'Rapports & Stats', icon: History },
     { id: 'corbeille', label: 'Corbeille', icon: Trash2 },
     { id: 'profil_admin', label: 'Mon Profil', icon: User },
     { id: 'parametres', label: 'Paramètres', icon: Settings },

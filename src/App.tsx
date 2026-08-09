@@ -22,7 +22,6 @@ import { BulletinsView } from './views/BulletinsView';
 import { PaiementsView } from './views/PaiementsView';
 import { AnneesAcademiquesView } from './views/AnneesAcademiquesView';
 import { UtilisateursView } from './views/UtilisateursView';
-import { RapportsView } from './views/RapportsView';
 import { EtudiantPortalView } from './views/EtudiantPortalView';
 import { CorbeilleView } from './views/CorbeilleView';
 import { SupportsCoursView } from './views/SupportsCoursView';
@@ -134,7 +133,6 @@ export default function App() {
                 {activeTab === 'paiements' && <PaiementsView />}
                 {activeTab === 'annees' && <AnneesAcademiquesView />}
                 {activeTab === 'utilisateurs' && <UtilisateursView />}
-                {activeTab === 'rapports' && <RapportsView />}
                 {activeTab === 'corbeille' && <CorbeilleView />}
               </>
             )}

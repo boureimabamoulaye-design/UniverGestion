@@ -119,7 +119,19 @@ export const SupportsCoursView: React.FC<SupportsCoursViewProps> = ({ currentUse
     }
   };
 
+  const studentDetail = currentUser.role === 'ETUDIANT' ? (currentUser.etudiantDetail || DB.getEtudiants().find(e => e.id === currentUser.id)) : null;
+  const studentClass = studentDetail ? DB.getClasses().find(c => c.id === studentDetail.classe_id) : null;
+  const studentFiliereId = studentDetail?.filiere_id || studentClass?.filiere_id || 1;
+  const studentMatiereIds = new Set(matieres.filter(m => m.filiere_id === studentFiliereId || !m.filiere_id).map(m => m.id));
+
   const filtered = list.filter(item => {
+    if (!isAdmin) {
+      // Student filter: strictly check Filiere & Matiere
+      const matchesFiliere = !item.filiere_id || item.filiere_id === studentFiliereId;
+      const matchesMatiere = !item.matiere_id || studentMatiereIds.has(item.matiere_id);
+      if (!matchesFiliere && !matchesMatiere) return false;
+    }
+
     const matchesSearch = item.titre.toLowerCase().includes(search.toLowerCase()) ||
       (item.description && item.description.toLowerCase().includes(search.toLowerCase()));
     

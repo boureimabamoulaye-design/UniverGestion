@@ -30,6 +30,8 @@ export interface Filiere {
   description: string;
   domaine: string;
   duree_annees: number;
+  frais_scolarite: number;
+  statut?: 'Actif' | 'Inactif';
   created_at?: string;
 }
 

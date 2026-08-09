@@ -18,7 +18,9 @@ export const FilieresView: React.FC = () => {
     nom: '',
     description: '',
     domaine: 'Sciences & Technologies',
-    duree_annees: 3
+    duree_annees: 3,
+    frais_scolarite: 350000,
+    statut: 'Actif' as 'Actif' | 'Inactif'
   });
 
   const handleOpenModal = (item?: Filiere) => {
@@ -29,7 +31,9 @@ export const FilieresView: React.FC = () => {
         nom: item.nom,
         description: item.description || '',
         domaine: item.domaine || 'Sciences & Technologies',
-        duree_annees: item.duree_annees || 3
+        duree_annees: item.duree_annees || 3,
+        frais_scolarite: item.frais_scolarite || 350000,
+        statut: item.statut || 'Actif'
       });
     } else {
       setEditingItem(null);
@@ -38,7 +42,9 @@ export const FilieresView: React.FC = () => {
         nom: '',
         description: '',
         domaine: 'Sciences & Technologies',
-        duree_annees: 3
+        duree_annees: 3,
+        frais_scolarite: 350000,
+        statut: 'Actif'
       });
     }
     setIsModalOpen(true);
@@ -52,7 +58,9 @@ export const FilieresView: React.FC = () => {
       ...(editingItem ? { id: editingItem.id } : {}),
       ...formData,
       faculte_id: 1,
-      duree_annees: Number(formData.duree_annees)
+      duree_annees: Number(formData.duree_annees),
+      frais_scolarite: Number(formData.frais_scolarite) || 0,
+      statut: formData.statut
     });
 
     setList(DB.getFilieres());
@@ -120,6 +128,8 @@ export const FilieresView: React.FC = () => {
               <tr className="bg-gray-50 text-[11px] font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
                 <th className="px-6 py-4">Code</th>
                 <th className="px-6 py-4">Filière / Spécialité</th>
+                <th className="px-6 py-4">Prix / Frais (FCFA)</th>
+                <th className="px-6 py-4">Statut</th>
                 <th className="px-6 py-4">Classes Rattachées</th>
                 <th className="px-6 py-4">Domaine d'études</th>
                 <th className="px-6 py-4 text-right">Actions</th>
@@ -134,6 +144,14 @@ export const FilieresView: React.FC = () => {
                     <td className="px-6 py-4 font-semibold text-[#1A1A1A] max-w-[280px]">
                       {item.nom}
                       {item.description && <p className="text-[11px] text-gray-400 font-normal mt-0.5">{item.description}</p>}
+                    </td>
+                    <td className="px-6 py-4 font-bold text-emerald-600 font-mono">
+                      {(item.frais_scolarite || 0).toLocaleString()} FCFA
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${item.statut === 'Inactif' ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-emerald-50 text-emerald-600 border border-emerald-200'}`}>
+                        {item.statut || 'Actif'}
+                      </span>
                     </td>
                     <td className="px-6 py-4">
                       {connectedClasses.length > 0 ? (
@@ -213,6 +231,31 @@ export const FilieresView: React.FC = () => {
               placeholder="Ex: Sciences & Technologies"
               className="w-full h-[44px] px-3 border border-[#E5E7EB] rounded-[14px]"
             />
+          </div>
+
+          <div>
+            <label className="block font-semibold text-gray-700 mb-1">Prix / Frais de la filière (FCFA) *</label>
+            <input
+              type="number"
+              value={formData.frais_scolarite}
+              onChange={(e) => setFormData({ ...formData, frais_scolarite: Number(e.target.value) })}
+              placeholder="Ex: 350000"
+              className="w-full h-[44px] px-3 border border-[#E5E7EB] rounded-[14px]"
+              required
+              min={0}
+            />
+          </div>
+
+          <div>
+            <label className="block font-semibold text-gray-700 mb-1">Statut de la filière *</label>
+            <select
+              value={formData.statut}
+              onChange={(e) => setFormData({ ...formData, statut: e.target.value as 'Actif' | 'Inactif' })}
+              className="w-full h-[44px] px-3 border border-[#E5E7EB] rounded-[14px] bg-white"
+            >
+              <option value="Actif">Actif</option>
+              <option value="Inactif">Inactif</option>
+            </select>
           </div>
 
           <div>

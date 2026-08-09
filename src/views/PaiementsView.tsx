@@ -35,43 +35,71 @@ export const PaiementsView: React.FC = () => {
   const [formData, setFormData] = useState({
     etudiant_id: etudiants[0]?.id || 1,
     type_frais: 'Scolarité' as 'Inscription' | 'Scolarité' | 'Rattrapage' | 'Diplôme' | 'Examen' | 'Autre',
-    filiere_code: 'IG1',
+    filiere_id: filieres[0]?.id || 1,
+    filiere_code: filieres[0]?.code || 'IGL',
     annee_academique_id: activeAnnee?.id || 1,
-    montant_total: 150000,
-    montant_paye: 150000,
+    montant_paye: 100000,
     mode_paiement: 'Orange Money' as 'Espèces' | 'Chèque' | 'Virement' | 'Orange Money' | 'Wave',
     date_paiement: new Date().toISOString().split('T')[0],
-    statut: 'Complet' as 'Complet' | 'Partiel' | 'En retard' | 'En attente'
+    statut: 'Partiel' as 'Complet' | 'Partiel' | 'En retard' | 'En attente',
+    remarque: ''
   });
+
+  // Helper to get student's filiere & calculate financials
+  const selectedStudent = etudiants.find(e => e.id === Number(formData.etudiant_id));
+  const studentClass = DB.getClasses().find(c => c.id === selectedStudent?.classe_id);
+  const currentFiliere = filieres.find(f => f.id === formData.filiere_id) ||
+                         filieres.find(f => f.id === (selectedStudent as any)?.filiere_id) ||
+                         filieres.find(f => f.id === studentClass?.filiere_id) ||
+                         filieres[0];
+
+  const prixFiliere = currentFiliere?.frais_scolarite || 350000;
+  
+  // Total previous payments for this student (excluding current payment if editing)
+  const totalDejaPaye = list
+    .filter(p => p.etudiant_id === Number(formData.etudiant_id) && p.id !== editingId)
+    .reduce((sum, p) => sum + (p.montant_paye || 0), 0);
+
+  const totalPayeApresReglement = totalDejaPaye + Number(formData.montant_paye || 0);
+  const resteAPayer = Math.max(0, prixFiliere - totalPayeApresReglement);
 
   const handleOpenCreateModal = () => {
     setEditingId(null);
+    const firstEtud = etudiants[0];
+    const firstEtudClass = DB.getClasses().find(c => c.id === firstEtud?.classe_id);
+    const firstFiliere = filieres.find(f => f.id === (firstEtud as any)?.filiere_id) ||
+                         filieres.find(f => f.id === firstEtudClass?.filiere_id) ||
+                         filieres[0];
+
     setFormData({
-      etudiant_id: etudiants[0]?.id || 1,
+      etudiant_id: firstEtud?.id || 1,
       type_frais: 'Scolarité',
-      filiere_code: 'IG1',
+      filiere_id: firstFiliere?.id || 1,
+      filiere_code: firstFiliere?.code || 'IGL',
       annee_academique_id: activeAnnee?.id || 1,
-      montant_total: 150000,
-      montant_paye: 150000,
+      montant_paye: 100000,
       mode_paiement: 'Orange Money',
       date_paiement: new Date().toISOString().split('T')[0],
-      statut: 'Complet'
+      statut: 'Partiel',
+      remarque: ''
     });
     setIsModalOpen(true);
   };
 
   const handleOpenEditModal = (item: Paiement) => {
     setEditingId(item.id);
+    const matchedFiliere = filieres.find(f => f.code === item.filiere_code) || filieres[0];
     setFormData({
       etudiant_id: item.etudiant_id,
       type_frais: item.type_frais,
-      filiere_code: item.filiere_code || 'IG1',
+      filiere_id: item.filiere_id || matchedFiliere?.id || 1,
+      filiere_code: item.filiere_code || matchedFiliere?.code || 'IGL',
       annee_academique_id: item.annee_academique_id || activeAnnee?.id || 1,
-      montant_total: item.montant || item.montant_paye,
       montant_paye: item.montant_paye,
       mode_paiement: item.mode_paiement,
       date_paiement: item.date_paiement || new Date().toISOString().split('T')[0],
-      statut: item.statut as any || 'Complet'
+      statut: item.statut as any || 'Partiel',
+      remarque: item.remarque || ''
     });
     setIsModalOpen(true);
   };
@@ -82,26 +110,30 @@ export const PaiementsView: React.FC = () => {
     const existingItem = editingId ? list.find(p => p.id === editingId) : null;
     const randomRef = existingItem?.reference_recu || `REC-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
-    const montant = Number(formData.montant_total);
     const montantPaye = Number(formData.montant_paye);
 
     const selectedAnneeObj = annees.find(a => a.id === Number(formData.annee_academique_id));
     const anneeLibelle = selectedAnneeObj ? selectedAnneeObj.code.replace('-', ' - ') : '2025 - 2026';
 
+    const calculatedStatut = resteAPayer <= 0 ? 'Complet' : 'Partiel';
+
     const savedPaiement = DB.savePaiement({
       id: editingId || undefined,
       etudiant_id: Number(formData.etudiant_id),
       annee_academique_id: Number(formData.annee_academique_id),
-      filiere_code: formData.filiere_code,
+      filiere_id: currentFiliere?.id,
+      filiere_code: currentFiliere?.code || formData.filiere_code,
+      filiere_nom: currentFiliere?.nom,
       annee_libelle: anneeLibelle,
       type_frais: formData.type_frais,
-      montant,
+      montant: prixFiliere,
       montant_paye: montantPaye,
-      reste_a_payer: Math.max(0, montant - montantPaye),
+      reste_a_payer: resteAPayer,
       mode_paiement: formData.mode_paiement,
       reference_recu: randomRef,
       date_paiement: formData.date_paiement,
-      statut: formData.statut as any
+      statut: calculatedStatut,
+      remarque: formData.remarque
     });
 
     setList(DB.getPaiements());
@@ -241,23 +273,21 @@ export const PaiementsView: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block font-semibold text-gray-700 mb-1">Filière / Niveau *</label>
+              <label className="block font-semibold text-gray-700 mb-1">Filière concernée *</label>
               <select
-                value={formData.filiere_code}
-                onChange={(e) => setFormData({ ...formData, filiere_code: e.target.value })}
+                value={formData.filiere_id}
+                onChange={(e) => {
+                  const fid = Number(e.target.value);
+                  const fil = filieres.find(f => f.id === fid);
+                  setFormData({ ...formData, filiere_id: fid, filiere_code: fil?.code || 'IGL' });
+                }}
                 className="w-full h-[44px] px-3 border border-[#E5E7EB] rounded-[14px] bg-white font-medium"
               >
-                {filieres.length > 0 ? (
-                  filieres.map(f => (
-                    <option key={f.id} value={f.code}>{f.code} - {f.nom}</option>
-                  ))
-                ) : (
-                  <>
-                    <option value="IG1">IG1 - Informatique de Gestion 1</option>
-                    <option value="IG2">IG2 - Informatique de Gestion 2</option>
-                    <option value="IG3">IG3 - Informatique de Gestion 3</option>
-                  </>
-                )}
+                {filieres.map(f => (
+                  <option key={f.id} value={f.id}>
+                    {f.code} - {f.nom} ({(f.frais_scolarite || 0).toLocaleString()} FCFA)
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -274,6 +304,28 @@ export const PaiementsView: React.FC = () => {
                   </option>
                 ))}
               </select>
+            </div>
+          </div>
+
+          {/* FINANCIAL SUMMARY BOX */}
+          <div className="bg-blue-50/70 border border-blue-200 p-3.5 rounded-[16px] grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+            <div>
+              <span className="block text-[10px] text-gray-500 font-semibold uppercase">Prix Filière</span>
+              <span className="font-mono font-bold text-gray-800 text-sm">{(prixFiliere).toLocaleString()} FCFA</span>
+            </div>
+            <div>
+              <span className="block text-[10px] text-gray-500 font-semibold uppercase">Déjà Payé</span>
+              <span className="font-mono font-bold text-blue-700 text-sm">{(totalDejaPaye).toLocaleString()} FCFA</span>
+            </div>
+            <div>
+              <span className="block text-[10px] text-gray-500 font-semibold uppercase">Saisie Règlement</span>
+              <span className="font-mono font-bold text-emerald-600 text-sm">{(Number(formData.montant_paye) || 0).toLocaleString()} FCFA</span>
+            </div>
+            <div>
+              <span className="block text-[10px] text-gray-500 font-semibold uppercase">Reste à Payer</span>
+              <span className={`font-mono font-bold text-sm ${resteAPayer > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                {(resteAPayer).toLocaleString()} FCFA
+              </span>
             </div>
           </div>
 
@@ -310,40 +362,41 @@ export const PaiementsView: React.FC = () => {
             </div>
           </div>
 
-          <div>
-            <label className="block font-semibold text-gray-700 mb-1">Date de Paiement *</label>
-            <input
-              type="date"
-              value={formData.date_paiement}
-              onChange={(e) => setFormData({ ...formData, date_paiement: e.target.value })}
-              className="w-full h-[44px] px-3 border border-[#E5E7EB] rounded-[14px] font-medium"
-              required
-            />
-          </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block font-semibold text-gray-700 mb-1">Montant Total Dû (FCFA) *</label>
-              <input
-                type="number"
-                step="5000"
-                value={formData.montant_total}
-                onChange={(e) => setFormData({ ...formData, montant_total: Number(e.target.value) })}
-                className="w-full h-[44px] px-3 border border-[#E5E7EB] rounded-[14px] font-mono font-bold"
-                required
-              />
-            </div>
-            <div>
-              <label className="block font-semibold text-gray-700 mb-1">Montant Versé (FCFA) *</label>
+              <label className="block font-semibold text-gray-700 mb-1">Montant Réellement Payé (FCFA) *</label>
               <input
                 type="number"
                 step="5000"
                 value={formData.montant_paye}
                 onChange={(e) => setFormData({ ...formData, montant_paye: Number(e.target.value) })}
-                className="w-full h-[44px] px-3 border border-[#E5E7EB] rounded-[14px] font-mono font-bold text-emerald-600"
+                className="w-full h-[44px] px-3 border border-[#E5E7EB] rounded-[14px] font-mono font-bold text-emerald-600 text-sm"
+                required
+                min={0}
+              />
+            </div>
+
+            <div>
+              <label className="block font-semibold text-gray-700 mb-1">Date de Paiement *</label>
+              <input
+                type="date"
+                value={formData.date_paiement}
+                onChange={(e) => setFormData({ ...formData, date_paiement: e.target.value })}
+                className="w-full h-[44px] px-3 border border-[#E5E7EB] rounded-[14px] font-medium"
                 required
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block font-semibold text-gray-700 mb-1">Référence / Observation (optionnel)</label>
+            <input
+              type="text"
+              value={formData.remarque}
+              onChange={(e) => setFormData({ ...formData, remarque: e.target.value })}
+              placeholder="Ex: Reçu de versement N° 4589 - Tranche 1"
+              className="w-full h-[44px] px-3 border border-[#E5E7EB] rounded-[14px] font-medium"
+            />
           </div>
 
           <div className="pt-4 flex items-center justify-end gap-3 border-t border-gray-100">

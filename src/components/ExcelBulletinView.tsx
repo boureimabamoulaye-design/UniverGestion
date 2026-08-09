@@ -62,9 +62,12 @@ export const ExcelBulletinView: React.FC<ExcelBulletinViewProps> = ({
   const safeSemestreId = semestre?.id || 1;
   const safeSemestreLibelle = semestre?.libelle || 'Semestre 1';
 
-  // Filter matieres belonging to this semester & filiere
+  const studentClasseForSubject = classe || DB.getClasses().find(c => c.id === safeEtudiant.classe_id);
+  const targetFiliereId = filiere?.id || studentClasseForSubject?.filiere_id || (safeEtudiant as any)?.filiere_id || 1;
+
+  // Filter matieres belonging strictly to this semester & filiere
   const semesterMatieres = matieres.filter(
-    m => m.semestre_id === safeSemestreId && (m.filiere_id === filiere?.id || m.filiere_id === (safeEtudiant as any)?.filiere_id || true)
+    m => m.semestre_id === safeSemestreId && (!m.filiere_id || m.filiere_id === targetFiliereId)
   );
 
   // Group matieres into UE Categories (UE MAJEURES, UE MINEURES, UE LIBRES)
@@ -213,7 +216,7 @@ export const ExcelBulletinView: React.FC<ExcelBulletinViewProps> = ({
   const allDBFilieres = DB.getFilieres();
 
   const studentClasse = classe || allDBClasses.find(c => c.id === safeEtudiant.classe_id) || allDBClasses[0];
-  const studentFiliere = filiere || allDBFilieres.find(f => f.id === studentClasse?.filiere_id) || allDBFilieres[0];
+  const studentFiliere = filiere || allDBFilieres.find(f => f.id === (safeEtudiant as any)?.filiere_id) || allDBFilieres.find(f => f.id === studentClasse?.filiere_id) || allDBFilieres[0];
   const allDBFacultes = DB.getFacultes();
   const studentFaculte = faculte || allDBFacultes.find(f => f.id === studentFiliere?.faculte_id) || allDBFacultes[0];
 
@@ -266,7 +269,7 @@ export const ExcelBulletinView: React.FC<ExcelBulletinViewProps> = ({
     }
 
     const sMatieres = allDBMatieres.filter(
-      m => m.semestre_id === s.id && (m.filiere_id === studentFiliere?.id || true)
+      m => m.semestre_id === s.id && (!m.filiere_id || m.filiere_id === studentFiliere?.id)
     );
 
     let sPoints = 0;

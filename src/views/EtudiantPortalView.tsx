@@ -212,7 +212,7 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
       m.semestre_id === sem.id && 
       (m.filiere_id === studentFiliere?.id || m.filiere_id === etudiant.filiere_id || !m.filiere_id)
     );
-    const applicableMatieres = semMatieres.length > 0 ? semMatieres : matieres.filter(m => m.semestre_id === sem.id);
+    const applicableMatieres = semMatieres;
     const semNotes = notes.filter(n => n.semestre_id === sem.id);
 
     let semTotalPoints = 0;

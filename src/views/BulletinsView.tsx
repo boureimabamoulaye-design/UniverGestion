@@ -61,9 +61,21 @@ export const BulletinsView: React.FC = () => {
     const student = etudiants.find(e => e.id === Number(selectedStudentId));
     if (!student) return;
 
-    // Get all student's notes for this semester
+    // Retrieve student's class and corresponding filiere from database relations
+    const studentClass = classes.find(c => c.id === student.classe_id);
+    const studentFiliereId = (student as any)?.filiere_id || studentClass?.filiere_id || 1;
+
+    // Filter subjects strictly belonging to the student's filiere and semester
+    const applicableMatieres = matieres.filter(
+      m => m.semestre_id === Number(selectedSemestreId) && (!m.filiere_id || m.filiere_id === studentFiliereId)
+    );
+    const applicableMatiereIds = new Set(applicableMatieres.map(m => m.id));
+
+    // Get student's notes for applicable subjects in this semester
     const studentNotes = notes.filter(
-      n => n.etudiant_id === student.id && n.semestre_id === Number(selectedSemestreId)
+      n => n.etudiant_id === student.id &&
+           n.semestre_id === Number(selectedSemestreId) &&
+           applicableMatiereIds.has(n.matiere_id)
     );
 
     let totalPoints = 0;
@@ -71,7 +83,7 @@ export const BulletinsView: React.FC = () => {
     let totalCreditsValides = 0;
 
     studentNotes.forEach(n => {
-      const mat = matieres.find(m => m.id === n.matiere_id);
+      const mat = applicableMatieres.find(m => m.id === n.matiere_id);
       const credits = mat?.credits || 3;
 
       totalPoints += n.note_finale * credits;
@@ -82,16 +94,22 @@ export const BulletinsView: React.FC = () => {
       }
     });
 
-    const moyenneGenerale = totalCredits > 0 ? parseFloat((totalPoints / totalCredits).toFixed(2)) : 12.5;
+    const moyenneGenerale = totalCredits > 0 ? parseFloat((totalPoints / totalCredits).toFixed(2)) : 0;
 
-    let decision: string = 'Admis';
-    if (moyenneGenerale < 10) decision = 'Ajourné';
-    else if (moyenneGenerale >= 10 && totalCreditsValides < 30) decision = 'Compensé';
+    let decision: string = totalCredits > 0 ? 'Admis' : 'Non noté';
+    if (totalCredits > 0) {
+      if (moyenneGenerale < 10) decision = 'Ajourné';
+      else if (moyenneGenerale >= 10 && totalCreditsValides < 30) decision = 'Compensé';
+    }
 
-    let mention = 'Passable';
-    if (moyenneGenerale >= 16) mention = 'Très Bien';
-    else if (moyenneGenerale >= 14) mention = 'Bien';
-    else if (moyenneGenerale >= 12) mention = 'Assez Bien';
+    let mention = 'En attente';
+    if (totalCredits > 0) {
+      if (moyenneGenerale >= 16) mention = 'Très Bien';
+      else if (moyenneGenerale >= 14) mention = 'Bien';
+      else if (moyenneGenerale >= 12) mention = 'Assez Bien';
+      else if (moyenneGenerale >= 10) mention = 'Passable';
+      else mention = 'Insuffisant';
+    }
 
     const newBulletin = DB.saveBulletin({
       etudiant_id: student.id,
@@ -127,7 +145,9 @@ export const BulletinsView: React.FC = () => {
 
     // Prepare subject notes list for editing
     const student = etudiants.find(e => e.id === bulletin.etudiant_id);
-    const semesterMatieres = matieres.filter(m => m.semestre_id === bulletin.semestre_id);
+    const studentClass = classes.find(c => c.id === student?.classe_id);
+    const studentFiliereId = (student as any)?.filiere_id || studentClass?.filiere_id || 1;
+    const semesterMatieres = matieres.filter(m => m.semestre_id === bulletin.semestre_id && (!m.filiere_id || m.filiere_id === studentFiliereId));
     const studentNotes = DB.getNotes().filter(n => n.etudiant_id === bulletin.etudiant_id && n.semestre_id === bulletin.semestre_id);
 
     const editableSubjects = semesterMatieres.map(mat => {

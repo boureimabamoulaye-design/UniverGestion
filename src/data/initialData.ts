@@ -54,7 +54,9 @@ export const INITIAL_FILIERES: Filiere[] = [
     nom: 'Informatique & Génie Logiciel',
     description: 'Formation en développement logiciel, bases de données et ingénierie informatique.',
     domaine: 'Sciences & Technologies',
-    duree_annees: 3
+    duree_annees: 3,
+    frais_scolarite: 350000,
+    statut: 'Actif'
   },
   {
     id: 2,
@@ -63,7 +65,9 @@ export const INITIAL_FILIERES: Filiere[] = [
     nom: 'Finance & Comptabilité',
     description: 'Formation en gestion financière, comptabilité générale et contrôle de gestion.',
     domaine: 'Gestion & Économie',
-    duree_annees: 3
+    duree_annees: 3,
+    frais_scolarite: 400000,
+    statut: 'Actif'
   },
   {
     id: 3,
@@ -72,7 +76,9 @@ export const INITIAL_FILIERES: Filiere[] = [
     nom: 'Droit des Affaires',
     description: 'Formation juridique axée sur le droit des affaires, des contrats et des sociétés.',
     domaine: 'Droit & Sciences Politiques',
-    duree_annees: 3
+    duree_annees: 3,
+    frais_scolarite: 300000,
+    statut: 'Actif'
   }
 ];
 
@@ -105,6 +111,7 @@ export const INITIAL_SEMESTRES: Semestre[] = [
 ];
 
 export const INITIAL_MATIERES: Matiere[] = [
+  // Filière 1: Informatique & Génie Logiciel
   {
     id: 1,
     code: 'INF101',
@@ -135,22 +142,22 @@ export const INITIAL_MATIERES: Matiere[] = [
   },
   {
     id: 3,
-    code: 'FIN101',
-    nom: 'Comptabilité Générale & Analyse',
+    code: 'MAT101',
+    nom: 'Mathématiques Discrètes & Algèbre',
     filiere_id: 1,
     niveau_id: 1,
     semestre_id: 1,
     enseignant_id: 2,
     credits: 4,
-    ue_nom: 'UE3 - Gestion & Économie d\'Entreprise',
+    ue_nom: 'UE3 - Mathématiques pour l\'Informatique',
     ue_type: 'Mineure',
-    support_fichier_nom: 'Fiche_Exercices_Comptabilite.pdf',
+    support_fichier_nom: 'Fiche_Exercices_Algebres.pdf',
     support_fichier_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
   },
   {
     id: 4,
-    code: 'DRT101',
-    nom: 'Droit du Numérique & Anglais Technique',
+    code: 'ENG101',
+    nom: 'Anglais Technique & Communication S1',
     filiere_id: 1,
     niveau_id: 1,
     semestre_id: 1,
@@ -158,7 +165,7 @@ export const INITIAL_MATIERES: Matiere[] = [
     credits: 3,
     ue_nom: 'UE4 - Culture Générale & Langues Transversales',
     ue_type: 'Mineure',
-    support_fichier_nom: 'Manuel_Droit_Obligations.pdf',
+    support_fichier_nom: 'Anglais_Informatique_S1.pdf',
     support_fichier_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
   },
   {
@@ -198,7 +205,7 @@ export const INITIAL_MATIERES: Matiere[] = [
     semestre_id: 2,
     enseignant_id: 2,
     credits: 4,
-    ue_nom: 'UE7 - Mathématiques pour l\'Informatique',
+    ue_nom: 'UE7 - Mathématiques pour l\'Informatique S2',
     ue_type: 'Mineure',
     support_fichier_nom: 'Proba_Statistiques_S2.pdf',
     support_fichier_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
@@ -215,6 +222,234 @@ export const INITIAL_MATIERES: Matiere[] = [
     ue_nom: 'UE8 - Langues & Communication S2',
     ue_type: 'Mineure',
     support_fichier_nom: 'Anglais_Technique_S2.pdf',
+    support_fichier_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
+  },
+
+  // Filière 2: Finance & Comptabilité
+  {
+    id: 9,
+    code: 'FIN101',
+    nom: 'Comptabilité Générale I & SYSCOHADA',
+    filiere_id: 2,
+    niveau_id: 1,
+    semestre_id: 1,
+    enseignant_id: 2,
+    credits: 6,
+    ue_nom: 'UE1 - Comptabilité & Gestion Financière',
+    ue_type: 'Majeure',
+    support_fichier_nom: 'Comptabilite_Générale_SYSCOHADA.pdf',
+    support_fichier_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
+  },
+  {
+    id: 10,
+    code: 'ECO101',
+    nom: 'Microéconomie & Analyse des Marchés',
+    filiere_id: 2,
+    niveau_id: 1,
+    semestre_id: 1,
+    enseignant_id: 2,
+    credits: 5,
+    ue_nom: 'UE2 - Économie Générale & Analyse',
+    ue_type: 'Majeure',
+    support_fichier_nom: 'Microeconomie_Cours_L1.pdf',
+    support_fichier_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
+  },
+  {
+    id: 11,
+    code: 'MAT201',
+    nom: 'Mathématiques Financières & Emprunts',
+    filiere_id: 2,
+    niveau_id: 1,
+    semestre_id: 1,
+    enseignant_id: 2,
+    credits: 4,
+    ue_nom: 'UE3 - Quantitatif & Finance',
+    ue_type: 'Mineure',
+    support_fichier_nom: 'Maths_Financieres_L1.pdf',
+    support_fichier_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
+  },
+  {
+    id: 12,
+    code: 'ENG201',
+    nom: 'Anglais des Affaires & Finance S1',
+    filiere_id: 2,
+    niveau_id: 1,
+    semestre_id: 1,
+    enseignant_id: 3,
+    credits: 3,
+    ue_nom: 'UE4 - Communication Commerciale S1',
+    ue_type: 'Mineure',
+    support_fichier_nom: 'Business_English_Finance.pdf',
+    support_fichier_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
+  },
+  {
+    id: 13,
+    code: 'FIN102',
+    nom: 'Comptabilité Analytique & Contrôle de Gestion',
+    filiere_id: 2,
+    niveau_id: 1,
+    semestre_id: 2,
+    enseignant_id: 2,
+    credits: 6,
+    ue_nom: 'UE5 - Contrôle & Audit Financier',
+    ue_type: 'Majeure',
+    support_fichier_nom: 'Comptabilite_Analytique_S2.pdf',
+    support_fichier_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
+  },
+  {
+    id: 14,
+    code: 'ECO102',
+    nom: 'Macroéconomie & Systèmes Monétaires',
+    filiere_id: 2,
+    niveau_id: 1,
+    semestre_id: 2,
+    enseignant_id: 2,
+    credits: 5,
+    ue_nom: 'UE6 - Macroéconomie & Finance Internationale',
+    ue_type: 'Majeure',
+    support_fichier_nom: 'Macroeconomie_S2.pdf',
+    support_fichier_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
+  },
+  {
+    id: 15,
+    code: 'STA201',
+    nom: 'Statistique Descriptive & Probabilités',
+    filiere_id: 2,
+    niveau_id: 1,
+    semestre_id: 2,
+    enseignant_id: 2,
+    credits: 4,
+    ue_nom: 'UE7 - Outils Statistiques de Gestion',
+    ue_type: 'Mineure',
+    support_fichier_nom: 'Statistiques_Descriptives.pdf',
+    support_fichier_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
+  },
+  {
+    id: 16,
+    code: 'ENG202',
+    nom: 'Business Communication & Reporting S2',
+    filiere_id: 2,
+    niveau_id: 1,
+    semestre_id: 2,
+    enseignant_id: 3,
+    credits: 3,
+    ue_nom: 'UE8 - Langues & Negociation S2',
+    ue_type: 'Mineure',
+    support_fichier_nom: 'Business_Reporting_S2.pdf',
+    support_fichier_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
+  },
+
+  // Filière 3: Droit des Affaires
+  {
+    id: 17,
+    code: 'DRT101',
+    nom: 'Introduction au Droit & Droit Civil',
+    filiere_id: 3,
+    niveau_id: 1,
+    semestre_id: 1,
+    enseignant_id: 3,
+    credits: 6,
+    ue_nom: 'UE1 - Droit Prive Fondamental',
+    ue_type: 'Majeure',
+    support_fichier_nom: 'Droit_Civil_Introduction.pdf',
+    support_fichier_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
+  },
+  {
+    id: 18,
+    code: 'DRT102',
+    nom: 'Droit Constitutionnel & Institutions Politiques',
+    filiere_id: 3,
+    niveau_id: 1,
+    semestre_id: 1,
+    enseignant_id: 3,
+    credits: 5,
+    ue_nom: 'UE2 - Droit Public & Institutions',
+    ue_type: 'Majeure',
+    support_fichier_nom: 'Droit_Constitutionnel_S1.pdf',
+    support_fichier_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
+  },
+  {
+    id: 19,
+    code: 'HIS101',
+    nom: 'Histoire du Droit & des Institutions',
+    filiere_id: 3,
+    niveau_id: 1,
+    semestre_id: 1,
+    enseignant_id: 3,
+    credits: 4,
+    ue_nom: 'UE3 - Culture & Histoire Juridique',
+    ue_type: 'Mineure',
+    support_fichier_nom: 'Histoire_Droit_L1.pdf',
+    support_fichier_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
+  },
+  {
+    id: 20,
+    code: 'ENG301',
+    nom: 'Anglais Juridique & Terminologie Legal S1',
+    filiere_id: 3,
+    niveau_id: 1,
+    semestre_id: 1,
+    enseignant_id: 3,
+    credits: 3,
+    ue_nom: 'UE4 - Langues Juridiques',
+    ue_type: 'Mineure',
+    support_fichier_nom: 'Legal_English_S1.pdf',
+    support_fichier_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
+  },
+  {
+    id: 21,
+    code: 'DRT103',
+    nom: 'Droit des Obligations & Régime des Contrats',
+    filiere_id: 3,
+    niveau_id: 1,
+    semestre_id: 2,
+    enseignant_id: 3,
+    credits: 6,
+    ue_nom: 'UE5 - Droit des Contrats & Obligations',
+    ue_type: 'Majeure',
+    support_fichier_nom: 'Droit_Obligations_Contrats.pdf',
+    support_fichier_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
+  },
+  {
+    id: 22,
+    code: 'DRT104',
+    nom: 'Droit Commercial General & Sociétés OHADA',
+    filiere_id: 3,
+    niveau_id: 1,
+    semestre_id: 2,
+    enseignant_id: 3,
+    credits: 5,
+    ue_nom: 'UE6 - Droit des Affaires OHADA',
+    ue_type: 'Majeure',
+    support_fichier_nom: 'Droit_Commercial_OHADA.pdf',
+    support_fichier_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
+  },
+  {
+    id: 23,
+    code: 'DRT105',
+    nom: 'Droit Administratif & Action Publique',
+    filiere_id: 3,
+    niveau_id: 1,
+    semestre_id: 2,
+    enseignant_id: 3,
+    credits: 4,
+    ue_nom: 'UE7 - Droit Administratif',
+    ue_type: 'Mineure',
+    support_fichier_nom: 'Droit_Administratif_S2.pdf',
+    support_fichier_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
+  },
+  {
+    id: 24,
+    code: 'ENG302',
+    nom: 'Legal English & Oral Advocacy S2',
+    filiere_id: 3,
+    niveau_id: 1,
+    semestre_id: 2,
+    enseignant_id: 3,
+    credits: 3,
+    ue_nom: 'UE8 - Plaidoyer & Anglais Juridique S2',
+    ue_type: 'Mineure',
+    support_fichier_nom: 'Legal_Advocacy_S2.pdf',
     support_fichier_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
   }
 ];

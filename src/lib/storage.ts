@@ -124,7 +124,15 @@ export class DB {
   }
 
   static getMatieres(): Matiere[] {
-    return getItem(STORAGE_KEYS.MATIERES, INITIAL_MATIERES);
+    const stored = getItem(STORAGE_KEYS.MATIERES, INITIAL_MATIERES);
+    if (stored && stored.length < INITIAL_MATIERES.length) {
+      const storedIds = new Set(stored.map((m: Matiere) => m.id));
+      const missing = INITIAL_MATIERES.filter(m => !storedIds.has(m.id));
+      const updated = [...stored, ...missing];
+      setItem(STORAGE_KEYS.MATIERES, updated);
+      return updated;
+    }
+    return stored || INITIAL_MATIERES;
   }
 
   static getEtudiants(): Etudiant[] {
@@ -548,40 +556,6 @@ export class DB {
           est_bloque: false
         };
         setItem(STORAGE_KEYS.ETUDIANTS, etudiants);
-      }
-    }
-
-    // Auto-create/sync corresponding payment record when inscription is active
-    if (result.statut === 'Validée') {
-      const classes = this.getClasses();
-      const filieres = this.getFilieres();
-      const annees = this.getAnneesAcademiques();
-      const classe = classes.find(c => c.id === result.classe_id);
-      const filiere = classe ? filieres.find(f => f.id === classe.filiere_id) : undefined;
-      const annee = annees.find(a => a.id === result.annee_academique_id);
-
-      const paiements = this.getPaiements();
-      const existingPay = paiements.find(p => p.etudiant_id === result.etudiant_id && p.annee_academique_id === result.annee_academique_id && p.classe_id === result.classe_id);
-
-      if (!existingPay) {
-        this.savePaiement({
-          etudiant_id: result.etudiant_id,
-          annee_academique_id: result.annee_academique_id,
-          filiere_id: filiere?.id,
-          filiere_code: filiere?.code || 'IG1',
-          filiere_nom: filiere?.nom || 'Informatique & Télécoms',
-          classe_id: classe?.id,
-          classe_nom: classe?.nom || 'Licence 1',
-          annee_libelle: annee?.libelle || '2025-2026',
-          type_frais: 'Inscription',
-          montant: result.frais_inscription || 150000,
-          montant_paye: result.frais_inscription || 150000,
-          reste_a_payer: 0,
-          mode_paiement: 'Orange Money',
-          reference_recu: `INS-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
-          date_paiement: result.date_inscription || new Date().toISOString().split('T')[0],
-          statut: 'Complet'
-        });
       }
     }
 
