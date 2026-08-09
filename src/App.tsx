@@ -27,6 +27,7 @@ import { CorbeilleView } from './views/CorbeilleView';
 import { SupportsCoursView } from './views/SupportsCoursView';
 import { ProfilAdminView } from './views/ProfilAdminView';
 import { ParametresView } from './views/ParametresView';
+import { HistoriqueView } from './views/HistoriqueView';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
@@ -121,6 +122,7 @@ export default function App() {
                 {activeTab === 'annees' && <AnneesAcademiquesView />}
                 {activeTab === 'utilisateurs' && <UtilisateursView />}
                 {activeTab === 'corbeille' && <CorbeilleView />}
+                {activeTab === 'historique' && <HistoriqueView />}
                 {activeTab === 'parametres' && <ParametresView />}
               </>
             )}

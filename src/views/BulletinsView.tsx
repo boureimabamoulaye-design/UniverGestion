@@ -362,20 +362,30 @@ export const BulletinsView: React.FC = () => {
                         </span>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-right space-x-1 whitespace-nowrap">
-                      {/* Modifier Button (Requirement 8) */}
+                    <td className="px-6 py-4 text-right space-x-1.5 whitespace-nowrap">
+                      {/* Modifier Button */}
                       <button
                         onClick={() => handleOpenEditModal(b)}
                         title="Modifier directement le bulletin"
-                        className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-[10px] text-xs font-bold transition-colors inline-flex items-center gap-1"
+                        className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-[10px] text-xs font-bold transition-colors inline-flex items-center gap-1 cursor-pointer"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
                         <span>Modifier</span>
                       </button>
 
+                      {/* Exporter PDF Button */}
                       <button
                         onClick={() => { setViewingBulletin(b); setIsDetailOpen(true); }}
-                        className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-[#0066FF] rounded-[10px] text-xs font-bold transition-colors inline-flex items-center gap-1"
+                        title="Télécharger / Exporter le bulletin en PDF"
+                        className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-[10px] text-xs font-bold transition-colors inline-flex items-center gap-1 cursor-pointer"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>Exporter en PDF</span>
+                      </button>
+
+                      <button
+                        onClick={() => { setViewingBulletin(b); setIsDetailOpen(true); }}
+                        className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-[#0066FF] rounded-[10px] text-xs font-bold transition-colors inline-flex items-center gap-1 cursor-pointer"
                       >
                         <Eye className="w-3.5 h-3.5" />
                         <span>Consulter</span>

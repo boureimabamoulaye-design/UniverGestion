@@ -48,6 +48,7 @@ export type ActiveTab =
   | 'annees'
   | 'utilisateurs'
   | 'corbeille'
+  | 'historique'
   | 'parametres'
   | 'profil_etudiant';
 
@@ -90,6 +91,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'annees', label: 'Années Académiques', icon: Clock },
     { id: 'utilisateurs', label: 'Utilisateurs', icon: Users },
     { id: 'corbeille', label: 'Corbeille', icon: Trash2 },
+    { id: 'historique', label: 'Historique', icon: History },
     { id: 'profil_admin', label: 'Mon Profil', icon: User },
     { id: 'parametres', label: 'Paramètres', icon: Settings },
   ];

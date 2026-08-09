@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Etudiant,
   Note,
@@ -11,9 +11,10 @@ import {
   Semestre
 } from '../types/database';
 import { DB } from '../lib/storage';
-import { Award, Building2, Printer, Check, X, GraduationCap, Download, FileSpreadsheet } from 'lucide-react';
+import { Award, Building2, Printer, Check, X, GraduationCap, Download, FileSpreadsheet, FileText } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 
 interface ExcelBulletinViewProps {
   etudiant: Etudiant;
@@ -346,27 +347,75 @@ export const ExcelBulletinView: React.FC<ExcelBulletinViewProps> = ({
     annualDecisionDetail = 'Crédits ECTS insuffisants (< 30 ECTS) - Redoublement requis';
   }
 
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+
+  // Function to export bulletin directly as PDF
+  const handleExportPDF = async () => {
+    const element = document.getElementById('bulletin-document-content');
+    if (!element) return;
+
+    setIsExportingPdf(true);
+    try {
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pdfWidth;
+      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+
+      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+
+      const fileName = `Bulletin_${safeEtudiant.matricule}_${safeSemestreLibelle.replace(/\s+/g, '_')}.pdf`;
+      pdf.save(fileName);
+      DB.logAccess('CONSULTATION', `Export PDF du bulletin de ${safeEtudiant.prenom} ${safeEtudiant.nom} (${safeSemestreLibelle})`);
+    } catch (err) {
+      console.error('Erreur lors de la génération du PDF:', err);
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
-      {/* Main Official Printable Document Container */}
-      <div className="bg-white text-slate-900 font-sans p-3.5 sm:p-6 md:p-8 border border-slate-300 rounded-sm shadow-xs max-w-4xl mx-auto print:border-none print:p-0">
+      {/* Action Bar Screen Only */}
+      <div className="mb-2 flex flex-col sm:flex-row sm:items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200 print:hidden gap-3">
+        <div className="flex items-center gap-2 text-xs text-slate-700 font-medium">
+          <GraduationCap className="w-4.5 h-4.5 text-blue-600 shrink-0" />
+          <span className="font-bold">Bulletin Officiel de Notes - Système LMD Universitaire</span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={handleExportPDF}
+            disabled={isExportingPdf}
+            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold flex items-center gap-2 transition-all shadow-2xs disabled:opacity-50 cursor-pointer"
+          >
+            <Download className="w-4 h-4" />
+            <span>{isExportingPdf ? 'Génération PDF...' : 'Exporter en PDF'}</span>
+          </button>
 
-        {/* Action Bar Screen Only */}
-        {onPrint && (
-          <div className="mb-4 flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-200 print:hidden">
-            <div className="flex items-center gap-2 text-xs text-slate-600 font-medium">
-              <GraduationCap className="w-4 h-4 text-blue-600" />
-              <span>Bulletin Officiel de Notes - Système LMD Universitaire</span>
-            </div>
+          {onPrint && (
             <button
+              type="button"
               onClick={onPrint}
-              className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-md text-xs font-bold flex items-center gap-2 transition-colors shadow-xs"
+              className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold flex items-center gap-2 transition-all shadow-2xs cursor-pointer"
             >
               <Printer className="w-4 h-4" />
-              <span>Imprimer le Bulletin</span>
+              <span>Imprimer</span>
             </button>
-          </div>
-        )}
+          )}
+        </div>
+      </div>
+
+      {/* Main Official Printable Document Container */}
+      <div id="bulletin-document-content" className="bg-white text-slate-900 font-sans p-3.5 sm:p-6 md:p-8 border border-slate-300 rounded-sm shadow-xs max-w-4xl mx-auto print:border-none print:p-0">
 
         {/* 1. OFFICIAL UNIVERSITY & MINISTRY HEADER */}
         <div className="mb-5 pb-4 border-b-2 border-slate-800">
