@@ -133,7 +133,7 @@ export const MatieresView: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-[#1A1A1A]">Gestion des Matières & Unités d'Enseignement (UE)</h2>
-          <p className="text-xs text-gray-500 mt-1">Modules, crédits ECTS/LMD, enseignants responsables et téléversement direct des supports de cours.</p>
+          <p className="text-xs text-gray-500 mt-1">Modules, crédits ECTS/LMD et enseignants responsables.</p>
         </div>
         <button
           onClick={() => handleOpenModal()}
@@ -167,7 +167,6 @@ export const MatieresView: React.FC = () => {
                 <th className="px-6 py-4">Code</th>
                 <th className="px-6 py-4">Nom de la Matière / UE</th>
                 <th className="px-6 py-4">Filière / Semestre</th>
-                <th className="px-6 py-4">Support de Cours</th>
                 <th className="px-6 py-4">Enseignant Titulaire</th>
                 <th className="px-6 py-4 text-center">Crédits (ECTS)</th>
                 <th className="px-6 py-4 text-right">Actions</th>
@@ -186,41 +185,27 @@ export const MatieresView: React.FC = () => {
                       <span className="font-semibold block text-[#1A1A1A]">{fil?.code || 'INFO'}</span>
                       <span className="text-[10px] text-gray-400">{sem?.libelle || 'Semestre 1'}</span>
                     </td>
-                    <td className="px-6 py-4">
-                      {item.support_fichier_url || item.support_fichier_nom ? (
-                        <a
-                          href={item.support_fichier_url || '#'}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          download
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-[#0066FF] hover:bg-blue-100 border border-blue-200 rounded-lg text-[11px] font-bold transition-colors"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                          <span className="max-w-[140px] truncate">{item.support_fichier_nom || 'Télécharger le support'}</span>
-                        </a>
-                      ) : (
-                        <span className="text-gray-400 italic text-[11px]">Aucun support</span>
-                      )}
-                    </td>
                     <td className="px-6 py-4 text-gray-700">
                       {ens ? `${ens.titre} ${ens.prenom} ${ens.nom}` : 'Non assigné'}
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className="font-bold text-emerald-600 px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-md">{item.credits} Crédits ECTS</span>
                     </td>
-                    <td className="px-6 py-4 text-right space-x-2">
-                      <button
-                        onClick={() => handleOpenModal(item)}
-                        className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-[10px] text-xs font-semibold"
-                      >
-                        Modifier
-                      </button>
-                      <button
-                        onClick={() => handleDelete(item.id)}
-                        className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-[10px] text-xs font-semibold"
-                      >
-                        Supprimer
-                      </button>
+                    <td className="px-6 py-4 text-right whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-2 whitespace-nowrap">
+                        <button
+                          onClick={() => handleOpenModal(item)}
+                          className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-[10px] text-xs font-semibold shrink-0"
+                        >
+                          Modifier
+                        </button>
+                        <button
+                          onClick={() => handleDelete(item.id)}
+                          className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-[10px] text-xs font-semibold shrink-0"
+                        >
+                          Supprimer
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
