@@ -26,13 +26,18 @@ function getMysqlConfig() {
     password: process.env.MYSQL_PASSWORD || "",
     database: process.env.MYSQL_DATABASE || "unigestion_db",
     connectTimeout: 5000,
+    waitForConnections: true,
+    connectionLimit: 30,
+    queueLimit: 0,
+    enableKeepAlive: true,
+    keepAliveInitialDelay: 0,
   };
 }
 
 let mysqlPool: mysql.Pool | null = null;
 
 function getMysqlPool() {
-  if (!mysqlPool && process.env.MYSQL_HOST) {
+  if (!mysqlPool) {
     try {
       mysqlPool = mysql.createPool(getMysqlConfig());
     } catch (err) {
@@ -42,9 +47,37 @@ function getMysqlPool() {
   return mysqlPool;
 }
 
-// API Routes
-app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
+// Basic In-Memory Rate Limiter for brute-force protection
+const loginAttempts = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(ip: string, maxAttempts = 15, windowMs = 15 * 60 * 1000): { allowed: boolean; remaining: number } {
+  const now = Date.now();
+  const record = loginAttempts.get(ip);
+
+  if (!record || now > record.resetAt) {
+    loginAttempts.set(ip, { count: 1, resetAt: now + windowMs });
+    return { allowed: true, remaining: maxAttempts - 1 };
+  }
+
+  if (record.count >= maxAttempts) {
+    return { allowed: false, remaining: 0 };
+  }
+
+  record.count += 1;
+  return { allowed: true, remaining: maxAttempts - record.count };
+}
+
+// Security headers middleware
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "SAMEORIGIN");
+  res.setHeader("X-XSS-Protection", "1; mode=block");
+  if (req.path.startsWith("/api/")) {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+  }
+  next();
 });
 
 // Download PHP connection test script & PHP Access Control script
@@ -250,41 +283,59 @@ app.get("/api/mysql/status", async (req, res) => {
 
 // STRICT MYSQL AUTHENTICATION ROUTE (WAMP / PHPMYADMIN ONLY)
 app.post("/api/mysql/authenticate", async (req, res) => {
+  const clientIp = req.ip || req.socket.remoteAddress || "127.0.0.1";
+  const rateLimit = checkRateLimit(clientIp, 15, 15 * 60 * 1000);
+
+  if (!rateLimit.allowed) {
+    return res.status(429).json({
+      success: false,
+      error: "TOO_MANY_ATTEMPTS",
+      message: "Trop de tentatives de connexion détectées. Par mesure de sécurité, veuillez patienter quelques minutes."
+    });
+  }
+
   const { role, login, password, filiere_id } = req.body;
-  const config = getMysqlConfig();
+
+  if (!login || typeof login !== 'string') {
+    return res.status(400).json({
+      success: false,
+      error: "INVALID_INPUT",
+      message: "Identifiant ou e-mail invalide."
+    });
+  }
+
+  const sanitizedLogin = login.trim();
+  const pool = getMysqlPool();
 
   try {
-    const connection = await mysql.createConnection(config);
-    await connection.ping();
-
     if (role === 'ADMIN') {
-      const [rows]: any = await connection.query(
+      const [rows]: any = await pool.query(
         "SELECT * FROM utilisateurs WHERE LOWER(email) = LOWER(?) LIMIT 1",
-        [login.trim()]
+        [sanitizedLogin]
       );
-
-      await connection.end();
 
       if (!rows || rows.length === 0) {
         return res.status(401).json({
           success: false,
           error: "ADMIN_NOT_FOUND",
-          message: "Compte administrateur introuvable dans la base de données MySQL WAMP. Veuillez vérifier la base 'unigestion_db'."
+          message: "Compte administrateur introuvable dans la base de données MySQL."
         });
       }
 
       const user = rows[0];
+      delete user.mot_de_passe;
+
       if (user.statut === 'Inactif') {
         return res.status(403).json({
           success: false,
           error: "ADMIN_INACTIVE",
-          message: "Ce compte administrateur est marqué comme inactif dans la base MySQL WAMP."
+          message: "Ce compte administrateur est marqué comme inactif dans la base MySQL."
         });
       }
 
       return res.json({
         success: true,
-        message: "Authentification Administrateur réussie via la base MySQL WAMP.",
+        message: "Authentification Administrateur réussie via la base MySQL.",
         user: {
           id: user.id,
           nom: user.nom,
@@ -297,53 +348,51 @@ app.post("/api/mysql/authenticate", async (req, res) => {
 
     } else {
       // ETUDIANT
-      const [rows]: any = await connection.query(
+      const [rows]: any = await pool.query(
         "SELECT * FROM etudiants WHERE (LOWER(matricule) = LOWER(?) OR LOWER(email) = LOWER(?)) LIMIT 1",
-        [login.trim(), login.trim()]
+        [sanitizedLogin, sanitizedLogin]
       );
 
       if (!rows || rows.length === 0) {
-        await connection.end();
         return res.status(401).json({
           success: false,
           error: "STUDENT_NOT_FOUND",
-          message: "Étudiant introuvable avec ce matricule/e-mail dans la base de données MySQL WAMP."
+          message: "Étudiant introuvable avec ce matricule/e-mail dans la base de données MySQL."
         });
       }
 
       const student = rows[0];
 
       if (student.est_bloque || student.statut_compte === 'Bloqué' || student.statut === 'Suspendu') {
-        await connection.end();
         return res.status(403).json({
           success: false,
           error: "STUDENT_BLOCKED",
-          message: "Accès refusé : Votre compte étudiant est marqué comme bloqué dans la base MySQL WAMP."
+          message: "Accès refusé : Votre compte étudiant est marqué comme bloqué dans la base MySQL."
         });
       }
 
       // Check Filière if provided
       if (filiere_id && student.filiere_id && Number(student.filiere_id) !== Number(filiere_id)) {
-        const [inscrRows]: any = await connection.query(
+        const [inscrRows]: any = await pool.query(
           "SELECT id FROM inscriptions WHERE etudiant_id = ? AND filiere_id = ? LIMIT 1",
-          [student.id, filiere_id]
+          [Number(student.id), Number(filiere_id)]
         );
 
         if (!inscrRows || inscrRows.length === 0) {
-          await connection.end();
           return res.status(403).json({
             success: false,
             error: "UNAUTHORIZED_FILIERE",
-            message: `Accès refusé : L'étudiant ${student.matricule} n'est pas autorisé pour cette filière dans la base MySQL WAMP.`
+            message: `Accès refusé : L'étudiant ${student.matricule} n'est pas autorisé pour cette filière dans la base MySQL.`
           });
         }
       }
 
-      await connection.end();
+      // SECURITY CRITICAL: Strip sensitive password from student object before sending to browser
+      delete student.mot_de_passe;
 
       return res.json({
         success: true,
-        message: "Authentification Étudiant réussie via la base MySQL WAMP.",
+        message: "Authentification Étudiant réussie via la base MySQL.",
         user: {
           id: student.id,
           nom: student.nom,
@@ -360,7 +409,7 @@ app.post("/api/mysql/authenticate", async (req, res) => {
     return res.status(503).json({
       success: false,
       error: "MYSQL_SERVER_OFFLINE",
-      message: `Impossible de contacter le serveur MySQL WAMP (localhost:3306) : ${error?.message || "Connexion refusée"}. Assurez-vous que WAMP est démarré et que la base 'unigestion_db' ou 'universite' est présente dans phpMyAdmin.`
+      message: `Impossible de contacter le serveur MySQL (localhost:3306) : ${error?.message || "Connexion refusée"}. Assurez-vous que WAMP est démarré et que la base 'unigestion_db' est présente.`
     });
   }
 });
