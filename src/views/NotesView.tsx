@@ -45,7 +45,7 @@ export const NotesView: React.FC = () => {
 
   // Search & Pagination & Grade Status Filter
   const [search, setSearch] = useState<string>('');
-  const [gradeFilter, setGradeFilter] = useState<'ALL' | 'AVEC_NOTE' | 'SANS_NOTE'>('SANS_NOTE');
+  const [gradeFilter, setGradeFilter] = useState<'ALL' | 'AVEC_NOTE' | 'SANS_NOTE'>('ALL');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(10);
 
@@ -132,7 +132,26 @@ export const NotesView: React.FC = () => {
     };
   };
 
-  // Helper to check if a student has received grades for active subject(s)
+  // Helper to check if a student has saved grades in DB for active subject(s)
+  const hasSavedStudentGrade = (etudiantId: number) => {
+    const targetMatieres = activeMatiereId === 'ALL'
+      ? semesterMatieres
+      : semesterMatieres.filter(m => m.id === activeMatiereId);
+
+    if (targetMatieres.length === 0) return false;
+
+    return targetMatieres.some(m => {
+      const dbNote = notesList.find(
+        n => n.etudiant_id === etudiantId &&
+             n.matiere_id === m.id &&
+             n.semestre_id === Number(selectedSemestre) &&
+             n.annee_academique_id === Number(selectedAnnee)
+      );
+      return dbNote !== undefined && (dbNote.note_cc !== undefined || dbNote.note_examen !== undefined);
+    });
+  };
+
+  // Helper to check if a student has received grades for active subject(s) (including drafts)
   const hasStudentGrade = (etudiantId: number) => {
     const targetMatieres = activeMatiereId === 'ALL'
       ? semesterMatieres
@@ -147,13 +166,7 @@ export const NotesView: React.FC = () => {
         return (draft.cc !== '' && draft.cc !== undefined && draft.cc !== null) ||
                (draft.exam !== '' && draft.exam !== undefined && draft.exam !== null);
       }
-      const dbNote = notesList.find(
-        n => n.etudiant_id === etudiantId &&
-             n.matiere_id === m.id &&
-             n.semestre_id === Number(selectedSemestre) &&
-             n.annee_academique_id === Number(selectedAnnee)
-      );
-      return dbNote !== undefined && (dbNote.note_cc !== undefined || dbNote.note_examen !== undefined);
+      return hasSavedStudentGrade(etudiantId);
     });
   };
 
@@ -168,7 +181,7 @@ export const NotesView: React.FC = () => {
     return { avecNoteCount: avec, sansNoteCount: sans };
   }, [filiereStudents, semesterMatieres, activeMatiereId, draftGrades, notesList, selectedSemestre, selectedAnnee]);
 
-  // Filtered Students with Search & Grade Filter
+  // Filtered Students with Search & Grade Filter (filtering relies on saved DB records so typing never hides rows)
   const filteredStudents = useMemo(() => {
     return filiereStudents.filter(st => {
       // Search
@@ -182,16 +195,16 @@ export const NotesView: React.FC = () => {
         if (!matchesSearch) return false;
       }
 
-      // Grade Status
+      // Grade Status (uses saved DB status so typing does not dynamically close/hide rows)
       if (gradeFilter !== 'ALL') {
-        const hasNotes = hasStudentGrade(st.id);
-        if (gradeFilter === 'AVEC_NOTE' && !hasNotes) return false;
-        if (gradeFilter === 'SANS_NOTE' && hasNotes) return false;
+        const hasSaved = hasSavedStudentGrade(st.id);
+        if (gradeFilter === 'AVEC_NOTE' && !hasSaved) return false;
+        if (gradeFilter === 'SANS_NOTE' && hasSaved) return false;
       }
 
       return true;
     });
-  }, [filiereStudents, search, gradeFilter, semesterMatieres, activeMatiereId, draftGrades, notesList, selectedSemestre, selectedAnnee]);
+  }, [filiereStudents, search, gradeFilter, semesterMatieres, activeMatiereId, notesList, selectedSemestre, selectedAnnee]);
 
   // Pagination logic
   const totalPages = Math.ceil(filteredStudents.length / itemsPerPage) || 1;
@@ -515,14 +528,6 @@ export const NotesView: React.FC = () => {
           >
             <Printer className="w-3.5 h-3.5 text-slate-600 shrink-0" />
             <span className="truncate">Imprimer PV</span>
-          </button>
-
-          <button
-            onClick={handleSaveAllGrades}
-            className="h-[40px] px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-[14px] text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-md active:scale-95"
-          >
-            <Save className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">Enregistrer Tout</span>
           </button>
         </div>
       </div>
@@ -918,34 +923,34 @@ export const NotesView: React.FC = () => {
             </table>
           )}
         </div>
-      </div>
 
-      {/* BOTTOM SAVE BAR FOR COLLECTIVE ENTRY */}
-      <div className="bg-white p-4 sm:p-5 rounded-[16px] border border-gray-300 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 sticky bottom-4 z-20">
-        <div className="flex items-center gap-3">
-          <div className={`w-3 h-3 rounded-full shrink-0 ${isSaved ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-          <div className="text-xs">
-            {isSaved ? (
-              <span className="text-emerald-700 font-bold flex items-center gap-1.5">
-                <Check className="w-4 h-4" /> Toutes les notes saisies ont été enregistrées avec succès {lastSavedTime && `à ${lastSavedTime}`}
-              </span>
-            ) : (
-              <span className="text-slate-600 font-medium">
-                Saisissez les notes ci-dessus puis cliquez sur <strong className="text-slate-900">Enregistrer Tout</strong> pour valider les notes de la classe.
-              </span>
-            )}
+        {/* BOTTOM SAVE BAR GLUED DIRECTLY TO BULLETIN / TABLE REGISTER */}
+        <div className="px-4 py-2.5 bg-slate-50 border-t border-gray-300 flex flex-col sm:flex-row items-center justify-between gap-3 sticky bottom-0 z-20">
+          <div className="flex items-center gap-2.5">
+            <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${isSaved ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+            <div className="text-xs">
+              {isSaved ? (
+                <span className="text-emerald-700 font-bold flex items-center gap-1.5">
+                  <Check className="w-3.5 h-3.5" /> Toutes les notes saisies ont été enregistrées avec succès {lastSavedTime && `à ${lastSavedTime}`}
+                </span>
+              ) : (
+                <span className="text-slate-600 font-medium text-[11px]">
+                  Saisissez les notes ci-dessus puis cliquez sur <strong className="text-slate-900">Enregistrer Tout</strong> pour valider les notes.
+                </span>
+              )}
+            </div>
           </div>
-        </div>
 
-        <div className="flex items-center gap-3 w-full sm:w-auto shrink-0">
-          <button
-            type="button"
-            onClick={handleSaveAllGrades}
-            className="w-full sm:w-auto h-[44px] px-6 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-[14px] text-xs flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 cursor-pointer"
-          >
-            <Save className="w-4 h-4" />
-            <span>Enregistrer Tout</span>
-          </button>
+          <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+            <button
+              type="button"
+              onClick={handleSaveAllGrades}
+              className="w-full sm:w-auto h-[36px] px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-[10px] text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs active:scale-95 cursor-pointer"
+            >
+              <Save className="w-3.5 h-3.5" />
+              <span>Enregistrer Tout</span>
+            </button>
+          </div>
         </div>
       </div>
 

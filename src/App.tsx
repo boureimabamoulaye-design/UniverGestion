@@ -26,23 +26,10 @@ import { EtudiantPortalView } from './views/EtudiantPortalView';
 import { CorbeilleView } from './views/CorbeilleView';
 import { SupportsCoursView } from './views/SupportsCoursView';
 import { ProfilAdminView } from './views/ProfilAdminView';
+import { ParametresView } from './views/ParametresView';
 
 export default function App() {
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => {
-    const defaultUsers = DB.getUtilisateurs();
-    const adminDetail = DB.getAdministrateurs()[0];
-    const universite = DB.getUniversites()[0];
-
-    return {
-      id: 1,
-      nom: defaultUsers[0]?.nom || 'Diakité',
-      prenom: defaultUsers[0]?.prenom || 'Sékou',
-      email_or_matricule: 'admin@unigestion.edu.ml',
-      role: 'ADMIN',
-      adminDetail,
-      universite_nom: universite?.nom
-    };
-  });
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -134,6 +121,7 @@ export default function App() {
                 {activeTab === 'annees' && <AnneesAcademiquesView />}
                 {activeTab === 'utilisateurs' && <UtilisateursView />}
                 {activeTab === 'corbeille' && <CorbeilleView />}
+                {activeTab === 'parametres' && <ParametresView />}
               </>
             )}
           </main>

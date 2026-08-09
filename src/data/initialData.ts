@@ -31,7 +31,8 @@ export const INITIAL_UNIVERSITES: Universite[] = [
     ville: 'Bamako',
     pays: 'Mali',
     telephone: '+223 20 22 33 44',
-    email: 'contact@usttb.edu.ml'
+    email: 'contact@usttb.edu.ml',
+    logo_url: '/src/assets/images/university_logo_1786282800707.jpg'
   }
 ];
 

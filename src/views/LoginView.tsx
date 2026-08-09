@@ -119,9 +119,20 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
 
         {/* Header Branding with Logo */}
         <div className="flex flex-col items-center text-center mb-6 pb-4 border-b border-slate-200/80">
-          <div className="w-14 h-14 bg-slate-900 text-white rounded-2xl flex items-center justify-center shadow-lg mb-3 border-2 border-white/50">
-            <GraduationCap className="w-8 h-8 text-blue-400" />
-          </div>
+          {universite?.logo_url ? (
+            <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center shadow-lg mb-3 border-2 border-slate-200/80 p-2 overflow-hidden">
+              <img
+                src={universite.logo_url}
+                alt={`Logo ${universite.nom}`}
+                className="w-full h-full object-contain rounded-xl"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+          ) : (
+            <div className="w-16 h-16 bg-slate-900 text-white rounded-2xl flex items-center justify-center shadow-lg mb-3 border-2 border-white/50">
+              <GraduationCap className="w-9 h-9 text-blue-400" />
+            </div>
+          )}
           <h1 className="font-black text-xl text-slate-900 tracking-tight leading-snug">
             {universite?.nom || 'Université des Sciences et des Techniques de Bamako'}
           </h1>
@@ -226,7 +237,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
 
             <button
               type="submit"
-              className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-md active:scale-[0.99] mt-3"
+              className="w-full h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-md active:scale-[0.99] mt-3 cursor-pointer"
             >
               <span>Se Connecter</span>
               <ArrowRight className="w-4 h-4" />
