@@ -300,7 +300,7 @@ export const InscriptionsView: React.FC = () => {
         <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-bold flex items-center justify-between animate-in fade-in">
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-            <span>{errorBanner}</span>
+            <span className="whitespace-pre-line">{errorBanner}</span>
           </div>
           <button onClick={() => setErrorBanner(null)} className="text-rose-600 hover:text-rose-900 font-extrabold text-sm">✕</button>
         </div>
