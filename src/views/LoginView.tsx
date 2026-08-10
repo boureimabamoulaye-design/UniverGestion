@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AuthUser } from '../types/database';
 import { DB } from '../lib/storage';
+import { safeFetchJson } from '../lib/api';
 import { GraduationCap, Shield, Lock, ArrowRight, AlertTriangle, Building2, RefreshCw } from 'lucide-react';
 
 interface LoginViewProps {
@@ -35,8 +36,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
     setIsLoading(true);
 
     try {
-      // Authenticate exclusively against MySQL database
-      const res = await fetch('/api/mysql/authenticate', {
+      const data = await safeFetchJson('/api/mysql/authenticate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -47,17 +47,17 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
         })
       });
 
-      const data = await res.json();
-
-      if (res.ok && data.success && data.user) {
+      if (data.success && data.user) {
+        await DB.syncFromMySQL();
         DB.logAccess('CONNEXION', `Connexion ${role.toLowerCase()} réussie (${login})`, data.user.id);
         onLoginSuccess(data.user);
         return;
-      } else {
-        setError(data.message || 'Identifiants incorrects ou accès refusé.');
       }
-    } catch {
-      setError('Erreur de connexion au serveur. Impossible d\'accéder à la base de données.');
+
+      // Display the exact error message from MySQL database
+      setError(data.message || 'Échec d\'authentification sur la base de données MySQL.');
+    } catch (err: any) {
+      setError(err?.message ? `Erreur de connexion : ${err.message}` : 'Impossible de contacter le serveur de base de données MySQL.');
     } finally {
       setIsLoading(false);
     }

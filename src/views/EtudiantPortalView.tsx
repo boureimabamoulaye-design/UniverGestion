@@ -118,19 +118,18 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
           })
         });
 
-        const data = await response.json().catch(() => ({}));
-
-        if (!response.ok || data.authorized === false) {
-          if (isMounted) {
-            setBackendAuthDeniedReason(data.message || "Accès non autorisé rejeté par le serveur backend.");
-          }
-        } else {
-          if (isMounted) {
+        if (response.ok) {
+          const data = await response.json().catch(() => ({}));
+          if (data.authorized === false) {
+            if (isMounted) {
+              setBackendAuthDeniedReason(data.message || "Accès restreint par l'administration.");
+            }
+          } else if (isMounted) {
             setBackendAuthDeniedReason(null);
           }
         }
       } catch (err) {
-        // Fallback: local check remains active
+        if (isMounted) setBackendAuthDeniedReason(null);
       }
     }
 

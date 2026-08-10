@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { DB } from '../lib/storage';
+import { safeFetchJson } from '../lib/api';
 import { Modal } from '../components/Modal';
 import { 
   Save, 
@@ -16,7 +17,8 @@ import {
   BookOpen,
   Layers,
   Sparkles,
-  Award
+  Award,
+  AlertCircle
 } from 'lucide-react';
 
 interface DraftGrade {
@@ -335,8 +337,13 @@ export const NotesView: React.FC = () => {
     };
   }, [filiereStudents, semesterMatieres, draftGrades, notesList, selectedSemestre, selectedAnnee]);
 
+  const [errorBanner, setErrorBanner] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   // Save all grades
-  const handleSaveAllGrades = () => {
+  const handleSaveAllGrades = async () => {
+    setErrorBanner(null);
+
     let hasError = false;
     filiereStudents.forEach(st => {
       semesterMatieres.forEach(m => {
@@ -352,45 +359,90 @@ export const NotesView: React.FC = () => {
       return;
     }
 
+    const gradesPayload: any[] = [];
+
     filiereStudents.forEach(st => {
       semesterMatieres.forEach(m => {
         const g = getStudentGrade(st.id, m.id);
         const ccVal = g.cc === '' || g.cc === undefined || g.cc === null ? 0 : Number(g.cc);
         const examVal = g.exam === '' || g.exam === undefined || g.exam === null ? 0 : Number(g.exam);
         const noteFinale = parseFloat(((ccVal * 0.4) + (examVal * 0.6)).toFixed(2));
-
-        const existingNote = notesList.find(
-          n => n.etudiant_id === st.id &&
-               n.matiere_id === m.id &&
-               n.semestre_id === Number(selectedSemestre) &&
-               n.annee_academique_id === Number(selectedAnnee)
-        );
-
         let appreciation = g.observation || (noteFinale >= 10 ? 'Validé' : 'Ajourné');
 
-        DB.saveNote({
-          id: existingNote?.id,
+        gradesPayload.push({
           etudiant_id: st.id,
           matiere_id: m.id,
-          semestre_id: Number(selectedSemestre),
-          annee_academique_id: Number(selectedAnnee),
           note_cc: ccVal,
           note_examen: examVal,
-          note_finale: noteFinale,
           appreciation
         });
       });
     });
 
-    setNotesList(DB.getNotes());
-    setDraftGrades({});
-    setIsSaved(true);
-    setLastSavedTime(new Date().toLocaleTimeString());
-    DB.logAccess(
-      'NOTE_SAISIE',
-      `Saisie globale enregistrée : ${filiereStudents.length} étudiants (${currentFiliere?.code || ''} - ${currentSemestre?.libelle || ''})`
-    );
-    setTimeout(() => setIsSaved(false), 4000);
+    setIsSubmitting(true);
+    try {
+      const data = await safeFetchJson('/api/notes/saisie-collective', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          annee_academique_id: Number(selectedAnnee),
+          filiere_id: Number(selectedFiliere),
+          semestre_id: Number(selectedSemestre),
+          grades: gradesPayload
+        })
+      });
+
+      if (data && data.success === false) {
+        setErrorBanner(data.message || "Erreur lors de l'enregistrement des notes dans la base MySQL.");
+        return;
+      }
+
+      // Sync local cache
+      filiereStudents.forEach(st => {
+        semesterMatieres.forEach(m => {
+          const g = getStudentGrade(st.id, m.id);
+          const ccVal = g.cc === '' || g.cc === undefined || g.cc === null ? 0 : Number(g.cc);
+          const examVal = g.exam === '' || g.exam === undefined || g.exam === null ? 0 : Number(g.exam);
+          const noteFinale = parseFloat(((ccVal * 0.4) + (examVal * 0.6)).toFixed(2));
+
+          const existingNote = notesList.find(
+            n => n.etudiant_id === st.id &&
+                 n.matiere_id === m.id &&
+                 n.semestre_id === Number(selectedSemestre) &&
+                 n.annee_academique_id === Number(selectedAnnee)
+          );
+
+          let appreciation = g.observation || (noteFinale >= 10 ? 'Validé' : 'Ajourné');
+
+          DB.saveNote({
+            id: existingNote?.id,
+            etudiant_id: st.id,
+            matiere_id: m.id,
+            semestre_id: Number(selectedSemestre),
+            annee_academique_id: Number(selectedAnnee),
+            note_cc: ccVal,
+            note_examen: examVal,
+            note_finale: noteFinale,
+            appreciation
+          });
+        });
+      });
+
+      setNotesList(DB.getNotes());
+      setDraftGrades({});
+      setIsSaved(true);
+      setLastSavedTime(new Date().toLocaleTimeString());
+      DB.logAccess(
+        'NOTE_SAISIE',
+        `Saisie globale enregistrée : ${filiereStudents.length} étudiants (${currentFiliere?.code || ''} - ${currentSemestre?.libelle || ''})`
+      );
+      setTimeout(() => setIsSaved(false), 4000);
+
+    } catch (err: any) {
+      setErrorBanner(`Erreur lors de l'enregistrement des notes : ${err.message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // CSV Export
@@ -506,7 +558,18 @@ export const NotesView: React.FC = () => {
           </p>
         </div>
 
-        {/* Global Toolbar Tools */}
+        {/* Error Notification Banner */}
+      {errorBanner && (
+        <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-bold flex items-center justify-between animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+            <span>{errorBanner}</span>
+          </div>
+          <button onClick={() => setErrorBanner(null)} className="text-rose-600 hover:text-rose-900 font-extrabold text-sm">✕</button>
+        </div>
+      )}
+
+      {/* Global Toolbar Tools */}
         <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
           <button
             onClick={() => setIsImportModalOpen(true)}

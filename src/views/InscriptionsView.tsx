@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { DB } from '../lib/storage';
+import { safeFetchJson } from '../lib/api';
 import { Inscription, Etudiant, Classe } from '../types/database';
 import { Modal } from '../components/Modal';
 import { ConfirmModal } from '../components/ConfirmModal';
@@ -88,8 +89,14 @@ export const InscriptionsView: React.FC = () => {
     }
   };
 
-  const handleIndivSave = (e: React.FormEvent) => {
+  const [errorBanner, setErrorBanner] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleIndivSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorBanner(null);
+    setSuccessBanner(null);
+
     if (!indivForm.etudiant_id) {
       alert("Veuillez sélectionner un étudiant.");
       return;
@@ -98,36 +105,70 @@ export const InscriptionsView: React.FC = () => {
     const targetClass = classes.find(c => c.id === Number(indivForm.classe_id));
     if (!etudiant) return;
 
-    const newIns = DB.saveInscription({
-      etudiant_id: Number(indivForm.etudiant_id),
-      classe_id: Number(indivForm.classe_id),
-      annee_academique_id: Number(indivForm.annee_academique_id),
-      date_inscription: new Date().toISOString().split('T')[0],
-      statut: 'Validée',
-      frais_inscription: Number(indivForm.frais_inscription) || 150000,
-      type_inscription: indivForm.type_inscription,
-      statut_paiement: indivForm.statut_paiement,
-      statut_validation: indivForm.statut_validation
-    });
+    setIsSubmitting(true);
+    try {
+      const data = await safeFetchJson('/api/inscriptions/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          etudiant_id: Number(indivForm.etudiant_id),
+          etudiant_data: etudiant,
+          classe_id: Number(indivForm.classe_id),
+          filiere_id: targetClass?.filiere_id || (etudiant as any).filiere_id,
+          annee_academique_id: Number(indivForm.annee_academique_id),
+          type_inscription: indivForm.type_inscription,
+          statut_paiement: indivForm.statut_paiement,
+          statut_validation: indivForm.statut_validation,
+          frais_inscription: Number(indivForm.frais_inscription) || 150000,
+          montant_initial_paye: indivForm.statut_paiement === 'Payé' ? (Number(indivForm.frais_inscription) || 150000) : 0,
+          mode_paiement: 'Orange Money'
+        })
+      });
 
-    // Update student's current class
-    DB.saveEtudiant({
-      ...etudiant,
-      classe_id: Number(indivForm.classe_id),
-      statut: 'Inscrit'
-    });
+      if (data && data.success === false) {
+        setErrorBanner(data.message || "Erreur lors de l'enregistrement de l'inscription dans la base de données MySQL.");
+        return;
+      }
 
-    DB.logAccess('INSCRIPTION', `Inscription individuelle de ${etudiant.prenom} ${etudiant.nom} dans la classe ${targetClass?.nom || ''}`);
+      // Save to local storage cache to keep interface fully updated
+      DB.saveInscription({
+        etudiant_id: Number(indivForm.etudiant_id),
+        classe_id: Number(indivForm.classe_id),
+        annee_academique_id: Number(indivForm.annee_academique_id),
+        date_inscription: new Date().toISOString().split('T')[0],
+        statut: 'Validée',
+        frais_inscription: Number(indivForm.frais_inscription) || 150000,
+        type_inscription: indivForm.type_inscription,
+        statut_paiement: indivForm.statut_paiement,
+        statut_validation: indivForm.statut_validation
+      });
 
-    setList(DB.getInscriptions());
-    setIsIndivModalOpen(false);
-    setSuccessBanner(`Inscription enregistrée avec succès pour ${etudiant.prenom} ${etudiant.nom}.`);
-    setTimeout(() => setSuccessBanner(null), 5000);
+      DB.saveEtudiant({
+        ...etudiant,
+        classe_id: Number(indivForm.classe_id),
+        statut: 'Inscrit'
+      });
+
+      DB.logAccess('INSCRIPTION', `Inscription individuelle de ${etudiant.prenom} ${etudiant.nom} dans la classe ${targetClass?.nom || ''}`);
+
+      setList(DB.getInscriptions());
+      setIsIndivModalOpen(false);
+      setSuccessBanner(data.message ? `✅ ${data.message}` : `✅ Inscription enregistrée avec succès pour ${etudiant.prenom} ${etudiant.nom}.`);
+      setTimeout(() => setSuccessBanner(null), 5000);
+
+    } catch (err: any) {
+      setErrorBanner(`Erreur lors de l'inscription : ${err.message || 'Impossible de contacter le serveur.'}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Collective Passage Handler
-  const handleCollectiveSave = (e: React.FormEvent) => {
+  const handleCollectiveSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorBanner(null);
+    setSuccessBanner(null);
+
     if (Number(collectiveForm.source_classe_id) === Number(collectiveForm.target_classe_id)) {
       alert("La classe source et la classe de destination ne peuvent pas être identiquement la même.");
       return;
@@ -141,41 +182,58 @@ export const InscriptionsView: React.FC = () => {
     const sourceClass = classes.find(c => c.id === Number(collectiveForm.source_classe_id));
     const targetClass = classes.find(c => c.id === Number(collectiveForm.target_classe_id));
 
-    let processedCount = 0;
-
-    selectedStudentIds.forEach(stId => {
-      const student = etudiants.find(e => e.id === stId);
-      if (!student) return;
-
-      // 1. Create Inscription record
-      DB.saveInscription({
-        etudiant_id: student.id,
-        classe_id: Number(collectiveForm.target_classe_id),
-        annee_academique_id: Number(collectiveForm.annee_academique_id),
-        date_inscription: new Date().toISOString().split('T')[0],
-        statut: 'Validée',
-        frais_inscription: Number(collectiveForm.frais_inscription) || 150000,
-        type_inscription: collectiveForm.type_inscription,
-        statut_paiement: collectiveForm.statut_paiement,
-        statut_validation: collectiveForm.statut_validation
+    setIsSubmitting(true);
+    try {
+      await safeFetchJson('/api/inscriptions/collective', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          target_classe_id: Number(collectiveForm.target_classe_id),
+          annee_academique_id: Number(collectiveForm.annee_academique_id),
+          student_ids: selectedStudentIds,
+          type_inscription: collectiveForm.type_inscription,
+          frais_inscription: Number(collectiveForm.frais_inscription) || 150000,
+          statut_paiement: collectiveForm.statut_paiement,
+          statut_validation: collectiveForm.statut_validation
+        })
       });
 
-      // 2. Update Student Record with new Class ID & Active Status
-      DB.saveEtudiant({
-        ...student,
-        classe_id: Number(collectiveForm.target_classe_id),
-        statut: 'Inscrit'
+      // Sync local cache
+      selectedStudentIds.forEach(stId => {
+        const student = etudiants.find(e => e.id === stId);
+        if (!student) return;
+
+        DB.saveInscription({
+          etudiant_id: student.id,
+          classe_id: Number(collectiveForm.target_classe_id),
+          annee_academique_id: Number(collectiveForm.annee_academique_id),
+          date_inscription: new Date().toISOString().split('T')[0],
+          statut: 'Validée',
+          frais_inscription: Number(collectiveForm.frais_inscription) || 150000,
+          type_inscription: collectiveForm.type_inscription,
+          statut_paiement: collectiveForm.statut_paiement,
+          statut_validation: collectiveForm.statut_validation
+        });
+
+        DB.saveEtudiant({
+          ...student,
+          classe_id: Number(collectiveForm.target_classe_id),
+          statut: 'Inscrit'
+        });
       });
 
-      processedCount++;
-    });
+      DB.logAccess('INSCRIPTION', `Passage collectif : ${selectedStudentIds.length} étudiant(s) transféré(s) de ${sourceClass?.nom || ''} vers ${targetClass?.nom || ''}`);
 
-    DB.logAccess('INSCRIPTION', `Passage collectif effectué : ${processedCount} étudiant(s) transféré(s) de ${sourceClass?.nom || ''} vers ${targetClass?.nom || ''}`);
+      setList(DB.getInscriptions());
+      setIsCollectiveModalOpen(false);
+      setSuccessBanner(`✅ Passage collectif enregistré avec succès ! ${selectedStudentIds.length} étudiant(s) réinscrit(s) dans la classe "${targetClass?.nom}".`);
+      setTimeout(() => setSuccessBanner(null), 6000);
 
-    setList(DB.getInscriptions());
-    setIsCollectiveModalOpen(false);
-    setSuccessBanner(`✅ Passage collectif validé avec succès ! ${processedCount} étudiant(s) réinscrit(s) dans la classe "${targetClass?.nom}".`);
-    setTimeout(() => setSuccessBanner(null), 6000);
+    } catch (err: any) {
+      setErrorBanner(`Erreur lors du passage collectif : ${err.message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleDelete = (id: number) => {
@@ -236,6 +294,17 @@ export const InscriptionsView: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Error Notification Banner */}
+      {errorBanner && (
+        <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-bold flex items-center justify-between animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+            <span>{errorBanner}</span>
+          </div>
+          <button onClick={() => setErrorBanner(null)} className="text-rose-600 hover:text-rose-900 font-extrabold text-sm">✕</button>
+        </div>
+      )}
 
       {/* Success Notification Banner */}
       {successBanner && (

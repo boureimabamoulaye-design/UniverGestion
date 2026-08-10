@@ -70,22 +70,25 @@ const STORAGE_KEYS = {
   GLOBAL_STUDENT_LOCK: 'unigestion_global_student_lock',
 };
 
+const inMemoryStore: Record<string, string> = {};
+
 function getItem<T>(key: string, defaultValue: T): T {
   try {
-    const item = localStorage.getItem(key);
+    const item = inMemoryStore[key];
     return item ? JSON.parse(item) : defaultValue;
   } catch (e) {
-    console.error(`Error reading ${key} from localStorage`, e);
     return defaultValue;
   }
 }
 
 function setItem<T>(key: string, value: T): void {
   try {
-    localStorage.setItem(key, JSON.stringify(value));
+    inMemoryStore[key] = JSON.stringify(value);
+    // Purge key from browser localStorage if present
+    try { localStorage.removeItem(key); } catch {}
     window.dispatchEvent(new CustomEvent('unigestion_db_change', { detail: { key, value } }));
   } catch (e) {
-    console.error(`Error saving ${key} to localStorage`, e);
+    console.error(`Error saving ${key}`, e);
   }
 }
 
@@ -123,16 +126,32 @@ export class DB {
     return getItem(STORAGE_KEYS.SEMESTRES, INITIAL_SEMESTRES);
   }
 
-  static getMatieres(): Matiere[] {
-    const stored = getItem(STORAGE_KEYS.MATIERES, INITIAL_MATIERES);
-    if (stored && stored.length < INITIAL_MATIERES.length) {
-      const storedIds = new Set(stored.map((m: Matiere) => m.id));
-      const missing = INITIAL_MATIERES.filter(m => !storedIds.has(m.id));
-      const updated = [...stored, ...missing];
-      setItem(STORAGE_KEYS.MATIERES, updated);
-      return updated;
+  static async syncFromMySQL(): Promise<boolean> {
+    try {
+      const res = await fetch('/api/data/all');
+      if (!res.ok) return false;
+      const json = await res.json();
+      if (json.success && json.data) {
+        if (Array.isArray(json.data.etudiants)) setItem(STORAGE_KEYS.ETUDIANTS, json.data.etudiants);
+        if (Array.isArray(json.data.inscriptions)) setItem(STORAGE_KEYS.INSCRIPTIONS, json.data.inscriptions);
+        if (Array.isArray(json.data.paiements)) setItem(STORAGE_KEYS.PAIEMENTS, json.data.paiements);
+        if (Array.isArray(json.data.notes)) setItem(STORAGE_KEYS.NOTES, json.data.notes);
+        if (Array.isArray(json.data.bulletins)) setItem(STORAGE_KEYS.BULLETINS, json.data.bulletins);
+        if (Array.isArray(json.data.filieres) && json.data.filieres.length > 0) setItem(STORAGE_KEYS.FILIERES, json.data.filieres);
+        if (Array.isArray(json.data.classes) && json.data.classes.length > 0) setItem(STORAGE_KEYS.CLASSES, json.data.classes);
+        if (Array.isArray(json.data.matieres) && json.data.matieres.length > 0) setItem(STORAGE_KEYS.MATIERES, json.data.matieres);
+        if (Array.isArray(json.data.administrateurs)) setItem(STORAGE_KEYS.ADMINISTRATEURS, json.data.administrateurs);
+        if (Array.isArray(json.data.utilisateurs)) setItem(STORAGE_KEYS.UTILISATEURS, json.data.utilisateurs);
+        return true;
+      }
+    } catch (err) {
+      console.error("Erreur lors de la synchronisation MySQL", err);
     }
-    return stored || INITIAL_MATIERES;
+    return false;
+  }
+
+  static getMatieres(): Matiere[] {
+    return getItem(STORAGE_KEYS.MATIERES, INITIAL_MATIERES);
   }
 
   static getEtudiants(): Etudiant[] {

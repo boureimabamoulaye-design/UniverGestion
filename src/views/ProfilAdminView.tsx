@@ -33,8 +33,8 @@ export const ProfilAdminView: React.FC<ProfilAdminViewProps> = ({ currentUser })
         email: formData.email,
         ...(formData.nouveauMotDePasse ? { mot_de_passe: formData.nouveauMotDePasse } : {})
       };
-      // save back to localStorage
-      localStorage.setItem('unigestion_utilisateurs', JSON.stringify(users));
+      // Save updated user via DB helper (in-memory)
+      DB.saveUtilisateur(users[idx]);
     }
 
     setMessage('Votre profil administrateur a été mis à jour avec succès.');

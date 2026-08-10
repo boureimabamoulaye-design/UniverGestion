@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { DB } from '../lib/storage';
+import { safeFetchJson } from '../lib/api';
 import { Paiement } from '../types/database';
 import { Modal } from '../components/Modal';
 import { ConfirmModal } from '../components/ConfirmModal';
-import { CreditCard, Plus, Printer, Edit2, Trash2, Eye, ShieldCheck } from 'lucide-react';
+import { CreditCard, Plus, Printer, Edit2, Trash2, Eye, ShieldCheck, AlertCircle } from 'lucide-react';
 import { StudentSearchSelect } from '../components/StudentSearchSelect';
 
 export const PaiementsView: React.FC = () => {
@@ -98,8 +99,13 @@ export const PaiementsView: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const [errorBanner, setErrorBanner] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorBanner(null);
+
     if (!formData.etudiant_id) {
       alert("Veuillez sélectionner un étudiant.");
       return;
@@ -109,37 +115,66 @@ export const PaiementsView: React.FC = () => {
     const randomRef = existingItem?.reference_recu || `REC-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
     const montantPaye = Number(formData.montant_paye);
-
     const selectedAnneeObj = annees.find(a => a.id === Number(formData.annee_academique_id));
     const anneeLibelle = selectedAnneeObj ? selectedAnneeObj.code.replace('-', ' - ') : '2025 - 2026';
-
     const calculatedStatut = resteAPayer <= 0 ? 'Complet' : 'Partiel';
 
-    const savedPaiement = DB.savePaiement({
-      id: editingId || undefined,
-      etudiant_id: Number(formData.etudiant_id),
-      annee_academique_id: Number(formData.annee_academique_id),
-      filiere_id: currentFiliere?.id,
-      filiere_code: currentFiliere?.code || formData.filiere_code,
-      filiere_nom: currentFiliere?.nom,
-      annee_libelle: anneeLibelle,
-      type_frais: formData.type_frais,
-      montant: prixFiliere,
-      montant_paye: montantPaye,
-      reste_a_payer: resteAPayer,
-      mode_paiement: formData.mode_paiement,
-      reference_recu: randomRef,
-      date_paiement: formData.date_paiement,
-      statut: calculatedStatut,
-      remarque: formData.remarque
-    });
+    setIsSubmitting(true);
+    try {
+      const data = await safeFetchJson('/api/paiements/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          etudiant_id: Number(formData.etudiant_id),
+          annee_academique_id: Number(formData.annee_academique_id),
+          filiere_id: currentFiliere?.id,
+          type_frais: formData.type_frais,
+          montant: prixFiliere,
+          montant_paye: montantPaye,
+          reste_a_payer: resteAPayer,
+          mode_paiement: formData.mode_paiement,
+          reference_recu: randomRef,
+          remarque: formData.remarque
+        })
+      });
 
-    setList(DB.getPaiements());
-    setIsModalOpen(false);
+      if (data && data.success === false) {
+        setErrorBanner(data.message || "Erreur lors de l'enregistrement du paiement dans la base MySQL.");
+        return;
+      }
 
-    if (!editingId) {
-      setViewingReceipt(savedPaiement);
-      setIsReceiptModalOpen(true);
+      // Sync local cache
+      const savedPaiement = DB.savePaiement({
+        id: editingId || undefined,
+        etudiant_id: Number(formData.etudiant_id),
+        annee_academique_id: Number(formData.annee_academique_id),
+        filiere_id: currentFiliere?.id,
+        filiere_code: currentFiliere?.code || formData.filiere_code,
+        filiere_nom: currentFiliere?.nom,
+        annee_libelle: anneeLibelle,
+        type_frais: formData.type_frais,
+        montant: prixFiliere,
+        montant_paye: montantPaye,
+        reste_a_payer: resteAPayer,
+        mode_paiement: formData.mode_paiement,
+        reference_recu: data.reference_recu || randomRef,
+        date_paiement: formData.date_paiement,
+        statut: calculatedStatut,
+        remarque: formData.remarque
+      });
+
+      setList(DB.getPaiements());
+      setIsModalOpen(false);
+
+      if (!editingId) {
+        setViewingReceipt(savedPaiement);
+        setIsReceiptModalOpen(true);
+      }
+
+    } catch (err: any) {
+      setErrorBanner(`Erreur lors de l'enregistrement du paiement : ${err.message}`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -173,6 +208,17 @@ export const PaiementsView: React.FC = () => {
           <span>Enregistrer un Règlement</span>
         </button>
       </div>
+
+      {/* Error Notification Banner */}
+      {errorBanner && (
+        <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-bold flex items-center justify-between animate-in fade-in">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+            <span>{errorBanner}</span>
+          </div>
+          <button onClick={() => setErrorBanner(null)} className="text-rose-600 hover:text-rose-900 font-extrabold text-sm">✕</button>
+        </div>
+      )}
 
       {/* Table */}
       <div className="bg-white rounded-[20px] border border-[#E5E7EB] shadow-xs overflow-hidden">

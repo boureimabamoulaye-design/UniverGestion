@@ -8,6 +8,11 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Inscription automatique du DataValidator s'il existe
+if (file_exists(__DIR__ . '/../api/validator.php')) {
+    require_once __DIR__ . '/../api/validator.php';
+}
+
 // Paramètres généraux
 define('APP_NAME', 'UniGestion Mali');
 define('APP_URL', 'http://localhost/universite');
@@ -25,8 +30,9 @@ function verify_csrf_token(string $token): bool {
 }
 
 // Nettoyage contre les failles XSS
-function e(string $str): string {
-    return htmlspecialchars($str, ENT_QUOTES, 'UTF-8');
+function e(?string $str): string {
+    if ($str === null) return '';
+    return htmlspecialchars(trim($str), ENT_QUOTES, 'UTF-8');
 }
 
 // Vérification de Session Authentifiée
@@ -44,7 +50,10 @@ function check_etudiant_auth(): void {
     }
 }
 
-// Calcul de la moyenne ponderée
+// Calcul de la moyenne ponderée (30% CC + 70% Examen)
 function compute_weighted_grade(float $cc, float $exam): float {
-    return round(($cc * 0.30) + ($exam * 0.70), 2);
+    $cleanCc = max(0.0, min(20.0, $cc));
+    $cleanExam = max(0.0, min(20.0, $exam));
+    return round(($cleanCc * 0.30) + ($cleanExam * 0.70), 2);
 }
+

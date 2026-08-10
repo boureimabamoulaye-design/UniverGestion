@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthUser, NotificationAlerte } from './types/database';
 import { DB } from './lib/storage';
 import { Header } from './components/Header';
@@ -40,7 +40,17 @@ export default function App() {
   const [isPHPExporterOpen, setIsPHPExporterOpen] = useState(false);
   const [isMySQLConfigOpen, setIsMySQLConfigOpen] = useState(false);
 
+  useEffect(() => {
+    // Purge browser LocalStorage to guarantee zero client-side persistence
+    try {
+      localStorage.clear();
+    } catch {}
+    // Sync live MySQL database into volatile active session memory
+    DB.syncFromMySQL();
+  }, []);
+
   const activeAnnee = DB.getActiveAnneeAcademique();
+
 
   const handleMarkNotificationRead = (id: number) => {
     DB.markNotificationRead(id);

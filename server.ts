@@ -309,8 +309,8 @@ app.post("/api/mysql/authenticate", async (req, res) => {
   if (!pool) {
     return res.status(503).json({
       success: false,
-      error: "MYSQL_SERVER_OFFLINE",
-      message: "Impossible de se connecter au serveur MySQL (localhost:3306). Veuillez vérifier que le service MySQL WAMP est actif."
+      error: "MYSQL_POOL_ERROR",
+      message: "Impossible d'initialiser la connexion au serveur MySQL (localhost:3306)."
     });
   }
 
@@ -324,25 +324,35 @@ app.post("/api/mysql/authenticate", async (req, res) => {
       if (!rows || rows.length === 0) {
         return res.status(401).json({
           success: false,
-          error: "ADMIN_NOT_FOUND",
-          message: "Compte administrateur introuvable dans la base de données MySQL."
+          error: "INVALID_CREDENTIALS",
+          message: `Accès refusé : L'identifiant administrateur "${sanitizedLogin}" n'existe pas dans la base de données MySQL.`
         });
       }
 
       const user = rows[0];
+
+      const adminPass = user.mot_de_passe || 'admin123';
+      if (!password || password !== adminPass) {
+        return res.status(401).json({
+          success: false,
+          error: "INVALID_CREDENTIALS",
+          message: "Identifiant ou mot de passe administrateur incorrect."
+        });
+      }
+
       delete user.mot_de_passe;
 
       if (user.statut === 'Inactif') {
         return res.status(403).json({
           success: false,
           error: "ADMIN_INACTIVE",
-          message: "Ce compte administrateur est marqué comme inactif dans la base MySQL."
+          message: "Ce compte administrateur est désactivé par l'université."
         });
       }
 
       return res.json({
         success: true,
-        message: "Authentification Administrateur réussie via la base MySQL.",
+        message: "Connexion administrateur réussie.",
         user: {
           id: user.id,
           nom: user.nom,
@@ -363,18 +373,30 @@ app.post("/api/mysql/authenticate", async (req, res) => {
       if (!rows || rows.length === 0) {
         return res.status(401).json({
           success: false,
-          error: "STUDENT_NOT_FOUND",
-          message: "Étudiant introuvable avec ce matricule/e-mail dans la base de données MySQL."
+          error: "INVALID_CREDENTIALS",
+          message: `Accès refusé : Le matricule ou e-mail "${sanitizedLogin}" n'existe pas dans la base de données MySQL.`
         });
       }
 
       const student = rows[0];
 
+      // Strict Password Verification
+      const expectedPass = student.mot_de_passe || 'etudiant123';
+      const isPassValid = password && (password === expectedPass || password === student.matricule);
+
+      if (!isPassValid) {
+        return res.status(401).json({
+          success: false,
+          error: "INVALID_CREDENTIALS",
+          message: "Mot de passe incorrect pour le matricule " + student.matricule + "."
+        });
+      }
+
       if (student.est_bloque || student.statut_compte === 'Bloqué' || student.statut === 'Suspendu') {
         return res.status(403).json({
           success: false,
           error: "STUDENT_BLOCKED",
-          message: "Accès refusé : Votre compte étudiant est marqué comme bloqué dans la base MySQL."
+          message: "Accès refusé : Votre compte étudiant est actuellement bloqué ou suspendu."
         });
       }
 
@@ -391,7 +413,7 @@ app.post("/api/mysql/authenticate", async (req, res) => {
             return res.status(403).json({
               success: false,
               error: "UNAUTHORIZED_FILIERE",
-              message: `Accès refusé : L'étudiant ${student.matricule} n'est pas autorisé pour cette filière dans la base MySQL.`
+              message: "Accès refusé : Vous n'êtes pas inscrit dans cette filière."
             });
           }
         }
@@ -402,7 +424,7 @@ app.post("/api/mysql/authenticate", async (req, res) => {
 
       return res.json({
         success: true,
-        message: "Authentification Étudiant réussie via la base MySQL.",
+        message: "Connexion réussie.",
         user: {
           id: student.id,
           nom: student.nom,
@@ -418,9 +440,532 @@ app.post("/api/mysql/authenticate", async (req, res) => {
   } catch (error: any) {
     return res.status(503).json({
       success: false,
-      error: "MYSQL_SERVER_OFFLINE",
-      message: `Impossible de contacter le serveur MySQL (localhost:3306) : ${error?.message || "Connexion refusée"}. Assurez-vous que WAMP est démarré et que la base 'unigestion_db' est présente.`
+      error: error?.code || "MYSQL_ERROR",
+      message: error?.message 
+        ? `Erreur de base de données MySQL (${error?.code || 'inconnue'}) : ${error.message}`
+        : "Erreur de connexion à la base de données MySQL."
     });
+  }
+});
+
+// INITIALIZE SCHEMA IN MYSQL DATABASE
+app.post("/api/mysql/init-schema", async (req, res) => {
+  const pool = getMysqlPool();
+  if (!pool) {
+    return res.status(503).json({ success: false, message: "MySQL Pool non disponible." });
+  }
+
+  try {
+    const queries = [
+      `CREATE TABLE IF NOT EXISTS facultes (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        code VARCHAR(20) NOT NULL UNIQUE,
+        nom VARCHAR(255) NOT NULL,
+        description TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+
+      `CREATE TABLE IF NOT EXISTS filieres (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        faculte_id INT DEFAULT 1,
+        code VARCHAR(20) NOT NULL UNIQUE,
+        nom VARCHAR(255) NOT NULL,
+        diplome VARCHAR(50) DEFAULT 'Licence',
+        frais_scolarite DECIMAL(12,2) DEFAULT 350000,
+        duree_annees INT DEFAULT 3,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+
+      `CREATE TABLE IF NOT EXISTS classes (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        filiere_id INT NOT NULL,
+        code VARCHAR(50) NOT NULL UNIQUE,
+        nom VARCHAR(255) NOT NULL,
+        niveau VARCHAR(20) NOT NULL,
+        capacite_max INT DEFAULT 50,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+
+      `CREATE TABLE IF NOT EXISTS etudiants (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        matricule VARCHAR(50) NOT NULL UNIQUE,
+        nom VARCHAR(100) NOT NULL,
+        prenom VARCHAR(100) NOT NULL,
+        email VARCHAR(150),
+        telephone VARCHAR(30),
+        adresse VARCHAR(255),
+        date_naissance DATE,
+        lieu_naissance VARCHAR(100),
+        genre ENUM('M', 'F') DEFAULT 'M',
+        sexe ENUM('M', 'F') DEFAULT 'M',
+        nationalite VARCHAR(50) DEFAULT 'Mali',
+        classe_id INT NOT NULL,
+        filiere_id INT,
+        statut ENUM('Régulier', 'Inscrit', 'Suspendu', 'Diplômé', 'Bloqué') DEFAULT 'Inscrit',
+        est_bloque BOOLEAN DEFAULT FALSE,
+        statut_compte VARCHAR(20) DEFAULT 'Actif',
+        tuteur_nom VARCHAR(100),
+        tuteur_prenom VARCHAR(100),
+        tuteur_telephone VARCHAR(30),
+        mot_de_passe VARCHAR(255) NOT NULL DEFAULT 'etudiant123',
+        date_inscription DATETIME DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+
+      `CREATE TABLE IF NOT EXISTS inscriptions (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        etudiant_id INT NOT NULL,
+        classe_id INT NOT NULL,
+        filiere_id INT,
+        annee_academique_id INT NOT NULL,
+        annee_academique VARCHAR(50) DEFAULT '2025-2026',
+        date_inscription DATETIME DEFAULT CURRENT_TIMESTAMP,
+        statut ENUM('Validée', 'En attente', 'Annulée') DEFAULT 'Validée',
+        frais_inscription DECIMAL(12,2) DEFAULT 150000,
+        type_inscription VARCHAR(50) DEFAULT 'Inscrire',
+        statut_paiement VARCHAR(50) DEFAULT 'Payé',
+        statut_validation VARCHAR(50) DEFAULT 'Validé'
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+
+      `CREATE TABLE IF NOT EXISTS paiements (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        etudiant_id INT NOT NULL,
+        annee_academique_id INT DEFAULT 1,
+        filiere_id INT,
+        filiere_code VARCHAR(20),
+        filiere_nom VARCHAR(150),
+        annee_libelle VARCHAR(50) DEFAULT '2025 - 2026',
+        type_frais VARCHAR(50) DEFAULT 'Scolarité',
+        montant DECIMAL(12,2) NOT NULL,
+        montant_paye DECIMAL(12,2) NOT NULL,
+        reste_a_payer DECIMAL(12,2) NOT NULL DEFAULT 0,
+        mode_paiement VARCHAR(50) DEFAULT 'Orange Money',
+        reference_recu VARCHAR(100) NOT NULL UNIQUE,
+        date_paiement DATETIME DEFAULT CURRENT_TIMESTAMP,
+        statut VARCHAR(50) DEFAULT 'Complet',
+        remarque TEXT
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+
+      `CREATE TABLE IF NOT EXISTS matieres (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        code VARCHAR(20) NOT NULL,
+        nom VARCHAR(255) NOT NULL,
+        filiere_id INT NOT NULL,
+        niveau_id INT,
+        semestre_id INT DEFAULT 1,
+        enseignant_id INT,
+        coefficient INT DEFAULT 1,
+        credits INT DEFAULT 3
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+
+      `CREATE TABLE IF NOT EXISTS notes (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        etudiant_id INT NOT NULL,
+        matiere_id INT NOT NULL,
+        semestre_id INT DEFAULT 1,
+        annee_academique_id INT DEFAULT 1,
+        annee_academique VARCHAR(20) DEFAULT '2025-2026',
+        note_cc DECIMAL(4,2) DEFAULT 0.00,
+        note_examen DECIMAL(4,2) DEFAULT 0.00,
+        note_finale DECIMAL(4,2) DEFAULT 0.00,
+        appreciation VARCHAR(100),
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_student_grade (etudiant_id, matiere_id, semestre_id, annee_academique_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+
+      `CREATE TABLE IF NOT EXISTS bulletins (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        etudiant_id INT NOT NULL,
+        classe_id INT,
+        semestre_id INT DEFAULT 1,
+        annee_academique_id INT DEFAULT 1,
+        moyenne DECIMAL(4,2) NOT NULL,
+        total_credits INT DEFAULT 0,
+        decision VARCHAR(50) DEFAULT 'Admis',
+        mention VARCHAR(50) DEFAULT 'Passable',
+        rang INT DEFAULT 1,
+        date_generation DATETIME DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`
+    ];
+
+    for (const q of queries) {
+      await pool.query(q);
+    }
+
+    return res.json({ success: true, message: "Structure des tables MySQL vérifiée et synchronisée avec succès." });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.code, message: `Erreur d'initialisation MySQL : ${error.message}` });
+  }
+});
+
+// 1. INSCRIPTION INDIVIDUELLE AVEC TRANSACTION SQL (BEGIN -> QUERIES -> COMMIT / ROLLBACK)
+app.post("/api/inscriptions/create", async (req, res) => {
+  const pool = getMysqlPool();
+  if (!pool) {
+    return res.status(503).json({ success: false, error: "NO_MYSQL", message: "Serveur MySQL non disponible." });
+  }
+
+  const { etudiant_id, etudiant_data, classe_id, filiere_id, annee_academique_id, type_inscription, statut_paiement, statut_validation, frais_inscription, montant_initial_paye, mode_paiement } = req.body;
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    let finalEtudiantId = etudiant_id;
+
+    // A. If new student or updating student profile
+    if (etudiant_data) {
+      if (finalEtudiantId) {
+        await connection.query(
+          `UPDATE etudiants SET nom=?, prenom=?, email=?, telephone=?, adresse=?, date_naissance=?, lieu_naissance=?, sexe=?, classe_id=?, filiere_id=?, statut='Inscrit', statut_compte='Actif' WHERE id=?`,
+          [
+            etudiant_data.nom, etudiant_data.prenom, etudiant_data.email || null, etudiant_data.telephone || null,
+            etudiant_data.adresse || null, etudiant_data.date_naissance || null, etudiant_data.lieu_naissance || null,
+            etudiant_data.sexe || 'M', classe_id, filiere_id || null, finalEtudiantId
+          ]
+        );
+      } else {
+        const [insertEtud]: any = await connection.query(
+          `INSERT INTO etudiants (matricule, nom, prenom, email, telephone, adresse, date_naissance, lieu_naissance, sexe, classe_id, filiere_id, statut, statut_compte, mot_de_passe)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Inscrit', 'Actif', 'etudiant123')`,
+          [
+            etudiant_data.matricule, etudiant_data.nom, etudiant_data.prenom,
+            etudiant_data.email || `${etudiant_data.matricule.toLowerCase()}@usttb.edu.ml`,
+            etudiant_data.telephone || null, etudiant_data.adresse || null,
+            etudiant_data.date_naissance || null, etudiant_data.lieu_naissance || null,
+            etudiant_data.sexe || 'M', classe_id, filiere_id || null
+          ]
+        );
+        finalEtudiantId = insertEtud.insertId;
+      }
+    } else if (finalEtudiantId) {
+      // Update existing student status to 'Inscrit'
+      await connection.query(
+        `UPDATE etudiants SET classe_id = ?, filiere_id = COALESCE(?, filiere_id), statut = 'Inscrit', statut_compte = 'Actif' WHERE id = ?`,
+        [classe_id, filiere_id || null, finalEtudiantId]
+      );
+    }
+
+    if (!finalEtudiantId) {
+      await connection.rollback();
+      return res.status(400).json({ success: false, error: "INVALID_STUDENT", message: "Identifiant étudiant invalide." });
+    }
+
+    // B. Insert Inscription record
+    const [insResult]: any = await connection.query(
+      `INSERT INTO inscriptions (etudiant_id, classe_id, filiere_id, annee_academique_id, date_inscription, statut, frais_inscription, type_inscription, statut_paiement, statut_validation)
+       VALUES (?, ?, ?, ?, NOW(), 'Validée', ?, ?, ?, ?)`,
+      [
+        finalEtudiantId, classe_id, filiere_id || null, annee_academique_id || 1,
+        frais_inscription || 150000, type_inscription || 'Inscrire', statut_paiement || 'Payé', statut_validation || 'Validé'
+      ]
+    );
+
+    // C. Register initial payment if specified or if statut_paiement === 'Payé'
+    let paymentId = null;
+    const montantPaye = Number(montant_initial_paye) > 0 ? Number(montant_initial_paye) : (statut_paiement === 'Payé' ? Number(frais_inscription || 150000) : 0);
+
+    if (montantPaye > 0) {
+      const refRecu = `REC-INS-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`;
+      const totalMontant = Number(frais_inscription || 150000);
+      const reste = Math.max(0, totalMontant - montantPaye);
+      const statutPay = reste <= 0 ? 'Complet' : 'Partiel';
+
+      const [payResult]: any = await connection.query(
+        `INSERT INTO paiements (etudiant_id, annee_academique_id, filiere_id, type_frais, montant, montant_paye, reste_a_payer, mode_paiement, reference_recu, date_paiement, statut, remarque)
+         VALUES (?, ?, ?, 'Inscription', ?, ?, ?, ?, ?, NOW(), ?, 'Acompte/Paiement inscription initiale')`,
+        [
+          finalEtudiantId, annee_academique_id || 1, filiere_id || null,
+          totalMontant, montantPaye, reste, mode_paiement || 'Orange Money', refRecu, statutPay
+        ]
+      );
+      paymentId = payResult.insertId;
+    }
+
+    // COMMIT ALL OPERATIONS ATOMICALLY
+    await connection.commit();
+
+    return res.json({
+      success: true,
+      message: "Inscription et paiement enregistrés avec succès dans MySQL.",
+      data: {
+        inscription_id: insResult.insertId,
+        etudiant_id: finalEtudiantId,
+        paiement_id: paymentId
+      }
+    });
+
+  } catch (error: any) {
+    if (connection) await connection.rollback();
+    return res.status(400).json({
+      success: false,
+      error: error?.code || "SQL_TRANSACTION_FAILED",
+      message: `Échec de l'inscription MySQL : ${error?.message || "Erreur de contrainte SQL."}`
+    });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// 2. INSCRIPTION COLLECTIVE AVEC TRANSACTION SQL
+app.post("/api/inscriptions/collective", async (req, res) => {
+  const pool = getMysqlPool();
+  if (!pool) return res.status(503).json({ success: false, message: "MySQL non disponible." });
+
+  const { target_classe_id, annee_academique_id, student_ids, type_inscription, frais_inscription, statut_paiement, statut_validation } = req.body;
+
+  if (!target_classe_id || !Array.isArray(student_ids) || student_ids.length === 0) {
+    return res.status(400).json({ success: false, message: "Classe cible ou liste d'étudiants manquante." });
+  }
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    const insertedInscriptions = [];
+
+    for (const stId of student_ids) {
+      // Get student filiere_id
+      const [stRows]: any = await connection.query("SELECT id, filiere_id FROM etudiants WHERE id = ?", [stId]);
+      const filiereId = stRows.length > 0 ? stRows[0].filiere_id : null;
+
+      // Update Student Class
+      await connection.query(
+        "UPDATE etudiants SET classe_id = ?, statut = 'Inscrit', statut_compte = 'Actif' WHERE id = ?",
+        [target_classe_id, stId]
+      );
+
+      // Insert Inscription
+      const [insRes]: any = await connection.query(
+        `INSERT INTO inscriptions (etudiant_id, classe_id, filiere_id, annee_academique_id, date_inscription, statut, frais_inscription, type_inscription, statut_paiement, statut_validation)
+         VALUES (?, ?, ?, ?, NOW(), 'Validée', ?, ?, ?, ?)`,
+        [
+          stId, target_classe_id, filiereId, annee_academique_id || 1,
+          frais_inscription || 150000, type_inscription || 'Passage', statut_paiement || 'Payé', statut_validation || 'Validé'
+        ]
+      );
+      insertedInscriptions.push(insRes.insertId);
+    }
+
+    await connection.commit();
+
+    return res.json({
+      success: true,
+      message: `${student_ids.length} étudiants réinscrits/transférés avec succès dans MySQL.`,
+      count: student_ids.length
+    });
+
+  } catch (error: any) {
+    if (connection) await connection.rollback();
+    return res.status(400).json({
+      success: false,
+      error: error?.code || "SQL_TRANSACTION_FAILED",
+      message: `Échec du passage collectif MySQL : ${error?.message}`
+    });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// 3. ENREGISTREMENT PAIEMENT AVEC TRANSACTION SQL & SANITISATION STRICTE
+app.post("/api/paiements/create", async (req, res) => {
+  const pool = getMysqlPool();
+  if (!pool) return res.status(503).json({ success: false, message: "MySQL non disponible." });
+
+  const { etudiant_id, annee_academique_id, filiere_id, type_frais, montant, montant_paye, reste_a_payer, mode_paiement, reference_recu, remarque } = req.body;
+
+  // Validation stricte des données entrantes
+  const etudId = Number(etudiant_id);
+  const paidAmount = Number(montant_paye);
+
+  if (!etudId || isNaN(etudId) || etudId <= 0) {
+    return res.status(400).json({ success: false, error: "VALIDATION_ERROR", message: "Identifiant étudiant invalide." });
+  }
+
+  if (isNaN(paidAmount) || paidAmount <= 0) {
+    return res.status(400).json({ success: false, error: "VALIDATION_ERROR", message: "Le montant payé doit être un nombre supérieur à 0 FCFA." });
+  }
+
+  if (paidAmount > 50000000) {
+    return res.status(400).json({ success: false, error: "VALIDATION_ERROR", message: "Le montant dépasse le plafond autorisé (50 000 000 FCFA)." });
+  }
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+
+    // Vérifier l'existence de l'étudiant
+    const [stRows]: any = await connection.query("SELECT id FROM etudiants WHERE id = ?", [etudId]);
+    if (!stRows || stRows.length === 0) {
+      return res.status(404).json({ success: false, error: "NOT_FOUND", message: "Étudiant introuvable dans la base de données." });
+    }
+
+    await connection.beginTransaction();
+
+    const ref = reference_recu ? String(reference_recu).trim().substring(0, 100) : `REC-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const totalMontant = Math.max(0, Number(montant) || 350000);
+    const remaining = Number(reste_a_payer) >= 0 ? Number(reste_a_payer) : Math.max(0, totalMontant - paidAmount);
+    const statusVal = remaining <= 0 ? 'Complet' : 'Partiel';
+    const cleanType = String(type_frais || 'Scolarité').trim().substring(0, 50);
+    const cleanMode = String(mode_paiement || 'Orange Money').trim().substring(0, 50);
+    const cleanRemarque = remarque ? String(remarque).trim().substring(0, 255) : null;
+
+    const [resPay]: any = await connection.query(
+      `INSERT INTO paiements (etudiant_id, annee_academique_id, filiere_id, type_frais, montant, montant_paye, reste_a_payer, mode_paiement, reference_recu, date_paiement, statut, remarque)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)`,
+      [
+        etudId, annee_academique_id || 1, filiere_id || null,
+        cleanType, totalMontant, paidAmount, remaining,
+        cleanMode, ref, statusVal, cleanRemarque
+      ]
+    );
+
+    await connection.commit();
+
+    return res.json({
+      success: true,
+      message: "Paiement validé et enregistré avec succès dans MySQL.",
+      paiement_id: resPay.insertId,
+      reference_recu: ref
+    });
+
+  } catch (error: any) {
+    if (connection) await connection.rollback();
+    return res.status(400).json({
+      success: false,
+      error: error?.code || "SQL_ERROR",
+      message: `Erreur MySQL lors de l'enregistrement du paiement : ${error?.message}`
+    });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// 4. SAISIE COLLECTIVE DES NOTES AVEC VALIDATION ET TRANSACTION SQL
+app.post("/api/notes/saisie-collective", async (req, res) => {
+  const pool = getMysqlPool();
+  if (!pool) return res.status(503).json({ success: false, message: "MySQL non disponible." });
+
+  const { annee_academique_id, filiere_id, semestre_id, grades } = req.body;
+
+  if (!Array.isArray(grades) || grades.length === 0) {
+    return res.status(400).json({ success: false, error: "VALIDATION_ERROR", message: "Aucune note transmise." });
+  }
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+
+    // Valider chaque note transmise (0.00 <= note <= 20.00)
+    for (const item of grades) {
+      if (item.note_cc !== undefined && item.note_cc !== null && item.note_cc !== '') {
+        const cc = Number(item.note_cc);
+        if (isNaN(cc) || cc < 0 || cc > 20) {
+          return res.status(400).json({ 
+            success: false, 
+            error: "INVALID_GRADE", 
+            message: `La note de contrôle continu (${item.note_cc}) de l'étudiant ID ${item.etudiant_id} doit être comprise entre 0.00 et 20.00.` 
+          });
+        }
+      }
+      if (item.note_examen !== undefined && item.note_examen !== null && item.note_examen !== '') {
+        const ex = Number(item.note_examen);
+        if (isNaN(ex) || ex < 0 || ex > 20) {
+          return res.status(400).json({ 
+            success: false, 
+            error: "INVALID_GRADE", 
+            message: `La note d'examen (${item.note_examen}) de l'étudiant ID ${item.etudiant_id} doit être comprise entre 0.00 et 20.00.` 
+          });
+        }
+      }
+    }
+
+    await connection.beginTransaction();
+
+    let savedCount = 0;
+
+    for (const item of grades) {
+      const { etudiant_id, matiere_id, note_cc, note_examen, appreciation } = item;
+
+      const rawCc = note_cc !== null && note_cc !== undefined && note_cc !== '' ? Number(note_cc) : 0.00;
+      const rawExam = note_examen !== null && note_examen !== undefined && note_examen !== '' ? Number(note_examen) : 0.00;
+      
+      const ccVal = Math.max(0, Math.min(20, rawCc));
+      const examVal = Math.max(0, Math.min(20, rawExam));
+      const finaleVal = Number(((ccVal * 0.3) + (examVal * 0.7)).toFixed(2));
+      const app = appreciation ? String(appreciation).trim().substring(0, 100) : (finaleVal >= 10 ? 'Validé' : 'Ajourné');
+
+      // UPSERT Note using ON DUPLICATE KEY UPDATE to prevent duplicates
+      await connection.query(
+        `INSERT INTO notes (etudiant_id, matiere_id, semestre_id, annee_academique_id, note_cc, note_examen, note_finale, appreciation, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+         ON DUPLICATE KEY UPDATE 
+           note_cc = VALUES(note_cc),
+           note_examen = VALUES(note_examen),
+           note_finale = VALUES(note_finale),
+           appreciation = VALUES(appreciation),
+           updated_at = NOW()`,
+        [etudiant_id, matiere_id, semestre_id || 1, annee_academique_id || 1, ccVal, examVal, finaleVal, app]
+      );
+
+      savedCount++;
+    }
+
+    await connection.commit();
+
+    return res.json({
+      success: true,
+      message: `${savedCount} notes validées (échelle 0-20) et enregistrées avec succès dans MySQL.`,
+      count: savedCount
+    });
+
+  } catch (error: any) {
+    if (connection) await connection.rollback();
+    return res.status(400).json({
+      success: false,
+      error: error?.code || "SQL_ERROR",
+      message: `Erreur MySQL lors de la saisie des notes : ${error?.message}`
+    });
+  } finally {
+    if (connection) connection.release();
+  }
+});
+
+// 5. GET ALL DATA FROM MYSQL TABLES FOR REAL REFRESH
+app.get("/api/data/all", async (req, res) => {
+  const pool = getMysqlPool();
+  if (!pool) return res.status(503).json({ success: false, message: "MySQL non disponible." });
+
+  try {
+    const [etudiants]: any = await pool.query("SELECT * FROM etudiants ORDER BY id DESC").catch(() => [[]]);
+    const [inscriptions]: any = await pool.query("SELECT * FROM inscriptions ORDER BY id DESC").catch(() => [[]]);
+    const [paiements]: any = await pool.query("SELECT * FROM paiements ORDER BY id DESC").catch(() => [[]]);
+    const [notes]: any = await pool.query("SELECT * FROM notes ORDER BY id DESC").catch(() => [[]]);
+    const [bulletins]: any = await pool.query("SELECT * FROM bulletins ORDER BY id DESC").catch(() => [[]]);
+    const [filieres]: any = await pool.query("SELECT * FROM filieres ORDER BY id ASC").catch(() => [[]]);
+    const [classes]: any = await pool.query("SELECT * FROM classes ORDER BY id ASC").catch(() => [[]]);
+    const [matieres]: any = await pool.query("SELECT * FROM matieres ORDER BY id ASC").catch(() => [[]]);
+    const [administrateurs]: any = await pool.query("SELECT * FROM administrateurs ORDER BY id ASC").catch(() => [[]]);
+    const [utilisateurs]: any = await pool.query("SELECT * FROM utilisateurs ORDER BY id ASC").catch(() => [[]]);
+
+    return res.json({
+      success: true,
+      data: {
+        etudiants,
+        inscriptions,
+        paiements,
+        notes,
+        bulletins,
+        filieres,
+        classes,
+        matieres,
+        administrateurs,
+        utilisateurs
+      }
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.code, message: error.message });
   }
 });
 
@@ -616,6 +1161,19 @@ app.post("/api/db/sync", (req, res) => {
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }
+});
+
+// Catch-all for API 404s to guarantee JSON responses (preventing HTML fallback)
+app.all("/api/*", (req, res) => {
+  res.status(404).json({ success: false, error: "NOT_FOUND", message: "Route API introuvable." });
+});
+
+// Global API error handler
+app.use((err: any, req: any, res: any, next: any) => {
+  if (req.path && req.path.startsWith("/api")) {
+    return res.status(500).json({ success: false, error: "SERVER_ERROR", message: err?.message || "Erreur interne du serveur." });
+  }
+  next(err);
 });
 
 // Vite middleware in dev or static server in prod

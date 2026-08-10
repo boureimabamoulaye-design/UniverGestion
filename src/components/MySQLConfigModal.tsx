@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from './Modal';
+import { safeFetchJson } from '../lib/api';
 import { Database, CheckCircle2, AlertTriangle, RefreshCw, Download, Server, Key, Globe } from 'lucide-react';
 
 interface MySQLConfigModalProps {
@@ -31,11 +32,10 @@ export const MySQLConfigModal: React.FC<MySQLConfigModalProps> = ({ isOpen, onCl
   const checkStatus = async () => {
     setStatus({ loading: true });
     try {
-      const res = await fetch('/api/mysql/status');
-      const data = await res.json();
+      const data = await safeFetchJson('/api/mysql/status');
       setStatus({
         loading: false,
-        connected: data.connected,
+        connected: !!data.connected,
         message: data.message,
         config: data.config,
         hint: data.hint
@@ -60,13 +60,13 @@ export const MySQLConfigModal: React.FC<MySQLConfigModalProps> = ({ isOpen, onCl
     e.preventDefault();
     setTestResult({ testing: true });
     try {
-      const res = await fetch('/api/mysql/test-config', {
+      const data = await safeFetchJson('/api/mysql/test-config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ host, port, user, password, database })
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
+
+      if (data.success) {
         setTestResult({
           testing: false,
           success: true,
@@ -76,14 +76,14 @@ export const MySQLConfigModal: React.FC<MySQLConfigModalProps> = ({ isOpen, onCl
         setTestResult({
           testing: false,
           success: false,
-          message: data.error || "Impossible de se connecter au serveur MySQL"
+          message: data.error || data.message || "Impossible de se connecter au serveur MySQL"
         });
       }
     } catch (err: any) {
       setTestResult({
         testing: false,
         success: false,
-        message: "Erreur réseau lors de la tentative de connexion API"
+        message: "Erreur lors de la tentative de connexion API"
       });
     }
   };

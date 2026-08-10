@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { DB } from '../lib/storage';
+import { safeFetchJson } from '../lib/api';
 import { Building2, Upload, CheckCircle2, Image as ImageIcon, Save, Database, Server, Download, XCircle, RefreshCw, Terminal, Check } from 'lucide-react';
 
 export const ParametresView: React.FC = () => {
@@ -55,8 +56,7 @@ export const ParametresView: React.FC = () => {
   const checkMysqlStatus = async () => {
     setMysqlStatus(prev => ({ ...prev, loading: true }));
     try {
-      const res = await fetch('/api/mysql/status');
-      const data = await res.json();
+      const data = await safeFetchJson('/api/mysql/status');
       setMysqlStatus({
         tested: true,
         loading: false,
@@ -68,7 +68,7 @@ export const ParametresView: React.FC = () => {
         tested: true,
         loading: false,
         connected: false,
-        message: "Erreur de communication avec le serveur."
+        message: "Serveur de base de données non connecté."
       });
     }
   };
@@ -77,12 +77,11 @@ export const ParametresView: React.FC = () => {
     e.preventDefault();
     setMysqlStatus(prev => ({ ...prev, loading: true }));
     try {
-      const res = await fetch('/api/mysql/test-config', {
+      const data = await safeFetchJson('/api/mysql/test-config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(mysqlConfig)
       });
-      const data = await res.json();
       setMysqlStatus({
         tested: true,
         loading: false,
@@ -94,7 +93,7 @@ export const ParametresView: React.FC = () => {
         tested: true,
         loading: false,
         connected: false,
-        message: "Impossible d'effectuer le test de connexion MySQL."
+        message: "Erreur de connexion au serveur MySQL."
       });
     }
   };
