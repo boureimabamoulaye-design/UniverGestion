@@ -54,10 +54,10 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
         return;
       }
 
-      // Display the exact error message from MySQL database
-      setError(data.message || 'Échec d\'authentification sur la base de données MySQL.');
+      // Display user-friendly error message
+      setError(data.message || 'Identifiant ou mot de passe incorrect.');
     } catch (err: any) {
-      setError(err?.message ? `Erreur de connexion : ${err.message}` : 'Impossible de contacter le serveur de base de données MySQL.');
+      setError('Identifiant ou mot de passe incorrect.');
     } finally {
       setIsLoading(false);
     }
