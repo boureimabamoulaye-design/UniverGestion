@@ -307,50 +307,10 @@ app.post("/api/mysql/authenticate", async (req, res) => {
   const sanitizedLogin = login.trim();
   const pool = getMysqlPool();
   if (!pool) {
-    if (role === 'ADMIN') {
-      if ((sanitizedLogin.toLowerCase() === 'admin@unigestion.edu.ml' || sanitizedLogin.toLowerCase() === 'admin') && (password === 'admin123' || !password)) {
-        return res.json({
-          success: true,
-          message: "Connexion administrateur réussie.",
-          user: {
-            id: 1,
-            nom: 'ADMINISTRATEUR',
-            prenom: 'Super',
-            email_or_matricule: 'admin@unigestion.edu.ml',
-            role: 'ADMIN',
-            universite_nom: 'USTTB Bamako'
-          }
-        });
-      }
-    } else {
-      if (sanitizedLogin) {
-        return res.json({
-          success: true,
-          message: "Connexion étudiant réussie.",
-          user: {
-            id: 101,
-            nom: 'Étudiant',
-            prenom: 'Session',
-            email_or_matricule: sanitizedLogin,
-            role: 'ETUDIANT',
-            etudiantDetail: {
-              id: 101,
-              matricule: sanitizedLogin,
-              nom: 'Étudiant',
-              prenom: 'Session',
-              filiere_id: filiere_id || 1,
-              statut: 'Actif'
-            },
-            universite_nom: 'USTTB Bamako'
-          }
-        });
-      }
-    }
-
-    return res.status(401).json({
+    return res.status(503).json({
       success: false,
-      error: "INVALID_CREDENTIALS",
-      message: "Identifiant ou mot de passe incorrect."
+      error: "MYSQL_OFFLINE",
+      message: "Connexion impossible : Le serveur MySQL local n'est pas accessible (localhost:3306). Veuillez démarrer votre serveur WAMP ou XAMPP et vérifier phpMyAdmin."
     });
   }
 
@@ -362,27 +322,10 @@ app.post("/api/mysql/authenticate", async (req, res) => {
       );
 
       if (!rows || rows.length === 0) {
-        // Fallback for default admin if DB empty or account not yet seeded
-        if (sanitizedLogin.toLowerCase() === 'admin@unigestion.edu.ml' || sanitizedLogin.toLowerCase() === 'admin') {
-          if (password === 'admin123') {
-            return res.json({
-              success: true,
-              message: "Connexion administrateur réussie.",
-              user: {
-                id: 1,
-                nom: 'ADMINISTRATEUR',
-                prenom: 'Super',
-                email_or_matricule: 'admin@unigestion.edu.ml',
-                role: 'ADMIN',
-                universite_nom: 'USTTB Bamako'
-              }
-            });
-          }
-        }
         return res.status(401).json({
           success: false,
           error: "INVALID_CREDENTIALS",
-          message: "Identifiant ou mot de passe administrateur incorrect."
+          message: `Accès refusé : Le compte administrateur "${sanitizedLogin}" n'existe pas dans la base de données MySQL.`
         });
       }
 
@@ -393,7 +336,7 @@ app.post("/api/mysql/authenticate", async (req, res) => {
         return res.status(401).json({
           success: false,
           error: "INVALID_CREDENTIALS",
-          message: "Identifiant ou mot de passe administrateur incorrect."
+          message: "Mot de passe administrateur incorrect."
         });
       }
 
@@ -428,26 +371,10 @@ app.post("/api/mysql/authenticate", async (req, res) => {
       );
 
       if (!rows || rows.length === 0) {
-        // Fallback student login if DB not reachable or record not yet synced
-        return res.json({
-          success: true,
-          message: "Connexion étudiant réussie.",
-          user: {
-            id: 101,
-            nom: 'Étudiant',
-            prenom: 'Inscrit',
-            email_or_matricule: sanitizedLogin,
-            role: 'ETUDIANT',
-            etudiantDetail: {
-              id: 101,
-              matricule: sanitizedLogin,
-              nom: 'Étudiant',
-              prenom: 'Inscrit',
-              filiere_id: filiere_id || 1,
-              statut: 'Actif'
-            },
-            universite_nom: 'USTTB Bamako'
-          }
+        return res.status(401).json({
+          success: false,
+          error: "INVALID_CREDENTIALS",
+          message: `Accès refusé : L'étudiant avec le matricule ou e-mail "${sanitizedLogin}" n'existe pas dans la base de données MySQL.`
         });
       }
 
@@ -461,7 +388,7 @@ app.post("/api/mysql/authenticate", async (req, res) => {
         return res.status(401).json({
           success: false,
           error: "INVALID_CREDENTIALS",
-          message: "Mot de passe incorrect."
+          message: "Mot de passe étudiant incorrect."
         });
       }
 
@@ -511,51 +438,10 @@ app.post("/api/mysql/authenticate", async (req, res) => {
     }
 
   } catch (error: any) {
-    // If MySQL connection refused or database offline, handle gracefully with fallback
-    if (role === 'ADMIN') {
-      if ((sanitizedLogin.toLowerCase() === 'admin@unigestion.edu.ml' || sanitizedLogin.toLowerCase() === 'admin') && (password === 'admin123' || !password)) {
-        return res.json({
-          success: true,
-          message: "Connexion administrateur réussie.",
-          user: {
-            id: 1,
-            nom: 'ADMINISTRATEUR',
-            prenom: 'Super',
-            email_or_matricule: 'admin@unigestion.edu.ml',
-            role: 'ADMIN',
-            universite_nom: 'USTTB Bamako'
-          }
-        });
-      }
-    } else {
-      if (sanitizedLogin) {
-        return res.json({
-          success: true,
-          message: "Connexion étudiant réussie.",
-          user: {
-            id: 101,
-            nom: 'Étudiant',
-            prenom: 'Session',
-            email_or_matricule: sanitizedLogin,
-            role: 'ETUDIANT',
-            etudiantDetail: {
-              id: 101,
-              matricule: sanitizedLogin,
-              nom: 'Étudiant',
-              prenom: 'Session',
-              filiere_id: filiere_id || 1,
-              statut: 'Actif'
-            },
-            universite_nom: 'USTTB Bamako'
-          }
-        });
-      }
-    }
-
-    return res.status(401).json({
+    return res.status(500).json({
       success: false,
-      error: "INVALID_CREDENTIALS",
-      message: "Identifiant ou mot de passe incorrect."
+      error: error?.code || "MYSQL_ERROR",
+      message: `Erreur MySQL (${error?.code || 'connexion'}) : ${error?.message || 'Erreur lors de la vérification dans la base de données.'}`
     });
   }
 });

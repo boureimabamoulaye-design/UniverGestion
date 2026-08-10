@@ -132,16 +132,16 @@ export class DB {
       if (!res.ok) return false;
       const json = await res.json();
       if (json.success && json.data) {
-        if (Array.isArray(json.data.etudiants)) setItem(STORAGE_KEYS.ETUDIANTS, json.data.etudiants);
-        if (Array.isArray(json.data.inscriptions)) setItem(STORAGE_KEYS.INSCRIPTIONS, json.data.inscriptions);
-        if (Array.isArray(json.data.paiements)) setItem(STORAGE_KEYS.PAIEMENTS, json.data.paiements);
-        if (Array.isArray(json.data.notes)) setItem(STORAGE_KEYS.NOTES, json.data.notes);
-        if (Array.isArray(json.data.bulletins)) setItem(STORAGE_KEYS.BULLETINS, json.data.bulletins);
+        if (Array.isArray(json.data.etudiants) && json.data.etudiants.length > 0) setItem(STORAGE_KEYS.ETUDIANTS, json.data.etudiants);
+        if (Array.isArray(json.data.inscriptions) && json.data.inscriptions.length > 0) setItem(STORAGE_KEYS.INSCRIPTIONS, json.data.inscriptions);
+        if (Array.isArray(json.data.paiements) && json.data.paiements.length > 0) setItem(STORAGE_KEYS.PAIEMENTS, json.data.paiements);
+        if (Array.isArray(json.data.notes) && json.data.notes.length > 0) setItem(STORAGE_KEYS.NOTES, json.data.notes);
+        if (Array.isArray(json.data.bulletins) && json.data.bulletins.length > 0) setItem(STORAGE_KEYS.BULLETINS, json.data.bulletins);
         if (Array.isArray(json.data.filieres) && json.data.filieres.length > 0) setItem(STORAGE_KEYS.FILIERES, json.data.filieres);
         if (Array.isArray(json.data.classes) && json.data.classes.length > 0) setItem(STORAGE_KEYS.CLASSES, json.data.classes);
         if (Array.isArray(json.data.matieres) && json.data.matieres.length > 0) setItem(STORAGE_KEYS.MATIERES, json.data.matieres);
-        if (Array.isArray(json.data.administrateurs)) setItem(STORAGE_KEYS.ADMINISTRATEURS, json.data.administrateurs);
-        if (Array.isArray(json.data.utilisateurs)) setItem(STORAGE_KEYS.UTILISATEURS, json.data.utilisateurs);
+        if (Array.isArray(json.data.administrateurs) && json.data.administrateurs.length > 0) setItem(STORAGE_KEYS.ADMINISTRATEURS, json.data.administrateurs);
+        if (Array.isArray(json.data.utilisateurs) && json.data.utilisateurs.length > 0) setItem(STORAGE_KEYS.UTILISATEURS, json.data.utilisateurs);
         return true;
       }
     } catch (err) {
@@ -972,6 +972,7 @@ export class DB {
 
   // Reset to default seed
   static resetToDefault(): void {
-    localStorage.clear();
+    Object.keys(inMemoryStore).forEach(key => delete inMemoryStore[key]);
+    try { localStorage.clear(); } catch {}
   }
 }
