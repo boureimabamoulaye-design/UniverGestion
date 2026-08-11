@@ -378,10 +378,21 @@ app.post("/api/mysql/authenticate", async (req, res) => {
       }
     }
 
-    let adminUser = jsonAdministrateurs.find((u: any) => 
-      (u.email && u.email.toLowerCase() === sanitizedLogin.toLowerCase()) ||
-      (u.nom && u.nom.toLowerCase() === sanitizedLogin.toLowerCase())
-    );
+    let adminUser = jsonAdministrateurs.find((u: any) => {
+      const target = sanitizedLogin.toLowerCase();
+      const email = (u.email || '').toLowerCase();
+      const nom = (u.nom || '').toLowerCase();
+      const prenom = (u.prenom || '').toLowerCase();
+      const fullName1 = `${prenom} ${nom}`.trim();
+      const fullName2 = `${nom} ${prenom}`.trim();
+      return (
+        (email && email === target) ||
+        (nom && nom === target) ||
+        (prenom && prenom === target) ||
+        (fullName1 && fullName1 === target) ||
+        (fullName2 && fullName2 === target)
+      );
+    });
 
     // Check seed default admin fallback if database file is empty
     if (!adminUser) {
