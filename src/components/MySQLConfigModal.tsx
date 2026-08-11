@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from './Modal';
 import { safeFetchJson } from '../lib/api';
+import { DatabaseErrorBanner } from './DatabaseErrorBanner';
 import { Database, CheckCircle2, AlertTriangle, RefreshCw, Download, Server, Key, Globe } from 'lucide-react';
 
 interface MySQLConfigModalProps {
@@ -13,7 +14,7 @@ export const MySQLConfigModal: React.FC<MySQLConfigModalProps> = ({ isOpen, onCl
   const [port, setPort] = useState('3306');
   const [user, setUser] = useState('root');
   const [password, setPassword] = useState('');
-  const [database, setDatabase] = useState('unigestion_db');
+  const [database, setDatabase] = useState('universite');
   
   const [status, setStatus] = useState<{
     loading: boolean;
@@ -223,28 +224,35 @@ export const MySQLConfigModal: React.FC<MySQLConfigModalProps> = ({ isOpen, onCl
                 type="text"
                 value={database}
                 onChange={(e) => setDatabase(e.target.value)}
-                placeholder="unigestion_db"
+                placeholder="universite"
                 className="w-full h-10 px-3 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:border-blue-600"
                 required
               />
             </div>
 
-            <div className="md:col-span-2 flex items-center justify-between pt-2">
-              <button
-                type="submit"
-                disabled={testResult.testing}
-                className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-md active:scale-95 disabled:opacity-50"
-              >
-                {testResult.testing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
-                <span>Tester la Connexion API MySQL</span>
-              </button>
+            <div className="md:col-span-2 flex flex-col gap-3 pt-2">
+              <div className="flex items-center justify-between">
+                <button
+                  type="submit"
+                  disabled={testResult.testing}
+                  className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-md active:scale-95 disabled:opacity-50"
+                >
+                  {testResult.testing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Database className="w-4 h-4" />}
+                  <span>Tester la Connexion API MySQL</span>
+                </button>
 
-              {testResult.message && (
-                <div className={`text-xs font-semibold px-3 py-1.5 rounded-lg ${
-                  testResult.success ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
-                }`}>
-                  {testResult.message}
-                </div>
+                {testResult.message && testResult.success && (
+                  <div className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-emerald-100 text-emerald-800">
+                    {testResult.message}
+                  </div>
+                )}
+              </div>
+
+              {testResult.message && !testResult.success && (
+                <DatabaseErrorBanner
+                  databaseName={database || 'universite'}
+                  errorMessage={testResult.message}
+                />
               )}
             </div>
           </form>
@@ -259,7 +267,7 @@ export const MySQLConfigModal: React.FC<MySQLConfigModalProps> = ({ isOpen, onCl
 MYSQL_PORT=${port || '3306'}
 MYSQL_USER=${user || 'root'}
 MYSQL_PASSWORD=${password || ''}
-MYSQL_DATABASE=${database || 'unigestion_db'}`}
+MYSQL_DATABASE=${database || 'universite'}`}
           </pre>
         </div>
 

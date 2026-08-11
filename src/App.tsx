@@ -41,12 +41,8 @@ export default function App() {
   const [isMySQLConfigOpen, setIsMySQLConfigOpen] = useState(false);
 
   useEffect(() => {
-    // Purge browser LocalStorage to guarantee zero client-side persistence
-    try {
-      localStorage.clear();
-    } catch {}
-    // Sync live MySQL database into volatile active session memory
-    DB.syncFromMySQL();
+    // Initialize storage from localStorage, backend JSON file, and MySQL pool if available
+    DB.initStorage();
   }, []);
 
   const activeAnnee = DB.getActiveAnneeAcademique();

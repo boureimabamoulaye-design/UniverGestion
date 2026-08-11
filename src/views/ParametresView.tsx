@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { DB } from '../lib/storage';
 import { safeFetchJson } from '../lib/api';
+import { DatabaseErrorBanner } from '../components/DatabaseErrorBanner';
 import { Building2, Upload, CheckCircle2, Image as ImageIcon, Save, Database, Server, Download, XCircle, RefreshCw, Terminal, Check } from 'lucide-react';
 
 export const ParametresView: React.FC = () => {
@@ -38,7 +39,7 @@ export const ParametresView: React.FC = () => {
     port: 3306,
     user: 'root',
     password: '',
-    database: 'unigestion_db'
+    database: 'universite'
   });
 
   const [mysqlStatus, setMysqlStatus] = useState<{
@@ -370,41 +371,56 @@ export const ParametresView: React.FC = () => {
               <li>Cliquez sur le bouton <strong>"Télécharger Script SQL (universite.sql)"</strong> ci-dessus pour obtenir le fichier de la base de données.</li>
               <li>Ouvrez votre console <strong>phpMyAdmin</strong> WAMP (<code className="bg-slate-200 px-1 py-0.5 rounded">http://localhost/phpmyadmin</code>).</li>
               <li>Allez dans l'onglet <strong>"Importer"</strong> et sélectionnez le fichier <code className="bg-slate-200 px-1 py-0.5 rounded">universite.sql</code> (ou <code className="bg-slate-200 px-1 py-0.5 rounded">unigestion_schema.sql</code>).</li>
-              <li>Exécutez l'importation. La base de données <code className="bg-slate-200 px-1 py-0.5 rounded">unigestion_db</code> et ses 10 tables seront automatiquement créées et alimentées.</li>
+              <li>Exécutez l'importation. La base de données <code className="bg-slate-200 px-1 py-0.5 rounded">universite</code> et ses tables seront automatiquement créées et alimentées.</li>
               <li>Renseignez ci-dessous les identifiants de votre serveur MySQL local (Hôte, Port 3306, Utilisateur <code className="bg-slate-200 px-1 py-0.5 rounded">root</code>) et cliquez sur <strong>"Tester cette Connexion"</strong>.</li>
             </ol>
           </div>
 
-          {/* Connection Status Badge */}
-          <div className={`p-3.5 rounded-[14px] border text-xs font-semibold flex items-center justify-between gap-3 ${
-            mysqlStatus.connected
-              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-              : 'bg-amber-50 border-amber-200 text-amber-800'
-          }`}>
-            <div className="flex items-center gap-2.5">
-              {mysqlStatus.loading ? (
-                <RefreshCw className="w-4 h-4 animate-spin text-amber-600" />
-              ) : mysqlStatus.connected ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              ) : (
-                <Server className="w-4 h-4 text-amber-600 shrink-0" />
-              )}
-              <span>
-                {mysqlStatus.loading
-                  ? 'Test de la connexion MySQL en cours...'
-                  : mysqlStatus.connected
-                  ? 'MySQL Connecté : Le serveur est opérationnel et réactif.'
-                  : `Serveur MySQL non détecté localement (${mysqlStatus.message || 'Hôte inaccessible'}).`}
-              </span>
+          {/* Connection Status Badge / Error Banner */}
+          {!mysqlStatus.loading && !mysqlStatus.connected ? (
+            <div className="space-y-3">
+              <DatabaseErrorBanner
+                databaseName={mysqlConfig.database || 'universite'}
+                errorMessage={mysqlStatus.message || "SQLSTATE[HY000] [1698] Access denied for user 'root'@'localhost'"}
+              />
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={checkMysqlStatus}
+                  className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl shadow-xs transition-colors shrink-0 cursor-pointer flex items-center gap-1.5"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Tester à nouveau</span>
+                </button>
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={checkMysqlStatus}
-              className="px-3 py-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-800 text-[11px] font-bold rounded-md shadow-2xs transition-colors shrink-0 cursor-pointer"
-            >
-              Tester à nouveau
-            </button>
-          </div>
+          ) : (
+            <div className={`p-3.5 rounded-[14px] border text-xs font-semibold flex items-center justify-between gap-3 ${
+              mysqlStatus.connected
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                : 'bg-amber-50 border-amber-200 text-amber-800'
+            }`}>
+              <div className="flex items-center gap-2.5">
+                {mysqlStatus.loading ? (
+                  <RefreshCw className="w-4 h-4 animate-spin text-amber-600" />
+                ) : (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                )}
+                <span>
+                  {mysqlStatus.loading
+                    ? 'Test de la connexion MySQL en cours...'
+                    : 'MySQL Connecté : Le serveur est opérationnel et réactif.'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={checkMysqlStatus}
+                className="px-3 py-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-800 text-[11px] font-bold rounded-md shadow-2xs transition-colors shrink-0 cursor-pointer"
+              >
+                Tester à nouveau
+              </button>
+            </div>
+          )}
 
           {/* Test MySQL Connection Form */}
           <div className="bg-slate-50 p-4 rounded-[16px] border border-slate-200 space-y-3">

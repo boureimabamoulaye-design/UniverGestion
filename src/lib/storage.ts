@@ -75,24 +75,95 @@ const inMemoryStore: Record<string, string> = {};
 function getItem<T>(key: string, defaultValue: T): T {
   try {
     const item = inMemoryStore[key];
-    return item ? JSON.parse(item) : defaultValue;
+    if (item !== undefined && item !== null) {
+      return JSON.parse(item);
+    }
+    const local = localStorage.getItem(key);
+    if (local !== null && local !== undefined) {
+      inMemoryStore[key] = local;
+      return JSON.parse(local);
+    }
+    return defaultValue;
   } catch (e) {
     return defaultValue;
   }
 }
 
+let syncTimer: any = null;
+
+function triggerServerSync() {
+  if (syncTimer) clearTimeout(syncTimer);
+  syncTimer = setTimeout(async () => {
+    try {
+      const fullSnapshot: Record<string, any> = {};
+      Object.entries(STORAGE_KEYS).forEach(([_, key]) => {
+        const val = inMemoryStore[key] || localStorage.getItem(key);
+        if (val) {
+          try {
+            fullSnapshot[key] = JSON.parse(val);
+          } catch {}
+        }
+      });
+
+      await fetch('/api/db/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: fullSnapshot })
+      });
+    } catch (e) {
+      console.warn("Server DB sync error:", e);
+    }
+  }, 200);
+}
+
 function setItem<T>(key: string, value: T): void {
   try {
-    inMemoryStore[key] = JSON.stringify(value);
-    // Purge key from browser localStorage if present
-    try { localStorage.removeItem(key); } catch {}
+    const str = JSON.stringify(value);
+    inMemoryStore[key] = str;
+    try {
+      localStorage.setItem(key, str);
+    } catch (e) {
+      console.error(`Error saving ${key} to localStorage:`, e);
+    }
     window.dispatchEvent(new CustomEvent('unigestion_db_change', { detail: { key, value } }));
+    triggerServerSync();
   } catch (e) {
     console.error(`Error saving ${key}`, e);
   }
 }
 
 export class DB {
+  static async initStorage(): Promise<void> {
+    // 1. Populate memory from localStorage
+    Object.values(STORAGE_KEYS).forEach(key => {
+      try {
+        const local = localStorage.getItem(key);
+        if (local) inMemoryStore[key] = local;
+      } catch {}
+    });
+
+    // 2. Load backend database snapshot (/api/db/sync)
+    try {
+      const res = await fetch('/api/db/sync');
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) {
+          Object.entries(json.data).forEach(([key, val]) => {
+            if (val !== undefined && val !== null) {
+              const str = typeof val === 'string' ? val : JSON.stringify(val);
+              inMemoryStore[key] = str;
+              try { localStorage.setItem(key, str); } catch {}
+            }
+          });
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to sync from backend:", e);
+    }
+
+    // 3. Sync from live MySQL if backend MySQL pool is connected
+    await this.syncFromMySQL();
+  }
   // Getters
   static getUniversites(): Universite[] {
     return getItem(STORAGE_KEYS.UNIVERSITES, INITIAL_UNIVERSITES);
