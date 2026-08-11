@@ -10,6 +10,7 @@ interface LoginViewProps {
 }
 
 export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
+  const [selectedPortal, setSelectedPortal] = useState<'ADMIN' | 'ETUDIANT' | null>(null);
   const [role, setRole] = useState<'ADMIN' | 'ETUDIANT'>('ADMIN');
   const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
@@ -19,6 +20,14 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
 
   const filieres = DB.getFilieres();
   const universite = DB.getUniversites()[0];
+
+  const handleSelectPortal = (p: 'ADMIN' | 'ETUDIANT') => {
+    setSelectedPortal(p);
+    setRole(p);
+    setError('');
+    setLogin('');
+    setPassword('');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,7 +64,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
         return;
       }
 
-      // Display exact error message returned by MySQL server API
       setError(data.message || 'Identifiant ou mot de passe incorrect.');
     } catch (err: any) {
       setError(err?.message || 'Erreur de connexion : Impossible de contacter le serveur backend.');
@@ -68,10 +76,10 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
     <div
       className="min-h-screen w-full flex items-center justify-center p-4 bg-cover bg-center relative font-sans"
       style={{
-        backgroundImage: `linear-gradient(to bottom, rgba(15, 23, 42, 0.75), rgba(15, 23, 42, 0.88)), url('https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&w=1920&q=80')`
+        backgroundImage: `linear-gradient(to bottom, rgba(15, 23, 42, 0.78), rgba(15, 23, 42, 0.90)), url('https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&w=1920&q=80')`
       }}
     >
-      <div className="w-full max-w-[460px] bg-white/95 backdrop-blur-md rounded-2xl border border-white/40 shadow-2xl p-6 sm:p-8 relative z-10 my-6">
+      <div className="w-[300px] max-w-[300px] bg-white/95 backdrop-blur-md rounded-2xl border border-white/40 shadow-2xl p-5 sm:p-6 relative z-10 my-6 transition-all duration-300">
 
         {/* Header Branding with Logo */}
         <div className="flex flex-col items-center text-center mb-6 pb-4 border-b border-slate-200/80">
@@ -98,117 +106,173 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
           </p>
         </div>
 
-        {error && (
-          <div className="p-3.5 bg-red-50 border-l-4 border-red-600 text-red-800 rounded-r-lg text-xs font-semibold mb-5 flex items-start gap-2 animate-in fade-in">
-            <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-            <span className="leading-relaxed whitespace-pre-line">{error}</span>
-          </div>
-        )}
-
-        {/* Role Selector Tabs */}
-        <div className="grid grid-cols-2 gap-1.5 bg-slate-100 p-1.5 rounded-xl mb-6 border border-slate-200">
-          <button
-            type="button"
-            onClick={() => { setRole('ADMIN'); setError(''); setLogin(''); setPassword(''); }}
-            className={`py-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-              role === 'ADMIN' ? 'bg-white text-slate-900 shadow-sm border border-slate-200' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Shield className="w-4 h-4 text-blue-600" />
-            Administrateur
-          </button>
-          <button
-            type="button"
-            onClick={() => { setRole('ETUDIANT'); setError(''); setLogin(''); setPassword(''); }}
-            className={`py-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-              role === 'ETUDIANT' ? 'bg-white text-slate-900 shadow-sm border border-slate-200' : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <GraduationCap className="w-4 h-4 text-emerald-600" />
-            Espace Étudiant
-          </button>
-        </div>
-
-        {/* Login Form or Blocked Message */}
-        {role === 'ETUDIANT' && DB.isGlobalStudentLockActive() ? (
-          <div className="p-6 bg-red-50 border border-red-200 rounded-2xl text-center space-y-3 my-2 animate-in fade-in">
-            <div className="w-12 h-12 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mx-auto shadow-inner">
-              <Lock className="w-6 h-6" />
+        {/* Initial Portal Selection Screen */}
+        {selectedPortal === null ? (
+          <div className="space-y-4 animate-in fade-in zoom-in-95 duration-200">
+            <div className="text-center mb-3">
+              <h2 className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+                Veuillez sélectionner votre espace
+              </h2>
             </div>
-            <h3 className="font-extrabold text-sm text-red-900 uppercase tracking-tight">Accès Étudiant Bloqué</h3>
-            <p className="text-xs text-red-700 leading-relaxed font-medium">
-              L'accès à l'espace étudiant est actuellement verrouillé par l'administration.
-            </p>
+
+            <div className="flex flex-col gap-2.5">
+              {/* Button Administration */}
+              <button
+                type="button"
+                onClick={() => handleSelectPortal('ADMIN')}
+                className="w-full px-4 py-2.5 bg-white hover:bg-blue-50/50 text-slate-800 border border-slate-200 hover:border-blue-300 rounded-[15px] flex items-center justify-between transition-all shadow-sm hover:shadow active:scale-[0.98] cursor-pointer group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center shadow-xs group-hover:bg-blue-600 group-hover:text-white transition-all shrink-0">
+                    <Shield className="w-4 h-4" />
+                  </div>
+                  <div className="text-left">
+                    <span className="block font-black text-xs text-slate-900 uppercase tracking-wide group-hover:text-blue-700 transition-colors">
+                      ADMINISTRATION
+                    </span>
+                    <span className="block text-[10px] text-slate-500 font-medium">
+                      Espace Gestion & Staff
+                    </span>
+                  </div>
+                </div>
+                <div className="w-6 h-6 bg-slate-100 group-hover:bg-blue-100 rounded-full flex items-center justify-center transition-colors shrink-0">
+                  <ArrowRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-blue-700 group-hover:translate-x-0.5 transition-transform" />
+                </div>
+              </button>
+
+              {/* Button Espace Etudiant */}
+              <button
+                type="button"
+                onClick={() => handleSelectPortal('ETUDIANT')}
+                className="w-full px-4 py-2.5 bg-white hover:bg-sky-50/50 text-slate-800 border border-slate-200 hover:border-sky-300 rounded-[15px] flex items-center justify-between transition-all shadow-sm hover:shadow active:scale-[0.98] cursor-pointer group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-sky-100 text-sky-700 rounded-full flex items-center justify-center shadow-xs group-hover:bg-sky-600 group-hover:text-white transition-all shrink-0">
+                    <GraduationCap className="w-4 h-4" />
+                  </div>
+                  <div className="text-left">
+                    <span className="block font-black text-xs text-slate-900 uppercase tracking-wide group-hover:text-sky-700 transition-colors">
+                      ESPACE ÉTUDIANT
+                    </span>
+                    <span className="block text-[10px] text-slate-500 font-medium">
+                      Consultation des Notes & Bulletins
+                    </span>
+                  </div>
+                </div>
+                <div className="w-6 h-6 bg-slate-100 group-hover:bg-sky-100 rounded-full flex items-center justify-center transition-colors shrink-0">
+                  <ArrowRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-sky-700 group-hover:translate-x-0.5 transition-transform" />
+                </div>
+              </button>
+            </div>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {role === 'ETUDIANT' && (
-              <div>
-                <label className="block text-xs font-bold text-slate-800 mb-1.5">
-                  Filière d'études / Spécialité <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={selectedFiliereId}
-                  onChange={(e) => setSelectedFiliereId(Number(e.target.value))}
-                  className="w-full h-11 bg-white border border-slate-300 rounded-xl px-3.5 text-xs font-semibold text-slate-900 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 transition-all"
-                  required
-                >
-                  <option value="">-- Choisir votre filière --</option>
-                  {filieres.map(f => (
-                    <option key={f.id} value={f.id}>{f.code} - {f.nom}</option>
-                  ))}
-                </select>
+          /* Portal Login Form View */
+          <div className="animate-in fade-in duration-200">
+            {error && (
+              <div className="p-3 bg-red-50 border-l-4 border-red-600 text-red-800 rounded-r-lg text-xs font-semibold mb-4 flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                <span className="leading-relaxed whitespace-pre-line">{error}</span>
               </div>
             )}
 
-            <div>
-              <label className="block text-xs font-bold text-slate-800 mb-1.5">
-                {role === 'ADMIN' ? 'Email Administrateur' : 'Matricule Étudiant'} <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={login}
-                  onChange={(e) => setLogin(e.target.value)}
-                  placeholder={role === 'ADMIN' ? "nom@unigestion.edu.ml" : "Ex: 2026-MAT-101"}
-                  className="w-full h-11 bg-white border border-slate-300 rounded-xl px-3.5 text-xs font-semibold text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 transition-all"
-                  required
-                />
+            {/* Login Form or Blocked Message */}
+            {role === 'ETUDIANT' && DB.isGlobalStudentLockActive() ? (
+              <div className="p-5 bg-red-50 border border-red-200 rounded-2xl text-center space-y-3 my-2">
+                <div className="w-10 h-10 bg-red-100 text-red-600 rounded-xl flex items-center justify-center mx-auto shadow-inner">
+                  <Lock className="w-5 h-5" />
+                </div>
+                <h3 className="font-extrabold text-xs text-red-900 uppercase tracking-tight">Accès Étudiant Bloqué</h3>
+                <p className="text-[11px] text-red-700 leading-relaxed font-medium">
+                  L'accès à l'espace étudiant est verrouillé.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setSelectedPortal(null)}
+                  className="w-full mt-2 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg transition-all cursor-pointer"
+                >
+                  ← Retour
+                </button>
               </div>
-            </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-3.5">
+                {role === 'ETUDIANT' && (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-800 mb-1">
+                      Filière d'études / Spécialité <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={selectedFiliereId}
+                      onChange={(e) => setSelectedFiliereId(Number(e.target.value))}
+                      className="w-full h-10 bg-white border border-slate-300 rounded-lg px-3 text-xs font-semibold text-slate-900 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                      required
+                    >
+                      <option value="">-- Choisir votre filière --</option>
+                      {filieres.map(f => (
+                        <option key={f.id} value={f.id}>{f.code} - {f.nom}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
-            <div>
-              <label className="block text-xs font-bold text-slate-800 mb-1.5">
-                Mot de passe <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full h-11 bg-white border border-slate-300 rounded-xl px-3.5 text-xs font-semibold text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 transition-all"
-                required
-              />
-            </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-800 mb-1">
+                    {role === 'ADMIN' ? 'Email Administrateur' : 'Matricule Étudiant'} <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={login}
+                    onChange={(e) => setLogin(e.target.value)}
+                    placeholder={role === 'ADMIN' ? "nom@unigestion.edu.ml" : "Ex: 2026-MAT-101"}
+                    className="w-full h-10 bg-white border border-slate-300 rounded-lg px-3 text-xs font-semibold text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    required
+                  />
+                </div>
 
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full h-11 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-md active:scale-[0.99] mt-3 cursor-pointer"
-            >
-              {isLoading ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Connexion en cours...</span>
-                </>
-              ) : (
-                <>
-                  <span>Se Connecter</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
-          </form>
+                <div>
+                  <label className="block text-xs font-bold text-slate-800 mb-1">
+                    Mot de passe <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full h-10 bg-white border border-slate-300 rounded-lg px-3 text-xs font-semibold text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    required
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full h-10 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-sm active:scale-[0.99] mt-2 cursor-pointer"
+                >
+                  {isLoading ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Connexion...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Se Connecter</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </>
+                  )}
+                </button>
+
+                {/* Return Button at the Very Bottom */}
+                <div className="pt-2 border-t border-slate-200 text-center">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPortal(null)}
+                    className="w-full py-2 text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <span>← Retour</span>
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
         )}
 
       </div>

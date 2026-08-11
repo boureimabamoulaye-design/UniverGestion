@@ -5,6 +5,7 @@ import mysql from "mysql2/promise";
 import { createServer as createViteServer } from "vite";
 
 const app = express();
+app.disable("x-powered-by");
 const PORT = 3000;
 
 app.use(express.json({ limit: "50mb" }));
@@ -1178,7 +1179,7 @@ app.get("/api/data/all", async (req, res) => {
   if (!pool) return res.status(503).json({ success: false, message: "MySQL non disponible." });
 
   try {
-    const [etudiants]: any = await pool.query("SELECT * FROM etudiants ORDER BY id DESC").catch(() => [[]]);
+    const [etudiants]: any = await pool.query("SELECT id, matricule, nom, prenom, date_naissance, lieu_naissance, sexe, genre, nationalite, email, telephone, adresse, classe_id, filiere_id, statut, est_bloque, statut_compte, tuteur_nom, tuteur_prenom, tuteur_telephone, date_inscription, photo_url FROM etudiants ORDER BY id DESC").catch(() => [[]]);
     const [inscriptions]: any = await pool.query("SELECT * FROM inscriptions ORDER BY id DESC").catch(() => [[]]);
     const [paiements]: any = await pool.query("SELECT * FROM paiements ORDER BY id DESC").catch(() => [[]]);
     const [notes]: any = await pool.query("SELECT * FROM notes ORDER BY id DESC").catch(() => [[]]);
@@ -1186,7 +1187,7 @@ app.get("/api/data/all", async (req, res) => {
     const [filieres]: any = await pool.query("SELECT * FROM filieres ORDER BY id ASC").catch(() => [[]]);
     const [classes]: any = await pool.query("SELECT * FROM classes ORDER BY id ASC").catch(() => [[]]);
     const [matieres]: any = await pool.query("SELECT * FROM matieres ORDER BY id ASC").catch(() => [[]]);
-    const [administrateurs]: any = await pool.query("SELECT * FROM administrateurs ORDER BY id ASC").catch(() => [[]]);
+    const [administrateurs]: any = await pool.query("SELECT id, nom, prenom, email, telephone, role, role_admin, statut, universite_id, dernier_acces FROM administrateurs ORDER BY id ASC").catch(() => [[]]);
 
     return res.json({
       success: true,
@@ -1243,6 +1244,20 @@ app.get("/api/db/sync", (req, res) => {
   if (fs.existsSync(DATA_FILE)) {
     try {
       const data = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
+      if (data && typeof data === 'object') {
+        const sanitized = JSON.parse(JSON.stringify(data));
+        ['unigestion_etudiants', 'etudiants', 'unigestion_administrateurs', 'administrateurs', 'unigestion_utilisateurs', 'utilisateurs'].forEach(key => {
+          if (Array.isArray(sanitized[key])) {
+            sanitized[key] = sanitized[key].map((item: any) => {
+              const copy = { ...item };
+              delete copy.mot_de_passe;
+              delete copy.password;
+              return copy;
+            });
+          }
+        });
+        return res.json({ success: true, data: sanitized });
+      }
       return res.json({ success: true, data });
     } catch (e) {
       return res.json({ success: true, data: null });
