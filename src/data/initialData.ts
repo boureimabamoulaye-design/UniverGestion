@@ -455,9 +455,77 @@ export const INITIAL_MATIERES: Matiere[] = [
   }
 ];
 
-export const INITIAL_ETUDIANTS: Etudiant[] = [];
+export const INITIAL_ETUDIANTS: Etudiant[] = [
+  {
+    id: 1,
+    matricule: '2026-MAT-101',
+    nom: 'Traoré',
+    prenom: 'Mamadou',
+    date_naissance: '2003-05-14',
+    lieu_naissance: 'Bamako',
+    sexe: 'M',
+    nationalite: 'Mali',
+    email: 'mamadou.traore@usttb.edu.ml',
+    telephone: '+223 76 12 34 56',
+    adresse: 'Badalabougou, Rue 12, Porte 45',
+    classe_id: 1,
+    filiere_id: 1,
+    statut: 'Inscrit',
+    est_bloque: false,
+    statut_compte: 'Actif',
+    tuteur_nom: 'Traoré',
+    tuteur_prenom: 'Ousmane',
+    tuteur_telephone: '+223 66 12 34 56',
+    date_inscription: '2025-10-05',
+    mot_de_passe: 'etudiant123'
+  },
+  {
+    id: 2,
+    matricule: '2026-MAT-102',
+    nom: 'Diarra',
+    prenom: 'Aïssata',
+    date_naissance: '2004-02-20',
+    lieu_naissance: 'Sikasso',
+    sexe: 'F',
+    nationalite: 'Mali',
+    email: 'aissata.diarra@usttb.edu.ml',
+    telephone: '+223 75 98 76 54',
+    adresse: 'Faladié, Bamako',
+    classe_id: 2,
+    filiere_id: 2,
+    statut: 'Inscrit',
+    est_bloque: false,
+    statut_compte: 'Actif',
+    tuteur_nom: 'Diarra',
+    tuteur_prenom: 'Brahima',
+    tuteur_telephone: '+223 65 98 76 54',
+    date_inscription: '2025-10-08',
+    mot_de_passe: 'etudiant123'
+  }
+];
 
-export const INITIAL_INSCRIPTIONS: Inscription[] = [];
+export const INITIAL_INSCRIPTIONS: Inscription[] = [
+  {
+    id: 1,
+    etudiant_id: 1,
+    classe_id: 1,
+    annee_academique_id: 1,
+    date_inscription: '2025-10-05',
+    statut: 'Validée',
+    frais_inscription: 350000,
+    type_inscription: 'Inscrire'
+  },
+  {
+    id: 2,
+    etudiant_id: 2,
+    classe_id: 2,
+    annee_academique_id: 1,
+    date_inscription: '2025-10-08',
+    statut: 'Validée',
+    frais_inscription: 400000,
+    type_inscription: 'Inscrire'
+  }
+];
 
 export const INITIAL_NOTES: Note[] = [];
 
@@ -465,11 +533,40 @@ export const INITIAL_ABSENCES: Absence[] = [];
 
 export const INITIAL_BULLETINS: Bulletin[] = [];
 
-export const INITIAL_PAIEMENTS: Paiement[] = [];
+export const INITIAL_PAIEMENTS: Paiement[] = [
+  {
+    id: 1,
+    etudiant_id: 1,
+    annee_academique_id: 1,
+    filiere_id: 1,
+    filiere_code: 'IGL',
+    filiere_nom: 'Informatique & Génie Logiciel',
+    annee_libelle: '2025 - 2026',
+    type_frais: 'Scolarité',
+    montant: 350000,
+    montant_paye: 350000,
+    reste_a_payer: 0,
+    mode_paiement: 'Orange Money',
+    reference_recu: 'REC-2025-001',
+    date_paiement: '2025-10-05',
+    statut: 'Complet',
+    remarque: 'Payé intégralement à l\'inscription'
+  }
+];
 
 export const INITIAL_SUPPORTS_COURS: SupportCours[] = [];
 
-export const INITIAL_UTILISATEURS: Utilisateur[] = [];
+export const INITIAL_UTILISATEURS: Utilisateur[] = [
+  {
+    id: 1,
+    nom: 'Administrateur',
+    prenom: 'Principal',
+    email: 'admin@unigestion.edu.ml',
+    mot_de_passe: 'admin123',
+    role: 'Administrateur',
+    universite_id: 1
+  }
+];
 
 export const INITIAL_ADMINISTRATEURS: Administrateur[] = [];
 

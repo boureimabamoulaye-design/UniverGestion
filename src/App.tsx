@@ -30,9 +30,18 @@ import { ParametresView } from './views/ParametresView';
 import { HistoriqueView } from './views/HistoriqueView';
 
 export default function App() {
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => {
+    try {
+      const saved = localStorage.getItem('unigestion_active_user') || sessionStorage.getItem('unigestion_active_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
 
-  const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
+  const [activeTab, setActiveTab] = useState<ActiveTab>(() => {
+    return currentUser?.role === 'ADMIN' ? 'dashboard' : 'bulletins';
+  });
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -45,8 +54,20 @@ export default function App() {
     DB.initStorage();
   }, []);
 
-  const activeAnnee = DB.getActiveAnneeAcademique();
+  const handleSetCurrentUser = (user: AuthUser | null) => {
+    setCurrentUser(user);
+    try {
+      if (user) {
+        localStorage.setItem('unigestion_active_user', JSON.stringify(user));
+        sessionStorage.setItem('unigestion_active_user', JSON.stringify(user));
+      } else {
+        localStorage.removeItem('unigestion_active_user');
+        sessionStorage.removeItem('unigestion_active_user');
+      }
+    } catch {}
+  };
 
+  const activeAnnee = DB.getActiveAnneeAcademique();
 
   const handleMarkNotificationRead = (id: number) => {
     DB.markNotificationRead(id);
@@ -54,11 +75,18 @@ export default function App() {
   };
 
   const handleLogout = () => {
-    setCurrentUser(null);
+    handleSetCurrentUser(null);
   };
 
   if (!currentUser) {
-    return <LoginView onLoginSuccess={(u) => { setCurrentUser(u); setActiveTab(u.role === 'ADMIN' ? 'dashboard' : 'bulletins'); }} />;
+    return (
+      <LoginView
+        onLoginSuccess={(u) => {
+          handleSetCurrentUser(u);
+          setActiveTab(u.role === 'ADMIN' ? 'dashboard' : 'bulletins');
+        }}
+      />
+    );
   }
 
   return (
