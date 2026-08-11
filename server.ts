@@ -24,7 +24,7 @@ function getMysqlConfig() {
     port: Number(process.env.MYSQL_PORT) || 3306,
     user: process.env.MYSQL_USER || "root",
     password: process.env.MYSQL_PASSWORD || "",
-    database: process.env.MYSQL_DATABASE || "unigestion_db",
+    database: process.env.MYSQL_DATABASE || "universite",
     connectTimeout: 5000,
     waitForConnections: true,
     connectionLimit: 30,
@@ -976,7 +976,7 @@ app.post("/api/mysql/test-config", async (req, res) => {
       port: Number(port) || 3306,
       user: user || "root",
       password: password || "",
-      database: database || "unigestion_db",
+      database: database || "universite",
       connectTimeout: 4000
     });
     await conn.ping();
@@ -989,151 +989,13 @@ app.post("/api/mysql/test-config", async (req, res) => {
 
 // SQL Schema Export Endpoint (Download SQL Script for phpMyAdmin / MySQL Workbench)
 app.get("/api/mysql/schema.sql", (req, res) => {
-  const sqlDump = `-- ============================================================
--- BASE DE DONNÉES MYSQL UNIGESTION MALI (STRUCTURE COMPLÈTE)
--- UNIVERSITÉ DES SCIENCES, DES TECHNIQUES ET DES TECHNOLOGIES DE BAMAKO
--- ============================================================
-
-CREATE DATABASE IF NOT EXISTS \`unigestion_db\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE \`unigestion_db\`;
-
--- Table 1: Universités & Facultés
-CREATE TABLE IF NOT EXISTS \`facultes\` (
-  \`id\` INT AUTO_INCREMENT PRIMARY KEY,
-  \`code\` VARCHAR(20) NOT NULL UNIQUE,
-  \`nom\` VARCHAR(255) NOT NULL,
-  \`description\` TEXT,
-  \`created_at\` DATETIME DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- Table 2: Filières d'études
-CREATE TABLE IF NOT EXISTS \`filieres\` (
-  \`id\` INT AUTO_INCREMENT PRIMARY KEY,
-  \`faculte_id\` INT NOT NULL,
-  \`code\` VARCHAR(20) NOT NULL UNIQUE,
-  \`nom\` VARCHAR(255) NOT NULL,
-  \`diplome\` ENUM('Licence', 'Master', 'Doctorat', 'DUT') DEFAULT 'Licence',
-  \`duree_annees\` INT DEFAULT 3,
-  \`created_at\` DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (\`faculte_id\`) REFERENCES \`facultes\`(\`id\`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- Table 3: Classes
-CREATE TABLE IF NOT EXISTS \`classes\` (
-  \`id\` INT AUTO_INCREMENT PRIMARY KEY,
-  \`filiere_id\` INT NOT NULL,
-  \`code\` VARCHAR(50) NOT NULL UNIQUE,
-  \`nom\` VARCHAR(255) NOT NULL,
-  \`niveau\` VARCHAR(20) NOT NULL,
-  \`capacite_max\` INT DEFAULT 50,
-  \`created_at\` DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (\`filiere_id\`) REFERENCES \`filieres\`(\`id\`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- Table 4: Étudiants
-CREATE TABLE IF NOT EXISTS \`etudiants\` (
-  \`id\` INT AUTO_INCREMENT PRIMARY KEY,
-  \`matricule\` VARCHAR(50) NOT NULL UNIQUE,
-  \`nom\` VARCHAR(100) NOT NULL,
-  \`prenom\` VARCHAR(100) NOT NULL,
-  \`email\` VARCHAR(150) UNIQUE,
-  \`telephone\` VARCHAR(30),
-  \`adresse\` VARCHAR(255),
-  \`date_naissance\` DATE,
-  \`lieu_naissance\` VARCHAR(100),
-  \`genre\` ENUM('M', 'F') DEFAULT 'M',
-  \`classe_id\` INT NOT NULL,
-  \`filiere_id\` INT,
-  \`statut\` ENUM('Régulier', 'Inscrit', 'Suspendu', 'Diplômé', 'Bloqué') DEFAULT 'Régulier',
-  \`est_bloque\` BOOLEAN DEFAULT FALSE,
-  \`statut_compte\` VARCHAR(20) DEFAULT 'Actif',
-  \`mot_de_passe\` VARCHAR(255) NOT NULL DEFAULT 'etudiant123',
-  \`date_inscription\` DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (\`classe_id\`) REFERENCES \`classes\`(\`id\`),
-  FOREIGN KEY (\`filiere_id\`) REFERENCES \`filieres\`(\`id\`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- Table 5: Enseignants
-CREATE TABLE IF NOT EXISTS \`enseignants\` (
-  \`id\` INT AUTO_INCREMENT PRIMARY KEY,
-  \`matricule\` VARCHAR(50) NOT NULL UNIQUE,
-  \`nom\` VARCHAR(100) NOT NULL,
-  \`prenom\` VARCHAR(100) NOT NULL,
-  \`email\` VARCHAR(150),
-  \`telephone\` VARCHAR(30),
-  \`grade\` VARCHAR(100),
-  \`specialite\` VARCHAR(150),
-  \`created_at\` DATETIME DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- Table 6: Unités d'Enseignement (UE) & Matières
-CREATE TABLE IF NOT EXISTS \`matieres\` (
-  \`id\` INT AUTO_INCREMENT PRIMARY KEY,
-  \`code\` VARCHAR(20) NOT NULL UNIQUE,
-  \`nom\` VARCHAR(255) NOT NULL,
-  \`filiere_id\` INT NOT NULL,
-  \`enseignant_id\` INT,
-  \`coefficient\` INT DEFAULT 1,
-  \`credits_ectcs\` INT DEFAULT 3,
-  \`semestre\` INT DEFAULT 1,
-  FOREIGN KEY (\`filiere_id\`) REFERENCES \`filieres\`(\`id\`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- Table 7: Notes & Évaluations
-CREATE TABLE IF NOT EXISTS \`notes\` (
-  \`id\` INT AUTO_INCREMENT PRIMARY KEY,
-  \`etudiant_id\` INT NOT NULL,
-  \`matiere_id\` INT NOT NULL,
-  \`note_cc\` DECIMAL(4,2) DEFAULT NULL,
-  \`note_examen\` DECIMAL(4,2) DEFAULT NULL,
-  \`moyenne\` DECIMAL(4,2) DEFAULT NULL,
-  \`appreciation\` VARCHAR(100),
-  \`annee_academique\` VARCHAR(20) DEFAULT '2024-2025',
-  FOREIGN KEY (\`etudiant_id\`) REFERENCES \`etudiants\`(\`id\`) ON DELETE CASCADE,
-  FOREIGN KEY (\`matiere_id\`) REFERENCES \`matieres\`(\`id\`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- Table 8: Paiements & Frais de Scolarité
-CREATE TABLE IF NOT EXISTS \`paiements\` (
-  \`id\` INT AUTO_INCREMENT PRIMARY KEY,
-  \`etudiant_id\` INT NOT NULL,
-  \`montant\` DECIMAL(10,2) NOT NULL,
-  \`type_frais\` ENUM('Inscription', 'Scolarité', 'Examen', 'Autre') DEFAULT 'Scolarité',
-  \`methode\` ENUM('Orange Money', 'Sama Money', 'Moov Money', 'Espèces', 'Virement') DEFAULT 'Orange Money',
-  \`reference_transaction\` VARCHAR(100),
-  \`statut\` ENUM('Payé', 'En attente', 'Rejeté') DEFAULT 'Payé',
-  \`date_paiement\` DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (\`etudiant_id\`) REFERENCES \`etudiants\`(\`id\`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- Table 9: Inscriptions Académiques
-CREATE TABLE IF NOT EXISTS \`inscriptions\` (
-  \`id\` INT AUTO_INCREMENT PRIMARY KEY,
-  \`etudiant_id\` INT NOT NULL,
-  \`classe_id\` INT NOT NULL,
-  \`annee_academique\` VARCHAR(20) NOT NULL,
-  \`statut\` ENUM('Validée', 'En attente', 'Annulée') DEFAULT 'Validée',
-  \`date_inscription\` DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (\`etudiant_id\`) REFERENCES \`etudiants\`(\`id\`) ON DELETE CASCADE,
-  FOREIGN KEY (\`classe_id\`) REFERENCES \`classes\`(\`id\`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- Table 10: Paramètres Généraux
-CREATE TABLE IF NOT EXISTS \`parametres\` (
-  \`cle\` VARCHAR(100) PRIMARY KEY,
-  \`valeur\` TEXT NOT NULL,
-  \`description\` TEXT
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- Insérer Verrouillage Global Étudiant par défaut
-INSERT INTO \`parametres\` (\`cle\`, \`valeur\`, \`description\`) 
-VALUES ('global_student_lock', 'false', 'Verrouille totalement l\'accès à l\'espace étudiant')
-ON DUPLICATE KEY UPDATE \`valeur\`=\`valeur\`;
-`;
-
-  res.setHeader("Content-Type", "text/plain");
-  res.setHeader("Content-Disposition", "attachment; filename=unigestion_schema.sql");
-  res.send(sqlDump);
+  const schemaPath = path.join(process.cwd(), "config", "schema.sql");
+  if (fs.existsSync(schemaPath)) {
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("Content-Disposition", "attachment; filename=universite_schema.sql");
+    return res.sendFile(schemaPath);
+  }
+  res.status(404).send("Fichier de schéma SQL non trouvé.");
 });
 
 // Get or Save full database snapshot (supports seamless synchronization with local state)
