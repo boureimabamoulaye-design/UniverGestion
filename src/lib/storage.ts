@@ -246,11 +246,11 @@ export class DB {
         const annees = getArr('unigestion_annees', 'annees');
         if (annees) setItemWithoutSync(STORAGE_KEYS.ANNEES, annees);
 
-        const administrateurs = getArr('unigestion_administrateurs', 'administrateurs');
-        if (administrateurs) setItemWithoutSync(STORAGE_KEYS.ADMINISTRATEURS, administrateurs);
-
-        const utilisateurs = getArr('unigestion_utilisateurs', 'utilisateurs');
-        if (utilisateurs) setItemWithoutSync(STORAGE_KEYS.UTILISATEURS, utilisateurs);
+        const administrateurs = getArr('unigestion_administrateurs', 'administrateurs') || getArr('unigestion_utilisateurs', 'utilisateurs');
+        if (administrateurs) {
+          setItemWithoutSync(STORAGE_KEYS.ADMINISTRATEURS, administrateurs);
+          setItemWithoutSync(STORAGE_KEYS.UTILISATEURS, administrateurs);
+        }
 
         const absences = getArr('unigestion_absences', 'absences');
         if (absences) setItemWithoutSync(STORAGE_KEYS.ABSENCES, absences);

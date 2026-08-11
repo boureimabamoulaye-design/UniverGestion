@@ -225,13 +225,15 @@ export type Utilisateur = Administrateur;
 
 export interface AutorisationFiliere {
   id: number;
-  utilisateur_id: number;
+  administrateur_id?: number;
+  utilisateur_id?: number;
   filiere_id: number;
   droit_acces: 'Lecture' | 'Écriture' | 'Total';
 }
 
 export interface HistoriqueAcces {
   id: number;
+  administrateur_id?: number;
   utilisateur_id?: number;
   etudiant_id?: number;
   ip_adresse: string;
@@ -242,7 +244,7 @@ export interface HistoriqueAcces {
 
 export interface CorbeilleItem {
   id: number;
-  type_element: 'ETUDIANT' | 'NOTE' | 'MATIERE' | 'PAIEMENT' | 'INSCRIPTION' | 'ENSEIGNANT' | 'CLASSE' | 'FILIERE' | 'SEMESTRE' | 'UTILISATEUR';
+  type_element: 'ETUDIANT' | 'NOTE' | 'MATIERE' | 'PAIEMENT' | 'INSCRIPTION' | 'ENSEIGNANT' | 'CLASSE' | 'FILIERE' | 'SEMESTRE' | 'UTILISATEUR' | 'ADMINISTRATEUR';
   element_id: number;
   titre: string;
   details: string;

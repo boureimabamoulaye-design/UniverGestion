@@ -790,13 +790,15 @@ app.post("/api/mysql/init-schema", async (req, res) => {
 
       `CREATE TABLE IF NOT EXISTS autorisations_filieres (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        utilisateur_id INT NOT NULL,
+        administrateur_id INT DEFAULT NULL,
+        utilisateur_id INT DEFAULT NULL,
         filiere_id INT NOT NULL,
         droit_acces VARCHAR(50) DEFAULT 'Total'
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
 
       `CREATE TABLE IF NOT EXISTS historique_acces (
         id INT AUTO_INCREMENT PRIMARY KEY,
+        administrateur_id INT DEFAULT NULL,
         utilisateur_id INT DEFAULT NULL,
         etudiant_id INT DEFAULT NULL,
         ip_adresse VARCHAR(50) DEFAULT '127.0.0.1',
