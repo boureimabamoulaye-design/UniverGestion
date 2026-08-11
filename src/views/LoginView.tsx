@@ -99,22 +99,10 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
         </div>
 
         {error && (
-          error.toLowerCase().includes('mysql') ||
-          error.toLowerCase().includes('sqlstate') ||
-          error.toLowerCase().includes('access denied') ||
-          error.toLowerCase().includes('base de données') ||
-          error.toLowerCase().includes('impossible de se connecter') ? (
-            <DatabaseErrorBanner
-              databaseName="universite"
-              errorMessage={error}
-              className="mb-5"
-            />
-          ) : (
-            <div className="p-3.5 bg-red-50 border-l-4 border-red-600 text-red-800 rounded-r-lg text-xs font-semibold mb-5 flex items-start gap-2 animate-in fade-in">
-              <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-              <span className="leading-relaxed whitespace-pre-line">{error}</span>
-            </div>
-          )
+          <div className="p-3.5 bg-red-50 border-l-4 border-red-600 text-red-800 rounded-r-lg text-xs font-semibold mb-5 flex items-start gap-2 animate-in fade-in">
+            <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+            <span className="leading-relaxed whitespace-pre-line">{error}</span>
+          </div>
         )}
 
         {/* Role Selector Tabs */}

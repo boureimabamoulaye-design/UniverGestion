@@ -249,10 +249,9 @@ export const MySQLConfigModal: React.FC<MySQLConfigModalProps> = ({ isOpen, onCl
               </div>
 
               {testResult.message && !testResult.success && (
-                <DatabaseErrorBanner
-                  databaseName={database || 'universite'}
-                  errorMessage={testResult.message}
-                />
+                <div className="text-xs font-semibold p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 leading-relaxed">
+                  {testResult.message}
+                </div>
               )}
             </div>
           </form>

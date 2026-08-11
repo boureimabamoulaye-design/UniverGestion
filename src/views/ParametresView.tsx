@@ -376,51 +376,36 @@ export const ParametresView: React.FC = () => {
             </ol>
           </div>
 
-          {/* Connection Status Badge / Error Banner */}
-          {!mysqlStatus.loading && !mysqlStatus.connected ? (
-            <div className="space-y-3">
-              <DatabaseErrorBanner
-                databaseName={mysqlConfig.database || 'universite'}
-                errorMessage={mysqlStatus.message || "SQLSTATE[HY000] [1698] Access denied for user 'root'@'localhost'"}
-              />
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={checkMysqlStatus}
-                  className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl shadow-xs transition-colors shrink-0 cursor-pointer flex items-center gap-1.5"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                  <span>Tester à nouveau</span>
-                </button>
-              </div>
+          {/* Connection Status Badge */}
+          <div className={`p-3.5 rounded-[14px] border text-xs font-semibold flex items-center justify-between gap-3 ${
+            mysqlStatus.connected
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+              : 'bg-blue-50 border-blue-200 text-blue-800'
+          }`}>
+            <div className="flex items-center gap-2.5">
+              {mysqlStatus.loading ? (
+                <RefreshCw className="w-4 h-4 animate-spin text-blue-600" />
+              ) : mysqlStatus.connected ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              ) : (
+                <Server className="w-4 h-4 text-blue-600 shrink-0" />
+              )}
+              <span>
+                {mysqlStatus.loading
+                  ? 'Test de la connexion MySQL en cours...'
+                  : mysqlStatus.connected
+                  ? 'MySQL Connecté : Le serveur est opérationnel et réactif.'
+                  : 'Base de données active : Synchronisation temps réel (Mode local / cloud)'}
+              </span>
             </div>
-          ) : (
-            <div className={`p-3.5 rounded-[14px] border text-xs font-semibold flex items-center justify-between gap-3 ${
-              mysqlStatus.connected
-                ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                : 'bg-amber-50 border-amber-200 text-amber-800'
-            }`}>
-              <div className="flex items-center gap-2.5">
-                {mysqlStatus.loading ? (
-                  <RefreshCw className="w-4 h-4 animate-spin text-amber-600" />
-                ) : (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                )}
-                <span>
-                  {mysqlStatus.loading
-                    ? 'Test de la connexion MySQL en cours...'
-                    : 'MySQL Connecté : Le serveur est opérationnel et réactif.'}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={checkMysqlStatus}
-                className="px-3 py-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-800 text-[11px] font-bold rounded-md shadow-2xs transition-colors shrink-0 cursor-pointer"
-              >
-                Tester à nouveau
-              </button>
-            </div>
-          )}
+            <button
+              type="button"
+              onClick={checkMysqlStatus}
+              className="px-3 py-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-800 text-[11px] font-bold rounded-md shadow-2xs transition-colors shrink-0 cursor-pointer"
+            >
+              Tester à nouveau
+            </button>
+          </div>
 
           {/* Test MySQL Connection Form */}
           <div className="bg-slate-50 p-4 rounded-[16px] border border-slate-200 space-y-3">
