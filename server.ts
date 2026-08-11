@@ -264,15 +264,67 @@ app.post("/api/mysql/authenticate", async (req, res) => {
     });
   }
 
+  // AUTHENTICATION ROUTE (MYSQL / JSON DATABASE)
   const sanitizedLogin = login.trim();
   const pool = getMysqlPool();
 
-  if (pool) {
-    try {
-      if (role === 'ADMIN') {
+  const defaultInitialAdmins = [
+    {
+      id: 1,
+      nom: 'Administrateur',
+      prenom: 'Principal',
+      email: 'admin@unigestion.edu.ml',
+      mot_de_passe: 'admin123',
+      role: 'ADMIN',
+      universite_nom: 'USTTB Bamako'
+    },
+    {
+      id: 2,
+      nom: 'Administrateur',
+      prenom: 'Système',
+      email: 'admin',
+      mot_de_passe: 'admin123',
+      role: 'ADMIN',
+      universite_nom: 'USTTB Bamako'
+    }
+  ];
+
+  const defaultInitialEtudiants = [
+    {
+      id: 1,
+      matricule: '2026-MAT-101',
+      nom: 'Traoré',
+      prenom: 'Mamadou',
+      email: 'mamadou.traore@usttb.edu.ml',
+      mot_de_passe: 'etudiant123',
+      filiere_id: 1,
+      classe_id: 1,
+      statut: 'Inscrit',
+      est_bloque: false,
+      statut_compte: 'Actif'
+    },
+    {
+      id: 2,
+      matricule: '2026-MAT-102',
+      nom: 'Diarra',
+      prenom: 'Aïssata',
+      email: 'aissata.diarra@usttb.edu.ml',
+      mot_de_passe: 'etudiant123',
+      filiere_id: 2,
+      classe_id: 2,
+      statut: 'Inscrit',
+      est_bloque: false,
+      statut_compte: 'Actif'
+    }
+  ];
+
+  if (role === 'ADMIN') {
+    // 1. Check MySQL database if pool is active
+    if (pool) {
+      try {
         const [rows]: any = await pool.query(
-          "SELECT * FROM utilisateurs WHERE LOWER(email) = LOWER(?) LIMIT 1",
-          [sanitizedLogin]
+          "SELECT * FROM utilisateurs WHERE (LOWER(email) = LOWER(?) OR LOWER(nom) = LOWER(?)) LIMIT 1",
+          [sanitizedLogin, sanitizedLogin]
         );
 
         if (rows && rows.length > 0) {
@@ -309,8 +361,81 @@ app.post("/api/mysql/authenticate", async (req, res) => {
             }
           });
         }
-      } else {
-        // ETUDIANT
+      } catch (error: any) {
+        console.warn("MySQL Admin Auth Warning:", error?.message);
+      }
+    }
+
+    // 2. Check JSON database file
+    let jsonUtilisateurs: any[] = [];
+    if (fs.existsSync(DATA_FILE)) {
+      try {
+        const db = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
+        jsonUtilisateurs = db.unigestion_utilisateurs || db.utilisateurs || [];
+      } catch (e) {
+        console.warn("JSON Admin Auth error:", e);
+      }
+    }
+
+    let adminUser = jsonUtilisateurs.find((u: any) => 
+      (u.email && u.email.toLowerCase() === sanitizedLogin.toLowerCase()) ||
+      (u.nom && u.nom.toLowerCase() === sanitizedLogin.toLowerCase())
+    );
+
+    // Check seed default admin fallback if database file is empty
+    if (!adminUser) {
+      adminUser = defaultInitialAdmins.find((u: any) => 
+        u.email.toLowerCase() === sanitizedLogin.toLowerCase()
+      );
+    }
+
+    if (adminUser) {
+      const adminPass = adminUser.mot_de_passe || 'admin123';
+      if (!password || password !== adminPass) {
+        return res.status(401).json({
+          success: false,
+          error: "INVALID_CREDENTIALS",
+          message: "Mot de passe administrateur incorrect."
+        });
+      }
+
+      if (adminUser.statut === 'Inactif') {
+        return res.status(403).json({
+          success: false,
+          error: "ADMIN_INACTIVE",
+          message: "Ce compte administrateur est désactivé par l'université."
+        });
+      }
+
+      const cleanUser = { ...adminUser };
+      delete cleanUser.mot_de_passe;
+
+      return res.json({
+        success: true,
+        message: "Connexion administrateur réussie.",
+        user: {
+          id: cleanUser.id || 1,
+          nom: cleanUser.nom || 'Administrateur',
+          prenom: cleanUser.prenom || 'Système',
+          email_or_matricule: cleanUser.email || sanitizedLogin,
+          role: 'ADMIN',
+          universite_nom: 'USTTB Bamako'
+        }
+      });
+    }
+
+    // 3. Admin NOT in database -> Strictly block access!
+    return res.status(401).json({
+      success: false,
+      error: "ADMIN_NOT_FOUND",
+      message: `Accès refusé : Le compte administrateur "${sanitizedLogin}" n'existe pas dans la base de données.`
+    });
+
+  } else {
+    // ROLE === 'ETUDIANT'
+    // 1. Check MySQL database if pool is active
+    if (pool) {
+      try {
         const [rows]: any = await pool.query(
           "SELECT * FROM etudiants WHERE (LOWER(matricule) = LOWER(?) OR LOWER(email) = LOWER(?)) LIMIT 1",
           [sanitizedLogin, sanitizedLogin]
@@ -355,161 +480,80 @@ app.post("/api/mysql/authenticate", async (req, res) => {
             }
           });
         }
+      } catch (error: any) {
+        console.warn("MySQL Student Auth Warning:", error?.message);
       }
-    } catch (error: any) {
-      console.warn("MySQL Auth Query Warning:", error?.message);
     }
-  }
 
-  // FALLBACK JSON DATABASE AUTHENTICATION
-  if (fs.existsSync(DATA_FILE)) {
-    try {
-      const db = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
-
-      if (role === 'ADMIN') {
-        const utilisateurs = db.utilisateurs || [];
-        const user = utilisateurs.find((u: any) => u.email && u.email.toLowerCase() === sanitizedLogin.toLowerCase());
-
-        if (user) {
-          const adminPass = user.mot_de_passe || 'admin123';
-          if (!password || password !== adminPass) {
-            return res.status(401).json({
-              success: false,
-              error: "INVALID_CREDENTIALS",
-              message: "Mot de passe administrateur incorrect."
-            });
-          }
-
-          delete user.mot_de_passe;
-          return res.json({
-            success: true,
-            message: "Connexion administrateur réussie.",
-            user: {
-              id: user.id,
-              nom: user.nom,
-              prenom: user.prenom,
-              email_or_matricule: user.email,
-              role: 'ADMIN',
-              universite_nom: 'USTTB Bamako'
-            }
-          });
-        }
-
-        // Default Admin Fallback
-        if (sanitizedLogin.toLowerCase().startsWith('admin') && (password === 'admin123' || password === 'admin')) {
-          return res.json({
-            success: true,
-            message: "Connexion administrateur réussie.",
-            user: {
-              id: 1,
-              nom: 'Administrateur',
-              prenom: 'Système',
-              email_or_matricule: sanitizedLogin,
-              role: 'ADMIN',
-              universite_nom: 'USTTB Bamako'
-            }
-          });
-        }
-      } else {
-        // ETUDIANT
-        const etudiants = db.etudiants || [];
-        const student = etudiants.find((e: any) => 
-          (e.matricule && e.matricule.toLowerCase() === sanitizedLogin.toLowerCase()) ||
-          (e.email && e.email.toLowerCase() === sanitizedLogin.toLowerCase())
-        );
-
-        if (student) {
-          const expectedPass = student.mot_de_passe || 'etudiant123';
-          const isPassValid = password && (password === expectedPass || password === student.matricule);
-
-          if (!isPassValid) {
-            return res.status(401).json({
-              success: false,
-              error: "INVALID_CREDENTIALS",
-              message: "Mot de passe étudiant incorrect."
-            });
-          }
-
-          if (student.est_bloque || student.statut_compte === 'Bloqué' || student.statut === 'Suspendu') {
-            return res.status(403).json({
-              success: false,
-              error: "STUDENT_BLOCKED",
-              message: "Accès refusé : Votre compte étudiant est actuellement bloqué ou suspendu."
-            });
-          }
-
-          delete student.mot_de_passe;
-          return res.json({
-            success: true,
-            message: "Connexion réussie.",
-            user: {
-              id: student.id,
-              nom: student.nom,
-              prenom: student.prenom,
-              email_or_matricule: student.matricule,
-              role: 'ETUDIANT',
-              etudiantDetail: student,
-              universite_nom: 'USTTB Bamako'
-            }
-          });
-        }
+    // 2. Check JSON database file
+    let jsonEtudiants: any[] = [];
+    if (fs.existsSync(DATA_FILE)) {
+      try {
+        const db = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
+        jsonEtudiants = db.unigestion_etudiants || db.etudiants || [];
+      } catch (e) {
+        console.warn("JSON Student Auth error:", e);
       }
-    } catch (e) {
-      console.warn("JSON Auth Fallback error:", e);
     }
-  }
 
-  // DEFAULT PERMISSIVE FALLBACK IF LOCAL CREDENTIALS ARE PROVIDED
-  if (role === 'ADMIN') {
-    if (sanitizedLogin.toLowerCase().includes('admin') || sanitizedLogin.toLowerCase().includes('usttb') || password === 'admin123' || password === 'admin') {
+    let student = jsonEtudiants.find((e: any) => 
+      (e.matricule && e.matricule.toLowerCase() === sanitizedLogin.toLowerCase()) ||
+      (e.email && e.email.toLowerCase() === sanitizedLogin.toLowerCase())
+    );
+
+    // Check seed default student fallback
+    if (!student) {
+      student = defaultInitialEtudiants.find((e: any) =>
+        e.matricule.toLowerCase() === sanitizedLogin.toLowerCase() ||
+        e.email.toLowerCase() === sanitizedLogin.toLowerCase()
+      );
+    }
+
+    if (student) {
+      const expectedPass = student.mot_de_passe || 'etudiant123';
+      const isPassValid = password && (password === expectedPass || password === student.matricule);
+
+      if (!isPassValid) {
+        return res.status(401).json({
+          success: false,
+          error: "INVALID_CREDENTIALS",
+          message: "Mot de passe étudiant incorrect."
+        });
+      }
+
+      if (student.est_bloque || student.statut_compte === 'Bloqué' || student.statut === 'Suspendu') {
+        return res.status(403).json({
+          success: false,
+          error: "STUDENT_BLOCKED",
+          message: "Accès refusé : Votre compte étudiant est actuellement bloqué ou suspendu."
+        });
+      }
+
+      const cleanStudent = { ...student };
+      delete cleanStudent.mot_de_passe;
+
       return res.json({
         success: true,
-        message: "Connexion administrateur autorisée.",
+        message: "Connexion réussie.",
         user: {
-          id: 1,
-          nom: 'Administrateur',
-          prenom: 'Système',
-          email_or_matricule: sanitizedLogin,
-          role: 'ADMIN',
+          id: cleanStudent.id,
+          nom: cleanStudent.nom,
+          prenom: cleanStudent.prenom,
+          email_or_matricule: cleanStudent.matricule,
+          role: 'ETUDIANT',
+          etudiantDetail: cleanStudent,
           universite_nom: 'USTTB Bamako'
         }
       });
     }
-  } else {
-    // ETUDIANT FALLBACK
-    return res.json({
-      success: true,
-      message: "Connexion étudiant autorisée.",
-      user: {
-        id: 1,
-        nom: 'Traoré',
-        prenom: 'Mamadou',
-        email_or_matricule: sanitizedLogin,
-        role: 'ETUDIANT',
-        etudiantDetail: {
-          id: 1,
-          matricule: sanitizedLogin,
-          nom: 'Traoré',
-          prenom: 'Mamadou',
-          email: `${sanitizedLogin.toLowerCase()}@usttb.edu.ml`,
-          filiere_id: filiere_id || 1,
-          classe_id: 1,
-          statut: 'Inscrit',
-          est_bloque: false,
-          statut_compte: 'Actif'
-        },
-        universite_nom: 'USTTB Bamako'
-      }
+
+    // 3. Student NOT in database -> Strictly block access!
+    return res.status(401).json({
+      success: false,
+      error: "STUDENT_NOT_FOUND",
+      message: `Accès refusé : L'étudiant avec le matricule ou e-mail "${sanitizedLogin}" n'existe pas dans la base de données.`
     });
   }
-
-  return res.status(401).json({
-    success: false,
-    error: "INVALID_CREDENTIALS",
-    message: role === 'ADMIN' 
-      ? `Accès refusé : Le compte administrateur "${sanitizedLogin}" n'a pas été trouvé.`
-      : `Accès refusé : L'étudiant avec le matricule ou e-mail "${sanitizedLogin}" n'a pas été trouvé.`
-  });
 });
 
 // INITIALIZE SCHEMA IN MYSQL DATABASE
