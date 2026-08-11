@@ -116,7 +116,7 @@ function triggerServerSync() {
   }, 200);
 }
 
-function setItem<T>(key: string, value: T): void {
+function setItemWithoutSync<T>(key: string, value: T): void {
   try {
     const str = JSON.stringify(value);
     inMemoryStore[key] = str;
@@ -126,10 +126,14 @@ function setItem<T>(key: string, value: T): void {
       console.error(`Error saving ${key} to localStorage:`, e);
     }
     window.dispatchEvent(new CustomEvent('unigestion_db_change', { detail: { key, value } }));
-    triggerServerSync();
   } catch (e) {
     console.error(`Error saving ${key}`, e);
   }
+}
+
+function setItem<T>(key: string, value: T): void {
+  setItemWithoutSync(key, value);
+  triggerServerSync();
 }
 
 export class DB {
@@ -203,16 +207,54 @@ export class DB {
       if (!res.ok) return false;
       const json = await res.json();
       if (json.success && json.data) {
-        if (Array.isArray(json.data.etudiants) && json.data.etudiants.length > 0) setItem(STORAGE_KEYS.ETUDIANTS, json.data.etudiants);
-        if (Array.isArray(json.data.inscriptions) && json.data.inscriptions.length > 0) setItem(STORAGE_KEYS.INSCRIPTIONS, json.data.inscriptions);
-        if (Array.isArray(json.data.paiements) && json.data.paiements.length > 0) setItem(STORAGE_KEYS.PAIEMENTS, json.data.paiements);
-        if (Array.isArray(json.data.notes) && json.data.notes.length > 0) setItem(STORAGE_KEYS.NOTES, json.data.notes);
-        if (Array.isArray(json.data.bulletins) && json.data.bulletins.length > 0) setItem(STORAGE_KEYS.BULLETINS, json.data.bulletins);
-        if (Array.isArray(json.data.filieres) && json.data.filieres.length > 0) setItem(STORAGE_KEYS.FILIERES, json.data.filieres);
-        if (Array.isArray(json.data.classes) && json.data.classes.length > 0) setItem(STORAGE_KEYS.CLASSES, json.data.classes);
-        if (Array.isArray(json.data.matieres) && json.data.matieres.length > 0) setItem(STORAGE_KEYS.MATIERES, json.data.matieres);
-        if (Array.isArray(json.data.administrateurs) && json.data.administrateurs.length > 0) setItem(STORAGE_KEYS.ADMINISTRATEURS, json.data.administrateurs);
-        if (Array.isArray(json.data.utilisateurs) && json.data.utilisateurs.length > 0) setItem(STORAGE_KEYS.UTILISATEURS, json.data.utilisateurs);
+        const data = json.data;
+        const getArr = (key1: string, key2: string) => {
+          const val = data[key1] !== undefined ? data[key1] : data[key2];
+          return Array.isArray(val) ? val : null;
+        };
+
+        const etudiants = getArr('unigestion_etudiants', 'etudiants');
+        if (etudiants) setItemWithoutSync(STORAGE_KEYS.ETUDIANTS, etudiants);
+
+        const inscriptions = getArr('unigestion_inscriptions', 'inscriptions');
+        if (inscriptions) setItemWithoutSync(STORAGE_KEYS.INSCRIPTIONS, inscriptions);
+
+        const paiements = getArr('unigestion_paiements', 'paiements');
+        if (paiements) setItemWithoutSync(STORAGE_KEYS.PAIEMENTS, paiements);
+
+        const notes = getArr('unigestion_notes', 'notes');
+        if (notes) setItemWithoutSync(STORAGE_KEYS.NOTES, notes);
+
+        const bulletins = getArr('unigestion_bulletins', 'bulletins');
+        if (bulletins) setItemWithoutSync(STORAGE_KEYS.BULLETINS, bulletins);
+
+        const filieres = getArr('unigestion_filieres', 'filieres');
+        if (filieres) setItemWithoutSync(STORAGE_KEYS.FILIERES, filieres);
+
+        const classes = getArr('unigestion_classes', 'classes');
+        if (classes) setItemWithoutSync(STORAGE_KEYS.CLASSES, classes);
+
+        const matieres = getArr('unigestion_matieres', 'matieres');
+        if (matieres) setItemWithoutSync(STORAGE_KEYS.MATIERES, matieres);
+
+        const enseignants = getArr('unigestion_enseignants', 'enseignants');
+        if (enseignants) setItemWithoutSync(STORAGE_KEYS.ENSEIGNANTS, enseignants);
+
+        const semestres = getArr('unigestion_semestres', 'semestres');
+        if (semestres) setItemWithoutSync(STORAGE_KEYS.SEMESTRES, semestres);
+
+        const annees = getArr('unigestion_annees', 'annees');
+        if (annees) setItemWithoutSync(STORAGE_KEYS.ANNEES, annees);
+
+        const administrateurs = getArr('unigestion_administrateurs', 'administrateurs');
+        if (administrateurs) setItemWithoutSync(STORAGE_KEYS.ADMINISTRATEURS, administrateurs);
+
+        const utilisateurs = getArr('unigestion_utilisateurs', 'utilisateurs');
+        if (utilisateurs) setItemWithoutSync(STORAGE_KEYS.UTILISATEURS, utilisateurs);
+
+        const absences = getArr('unigestion_absences', 'absences');
+        if (absences) setItemWithoutSync(STORAGE_KEYS.ABSENCES, absences);
+
         return true;
       }
     } catch (err) {

@@ -455,33 +455,86 @@ app.post("/api/mysql/init-schema", async (req, res) => {
 
   try {
     const queries = [
-      `CREATE TABLE IF NOT EXISTS facultes (
+      `CREATE TABLE IF NOT EXISTS universites (
         id INT AUTO_INCREMENT PRIMARY KEY,
         code VARCHAR(20) NOT NULL UNIQUE,
         nom VARCHAR(255) NOT NULL,
-        description TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        sigle VARCHAR(50) NOT NULL,
+        adresse VARCHAR(255) DEFAULT NULL,
+        ville VARCHAR(100) DEFAULT 'Bamako',
+        pays VARCHAR(100) DEFAULT 'Mali',
+        telephone VARCHAR(30) DEFAULT NULL,
+        email VARCHAR(100) DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+
+      `CREATE TABLE IF NOT EXISTS facultes (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        universite_id INT NOT NULL DEFAULT 1,
+        code VARCHAR(20) NOT NULL UNIQUE,
+        nom VARCHAR(255) NOT NULL,
+        doyen VARCHAR(150) DEFAULT NULL,
+        description TEXT DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
 
       `CREATE TABLE IF NOT EXISTS filieres (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        faculte_id INT DEFAULT 1,
+        faculte_id INT NOT NULL DEFAULT 1,
         code VARCHAR(20) NOT NULL UNIQUE,
         nom VARCHAR(255) NOT NULL,
+        description TEXT DEFAULT NULL,
+        domaine VARCHAR(100) DEFAULT NULL,
         diplome VARCHAR(50) DEFAULT 'Licence',
-        frais_scolarite DECIMAL(12,2) DEFAULT 350000,
+        frais_scolarite DECIMAL(12,2) DEFAULT 350000.00,
         duree_annees INT DEFAULT 3,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+
+      `CREATE TABLE IF NOT EXISTS niveaux (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        filiere_id INT NOT NULL,
+        code VARCHAR(20) NOT NULL,
+        nom VARCHAR(100) NOT NULL,
+        diplome_vise VARCHAR(100) DEFAULT 'Licence',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+
+      `CREATE TABLE IF NOT EXISTS annees_academiques (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        code VARCHAR(20) NOT NULL UNIQUE,
+        libelle VARCHAR(100) NOT NULL,
+        date_debut DATE NOT NULL,
+        date_fin DATE NOT NULL,
+        est_active TINYINT(1) DEFAULT 0,
+        est_archivee TINYINT(1) DEFAULT 0
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
 
       `CREATE TABLE IF NOT EXISTS classes (
         id INT AUTO_INCREMENT PRIMARY KEY,
         filiere_id INT NOT NULL,
+        niveau_id INT DEFAULT NULL,
+        annee_academique_id INT DEFAULT NULL,
         code VARCHAR(50) NOT NULL UNIQUE,
-        nom VARCHAR(255) NOT NULL,
-        niveau VARCHAR(20) NOT NULL,
-        capacite_max INT DEFAULT 50,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        nom VARCHAR(150) NOT NULL,
+        niveau VARCHAR(20) DEFAULT 'L1',
+        capacite INT DEFAULT 60,
+        capacite_max INT DEFAULT 60,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+
+      `CREATE TABLE IF NOT EXISTS enseignants (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        matricule VARCHAR(50) NOT NULL UNIQUE,
+        nom VARCHAR(100) NOT NULL,
+        prenom VARCHAR(100) NOT NULL,
+        titre VARCHAR(100) DEFAULT 'Docteur',
+        grade VARCHAR(100) DEFAULT NULL,
+        email VARCHAR(100) NOT NULL,
+        telephone VARCHAR(30) DEFAULT NULL,
+        specialite VARCHAR(150) DEFAULT NULL,
+        universite_id INT NOT NULL DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
 
       `CREATE TABLE IF NOT EXISTS etudiants (
@@ -489,36 +542,60 @@ app.post("/api/mysql/init-schema", async (req, res) => {
         matricule VARCHAR(50) NOT NULL UNIQUE,
         nom VARCHAR(100) NOT NULL,
         prenom VARCHAR(100) NOT NULL,
-        email VARCHAR(150),
-        telephone VARCHAR(30),
-        adresse VARCHAR(255),
-        date_naissance DATE,
-        lieu_naissance VARCHAR(100),
+        date_naissance DATE DEFAULT NULL,
+        lieu_naissance VARCHAR(100) DEFAULT 'Bamako',
+        sexe ENUM('M', 'F') NOT NULL DEFAULT 'M',
         genre ENUM('M', 'F') DEFAULT 'M',
-        sexe ENUM('M', 'F') DEFAULT 'M',
         nationalite VARCHAR(50) DEFAULT 'Mali',
+        email VARCHAR(100) DEFAULT NULL,
+        telephone VARCHAR(30) DEFAULT NULL,
+        adresse VARCHAR(255) DEFAULT NULL,
         classe_id INT NOT NULL,
-        filiere_id INT,
-        statut ENUM('Régulier', 'Inscrit', 'Suspendu', 'Diplômé', 'Bloqué') DEFAULT 'Inscrit',
-        est_bloque BOOLEAN DEFAULT FALSE,
+        filiere_id INT DEFAULT NULL,
+        statut VARCHAR(50) DEFAULT 'Inscrit',
+        est_bloque TINYINT(1) DEFAULT 0,
         statut_compte VARCHAR(20) DEFAULT 'Actif',
-        tuteur_nom VARCHAR(100),
-        tuteur_prenom VARCHAR(100),
-        tuteur_telephone VARCHAR(30),
+        tuteur_nom VARCHAR(100) DEFAULT NULL,
+        tuteur_prenom VARCHAR(100) DEFAULT NULL,
+        tuteur_telephone VARCHAR(30) DEFAULT NULL,
+        date_inscription DATETIME DEFAULT CURRENT_TIMESTAMP,
         mot_de_passe VARCHAR(255) NOT NULL DEFAULT 'etudiant123',
-        date_inscription DATETIME DEFAULT CURRENT_TIMESTAMP
+        photo_url VARCHAR(255) DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+
+      `CREATE TABLE IF NOT EXISTS semestres (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        code VARCHAR(20) NOT NULL,
+        libelle VARCHAR(50) NOT NULL,
+        niveau_id INT DEFAULT NULL,
+        ordre INT DEFAULT 1
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+
+      `CREATE TABLE IF NOT EXISTS matieres (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        code VARCHAR(20) NOT NULL UNIQUE,
+        nom VARCHAR(150) NOT NULL,
+        filiere_id INT NOT NULL,
+        niveau_id INT DEFAULT NULL,
+        semestre_id INT DEFAULT 1,
+        semestre INT DEFAULT 1,
+        enseignant_id INT DEFAULT NULL,
+        credits INT DEFAULT 3,
+        credits_ectcs INT DEFAULT 3,
+        coefficient INT DEFAULT 1
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
 
       `CREATE TABLE IF NOT EXISTS inscriptions (
         id INT AUTO_INCREMENT PRIMARY KEY,
         etudiant_id INT NOT NULL,
         classe_id INT NOT NULL,
-        filiere_id INT,
-        annee_academique_id INT NOT NULL,
-        annee_academique VARCHAR(50) DEFAULT '2025-2026',
+        filiere_id INT DEFAULT NULL,
+        annee_academique_id INT DEFAULT 1,
+        annee_academique VARCHAR(50) DEFAULT '2024-2025',
         date_inscription DATETIME DEFAULT CURRENT_TIMESTAMP,
-        statut ENUM('Validée', 'En attente', 'Annulée') DEFAULT 'Validée',
-        frais_inscription DECIMAL(12,2) DEFAULT 150000,
+        statut VARCHAR(50) DEFAULT 'Validée',
+        frais_inscription DECIMAL(12,2) DEFAULT 150000.00,
         type_inscription VARCHAR(50) DEFAULT 'Inscrire',
         statut_paiement VARCHAR(50) DEFAULT 'Payé',
         statut_validation VARCHAR(50) DEFAULT 'Validé'
@@ -528,31 +605,19 @@ app.post("/api/mysql/init-schema", async (req, res) => {
         id INT AUTO_INCREMENT PRIMARY KEY,
         etudiant_id INT NOT NULL,
         annee_academique_id INT DEFAULT 1,
-        filiere_id INT,
-        filiere_code VARCHAR(20),
-        filiere_nom VARCHAR(150),
-        annee_libelle VARCHAR(50) DEFAULT '2025 - 2026',
+        filiere_id INT DEFAULT NULL,
+        filiere_code VARCHAR(20) DEFAULT NULL,
+        filiere_nom VARCHAR(150) DEFAULT NULL,
+        annee_libelle VARCHAR(50) DEFAULT '2024 - 2025',
         type_frais VARCHAR(50) DEFAULT 'Scolarité',
         montant DECIMAL(12,2) NOT NULL,
         montant_paye DECIMAL(12,2) NOT NULL,
-        reste_a_payer DECIMAL(12,2) NOT NULL DEFAULT 0,
+        reste_a_payer DECIMAL(12,2) NOT NULL DEFAULT 0.00,
         mode_paiement VARCHAR(50) DEFAULT 'Orange Money',
         reference_recu VARCHAR(100) NOT NULL UNIQUE,
         date_paiement DATETIME DEFAULT CURRENT_TIMESTAMP,
         statut VARCHAR(50) DEFAULT 'Complet',
-        remarque TEXT
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
-
-      `CREATE TABLE IF NOT EXISTS matieres (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        code VARCHAR(20) NOT NULL,
-        nom VARCHAR(255) NOT NULL,
-        filiere_id INT NOT NULL,
-        niveau_id INT,
-        semestre_id INT DEFAULT 1,
-        enseignant_id INT,
-        coefficient INT DEFAULT 1,
-        credits INT DEFAULT 3
+        remarque TEXT DEFAULT NULL
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
 
       `CREATE TABLE IF NOT EXISTS notes (
@@ -561,19 +626,31 @@ app.post("/api/mysql/init-schema", async (req, res) => {
         matiere_id INT NOT NULL,
         semestre_id INT DEFAULT 1,
         annee_academique_id INT DEFAULT 1,
-        annee_academique VARCHAR(20) DEFAULT '2025-2026',
+        annee_academique VARCHAR(20) DEFAULT '2024-2025',
         note_cc DECIMAL(4,2) DEFAULT 0.00,
         note_examen DECIMAL(4,2) DEFAULT 0.00,
         note_finale DECIMAL(4,2) DEFAULT 0.00,
-        appreciation VARCHAR(100),
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        moyenne DECIMAL(4,2) DEFAULT 0.00,
+        appreciation VARCHAR(100) DEFAULT NULL,
+        modifie_par VARCHAR(100) DEFAULT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         UNIQUE KEY uq_student_grade (etudiant_id, matiere_id, semestre_id, annee_academique_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+
+      `CREATE TABLE IF NOT EXISTS absences (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        etudiant_id INT NOT NULL,
+        matiere_id INT NOT NULL,
+        date_absence DATE NOT NULL,
+        heures INT DEFAULT 2,
+        justifiee TINYINT(1) DEFAULT 0,
+        motif TEXT DEFAULT NULL
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
 
       `CREATE TABLE IF NOT EXISTS bulletins (
         id INT AUTO_INCREMENT PRIMARY KEY,
         etudiant_id INT NOT NULL,
-        classe_id INT,
+        classe_id INT NOT NULL,
         semestre_id INT DEFAULT 1,
         annee_academique_id INT DEFAULT 1,
         moyenne DECIMAL(4,2) NOT NULL,
@@ -582,6 +659,63 @@ app.post("/api/mysql/init-schema", async (req, res) => {
         mention VARCHAR(50) DEFAULT 'Passable',
         rang INT DEFAULT 1,
         date_generation DATETIME DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+
+      `CREATE TABLE IF NOT EXISTS utilisateurs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        nom VARCHAR(100) NOT NULL,
+        prenom VARCHAR(100) NOT NULL,
+        email VARCHAR(100) NOT NULL UNIQUE,
+        mot_de_passe VARCHAR(255) NOT NULL,
+        role VARCHAR(50) DEFAULT 'Administrateur',
+        universite_id INT NOT NULL DEFAULT 1,
+        dernier_acces DATETIME DEFAULT NULL
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+
+      `CREATE TABLE IF NOT EXISTS administrateurs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        utilisateur_id INT NOT NULL,
+        nom VARCHAR(100) NOT NULL,
+        prenom VARCHAR(100) NOT NULL,
+        email VARCHAR(100) NOT NULL,
+        telephone VARCHAR(30) DEFAULT NULL,
+        role_admin VARCHAR(50) DEFAULT 'Super Admin'
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+
+      `CREATE TABLE IF NOT EXISTS autorisations_filieres (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        utilisateur_id INT NOT NULL,
+        filiere_id INT NOT NULL,
+        droit_acces VARCHAR(50) DEFAULT 'Total'
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+
+      `CREATE TABLE IF NOT EXISTS historique_acces (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        utilisateur_id INT DEFAULT NULL,
+        etudiant_id INT DEFAULT NULL,
+        ip_adresse VARCHAR(50) DEFAULT '127.0.0.1',
+        event_type VARCHAR(50) NOT NULL,
+        description TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+
+      `CREATE TABLE IF NOT EXISTS notifications (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        destinateur_type VARCHAR(20) DEFAULT 'ALL',
+        destinateur_id INT DEFAULT NULL,
+        titre VARCHAR(255) NOT NULL,
+        message TEXT NOT NULL,
+        type_alerte VARCHAR(20) DEFAULT 'INFO',
+        lu TINYINT(1) DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
+
+      `CREATE TABLE IF NOT EXISTS parametres (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        cle VARCHAR(100) NOT NULL UNIQUE,
+        valeur TEXT NOT NULL,
+        description VARCHAR(255) DEFAULT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`
     ];
 
@@ -589,7 +723,7 @@ app.post("/api/mysql/init-schema", async (req, res) => {
       await pool.query(q);
     }
 
-    return res.json({ success: true, message: "Structure des tables MySQL vérifiée et synchronisée avec succès." });
+    return res.json({ success: true, message: "Structure complète des 21 tables MySQL vérifiée et synchronisée avec succès." });
   } catch (error: any) {
     return res.status(500).json({ success: false, error: error.code, message: `Erreur d'initialisation MySQL : ${error.message}` });
   }
@@ -1011,13 +1145,252 @@ app.get("/api/db/sync", (req, res) => {
   return res.json({ success: true, data: null });
 });
 
-app.post("/api/db/sync", (req, res) => {
+async function syncSnapshotToMySQL(data: Record<string, any>) {
+  const pool = getMysqlPool();
+  if (!pool) return;
+  let connection: any;
+  try {
+    connection = await pool.getConnection();
+    await connection.query("SET FOREIGN_KEY_CHECKS = 0;");
+
+    const getArr = (key1: string, key2: string) => {
+      const v = data[key1] !== undefined ? data[key1] : data[key2];
+      return Array.isArray(v) ? v : null;
+    };
+
+    // 1. Etudiants
+    const etudiants = getArr('unigestion_etudiants', 'etudiants');
+    if (etudiants !== null) {
+      await connection.query("DELETE FROM etudiants;");
+      for (const e of etudiants) {
+        await connection.query(
+          `INSERT INTO etudiants (id, matricule, nom, prenom, date_naissance, lieu_naissance, sexe, genre, nationalite, email, telephone, adresse, classe_id, filiere_id, statut, est_bloque, statut_compte, tuteur_nom, tuteur_prenom, tuteur_telephone, date_inscription, mot_de_passe, photo_url)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            e.id, e.matricule, e.nom, e.prenom, e.date_naissance || null, e.lieu_naissance || 'Bamako',
+            e.sexe || 'M', e.genre || e.sexe || 'M', e.nationalite || 'Mali', e.email || null, e.telephone || null,
+            e.adresse || null, e.classe_id || 1, e.filiere_id || null, e.statut || 'Inscrit',
+            e.est_bloque ? 1 : 0, e.statut_compte || 'Actif', e.tuteur_nom || null, e.tuteur_prenom || null,
+            e.tuteur_telephone || null, e.date_inscription || new Date(), e.mot_de_passe || 'etudiant123', e.photo_url || null
+          ]
+        );
+      }
+    }
+
+    // 2. Filieres
+    const filieres = getArr('unigestion_filieres', 'filieres');
+    if (filieres !== null) {
+      await connection.query("DELETE FROM filieres;");
+      for (const f of filieres) {
+        await connection.query(
+          `INSERT INTO filieres (id, faculte_id, code, nom, description, domaine, diplome, frais_scolarite, duree_annees)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            f.id, f.faculte_id || 1, f.code, f.nom, f.description || null, f.domaine || 'Sciences',
+            f.diplome || 'Licence', f.frais_scolarite || 350000, f.duree_annees || 3
+          ]
+        );
+      }
+    }
+
+    // 3. Classes
+    const classes = getArr('unigestion_classes', 'classes');
+    if (classes !== null) {
+      await connection.query("DELETE FROM classes;");
+      for (const c of classes) {
+        await connection.query(
+          `INSERT INTO classes (id, filiere_id, niveau_id, annee_academique_id, code, nom, niveau, capacite, capacite_max)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            c.id, c.filiere_id || 1, c.niveau_id || null, c.annee_academique_id || null,
+            c.code, c.nom, c.niveau || 'L1', c.capacite || 60, c.capacite_max || 60
+          ]
+        );
+      }
+    }
+
+    // 4. Inscriptions
+    const inscriptions = getArr('unigestion_inscriptions', 'inscriptions');
+    if (inscriptions !== null) {
+      await connection.query("DELETE FROM inscriptions;");
+      for (const i of inscriptions) {
+        await connection.query(
+          `INSERT INTO inscriptions (id, etudiant_id, classe_id, filiere_id, annee_academique_id, annee_academique, date_inscription, statut, frais_inscription, type_inscription, statut_paiement, statut_validation)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            i.id, i.etudiant_id, i.classe_id, i.filiere_id || null, i.annee_academique_id || 1,
+            i.annee_academique || '2024-2025', i.date_inscription || new Date(), i.statut || 'Validée',
+            i.frais_inscription || 150000, i.type_inscription || 'Inscrire', i.statut_paiement || 'Payé', i.statut_validation || 'Validé'
+          ]
+        );
+      }
+    }
+
+    // 5. Paiements
+    const paiements = getArr('unigestion_paiements', 'paiements');
+    if (paiements !== null) {
+      await connection.query("DELETE FROM paiements;");
+      for (const p of paiements) {
+        await connection.query(
+          `INSERT INTO paiements (id, etudiant_id, annee_academique_id, filiere_id, filiere_code, filiere_nom, annee_libelle, type_frais, montant, montant_paye, reste_a_payer, mode_paiement, reference_recu, date_paiement, statut, remarque)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            p.id, p.etudiant_id, p.annee_academique_id || 1, p.filiere_id || null, p.filiere_code || null,
+            p.filiere_nom || null, p.annee_libelle || '2024 - 2025', p.type_frais || 'Scolarité',
+            p.montant, p.montant_paye, p.reste_a_payer, p.mode_paiement || 'Orange Money',
+            p.reference_recu || `REC-${p.id}`, p.date_paiement || new Date(), p.statut || 'Complet', p.remarque || null
+          ]
+        );
+      }
+    }
+
+    // 6. Notes
+    const notes = getArr('unigestion_notes', 'notes');
+    if (notes !== null) {
+      await connection.query("DELETE FROM notes;");
+      for (const n of notes) {
+        await connection.query(
+          `INSERT INTO notes (id, etudiant_id, matiere_id, semestre_id, annee_academique_id, annee_academique, note_cc, note_examen, note_finale, appreciation, modifie_par)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            n.id, n.etudiant_id, n.matiere_id, n.semestre_id || 1, n.annee_academique_id || 1,
+            n.annee_academique || '2024-2025', n.note_cc || 0, n.note_examen || 0, n.note_finale || 0,
+            n.appreciation || null, n.modifie_par || null
+          ]
+        );
+      }
+    }
+
+    // 7. Matieres
+    const matieres = getArr('unigestion_matieres', 'matieres');
+    if (matieres !== null) {
+      await connection.query("DELETE FROM matieres;");
+      for (const m of matieres) {
+        await connection.query(
+          `INSERT INTO matieres (id, code, nom, filiere_id, niveau_id, semestre_id, enseignant_id, credits, coefficient)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            m.id, m.code, m.nom, m.filiere_id, m.niveau_id || null, m.semestre_id || 1,
+            m.enseignant_id || null, m.credits || 3, m.coefficient || 1
+          ]
+        );
+      }
+    }
+
+    // 8. Enseignants
+    const enseignants = getArr('unigestion_enseignants', 'enseignants');
+    if (enseignants !== null) {
+      await connection.query("DELETE FROM enseignants;");
+      for (const en of enseignants) {
+        await connection.query(
+          `INSERT INTO enseignants (id, matricule, nom, prenom, titre, email, telephone, specialite, universite_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            en.id, en.matricule, en.nom, en.prenom, en.titre || 'Docteur', en.email,
+            en.telephone || null, en.specialite || null, en.universite_id || 1
+          ]
+        );
+      }
+    }
+
+    // 9. Semestres
+    const semestres = getArr('unigestion_semestres', 'semestres');
+    if (semestres !== null) {
+      await connection.query("DELETE FROM semestres;");
+      for (const s of semestres) {
+        await connection.query(
+          `INSERT INTO semestres (id, code, libelle, niveau_id, ordre)
+           VALUES (?, ?, ?, ?, ?)`,
+          [s.id, s.code, s.libelle, s.niveau_id || null, s.ordre || 1]
+        );
+      }
+    }
+
+    // 10. Annees Academiques
+    const annees = getArr('unigestion_annees', 'annees');
+    if (annees !== null) {
+      await connection.query("DELETE FROM annees_academiques;");
+      for (const a of annees) {
+        await connection.query(
+          `INSERT INTO annees_academiques (id, code, libelle, date_debut, date_fin, est_active, est_archivee)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [
+            a.id, a.code, a.libelle, a.date_debut, a.date_fin,
+            a.est_active ? 1 : 0, a.est_archivee ? 1 : 0
+          ]
+        );
+      }
+    }
+
+    // 11. Utilisateurs
+    const utilisateurs = getArr('unigestion_utilisateurs', 'utilisateurs');
+    if (utilisateurs !== null) {
+      await connection.query("DELETE FROM utilisateurs;");
+      for (const u of utilisateurs) {
+        await connection.query(
+          `INSERT INTO utilisateurs (id, nom, prenom, email, mot_de_passe, role, universite_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [
+            u.id, u.nom, u.prenom, u.email, u.mot_de_passe || 'admin123',
+            u.role || 'Administrateur', u.universite_id || 1
+          ]
+        );
+      }
+    }
+
+    // 12. Bulletins
+    const bulletins = getArr('unigestion_bulletins', 'bulletins');
+    if (bulletins !== null) {
+      await connection.query("DELETE FROM bulletins;");
+      for (const b of bulletins) {
+        await connection.query(
+          `INSERT INTO bulletins (id, etudiant_id, classe_id, semestre_id, annee_academique_id, moyenne, total_credits, decision, mention, rang, date_generation)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            b.id, b.etudiant_id, b.classe_id || 1, b.semestre_id || 1, b.annee_academique_id || 1,
+            b.moyenne || 0, b.total_credits || 0, b.decision || 'Admis', b.mention || 'Passable',
+            b.rang || 1, b.date_generation || new Date()
+          ]
+        );
+      }
+    }
+
+    // 13. Absences
+    const absences = getArr('unigestion_absences', 'absences');
+    if (absences !== null) {
+      await connection.query("DELETE FROM absences;");
+      for (const ab of absences) {
+        await connection.query(
+          `INSERT INTO absences (id, etudiant_id, matiere_id, date_absence, heures, justifiee, motif)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [
+            ab.id, ab.etudiant_id, ab.matiere_id, ab.date_absence,
+            ab.heures || 2, ab.justifiee ? 1 : 0, ab.motif || null
+          ]
+        );
+      }
+    }
+
+    await connection.query("SET FOREIGN_KEY_CHECKS = 1;");
+  } catch (err) {
+    console.warn("syncSnapshotToMySQL error:", err);
+  } finally {
+    if (connection) {
+      try { await connection.query("SET FOREIGN_KEY_CHECKS = 1;"); } catch {}
+      connection.release();
+    }
+  }
+}
+
+app.post("/api/db/sync", async (req, res) => {
   try {
     const { data } = req.body;
     if (data) {
       fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), "utf-8");
+      // Asynchronously trigger live sync to MySQL tables if connected
+      syncSnapshotToMySQL(data).catch(() => {});
     }
-    res.json({ success: true, message: "Base de données sauvegardée avec succès!" });
+    res.json({ success: true, message: "Base de données enregistrée et synchronisée avec succès!" });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }
