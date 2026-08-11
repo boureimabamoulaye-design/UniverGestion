@@ -206,27 +206,22 @@ export interface Paiement {
   remarque?: string;
 }
 
-export interface Utilisateur {
+export interface Administrateur {
   id: number;
   nom: string;
   prenom: string;
   email: string;
-  mot_de_passe: string;
-  role: 'Administrateur' | 'Gestionnaire' | 'Comptable' | 'Enseignant' | 'Étudiant';
-  universite_id: number;
+  mot_de_passe?: string;
+  telephone?: string;
+  role?: 'SUPER_ADMIN' | 'ADMIN' | 'SCOLARITE' | 'COMPTABILITE' | string;
+  role_admin?: 'Super Admin' | 'Admin Faculté' | 'Agent Saisie' | string;
+  universite_id?: number;
   statut?: 'Actif' | 'Inactif' | string;
+  date_creation?: string;
   dernier_acces?: string;
 }
 
-export interface Administrateur {
-  id: number;
-  utilisateur_id: number;
-  nom: string;
-  prenom: string;
-  email: string;
-  telephone: string;
-  role_admin: 'Super Admin' | 'Admin Faculté' | 'Agent Saisie';
-}
+export type Utilisateur = Administrateur;
 
 export interface AutorisationFiliere {
   id: number;

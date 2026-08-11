@@ -154,7 +154,7 @@ export default function App() {
                 {activeTab === 'bulletins' && <BulletinsView />}
                 {activeTab === 'paiements' && <PaiementsView />}
                 {activeTab === 'annees' && <AnneesAcademiquesView />}
-                {activeTab === 'utilisateurs' && <UtilisateursView />}
+                {(activeTab === 'administrateurs' || activeTab === 'utilisateurs') && <UtilisateursView />}
                 {activeTab === 'corbeille' && <CorbeilleView />}
                 {activeTab === 'historique' && <HistoriqueView />}
                 {activeTab === 'parametres' && <ParametresView />}

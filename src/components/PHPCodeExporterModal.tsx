@@ -110,7 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = trim($_POST['password']);
     
     $db = Database::getConnection();
-    $stmt = $db->prepare("SELECT * FROM utilisateurs WHERE email = ?");
+    $stmt = $db->prepare("SELECT * FROM administrateurs WHERE email = ?");
     $stmt->execute([$login]);
     $user = $stmt->fetch();
     

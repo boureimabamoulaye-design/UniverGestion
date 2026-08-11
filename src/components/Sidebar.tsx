@@ -24,7 +24,8 @@ import {
   Trash2,
   User,
   X,
-  Lock
+  Lock,
+  ShieldCheck
 } from 'lucide-react';
 import { AuthUser } from '../types/database';
 import { DB } from '../lib/storage';
@@ -46,6 +47,7 @@ export type ActiveTab =
   | 'examen'
   | 'paiements'
   | 'annees'
+  | 'administrateurs'
   | 'utilisateurs'
   | 'corbeille'
   | 'historique'
@@ -89,7 +91,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'bulletins', label: 'Bulletins', icon: FileCheck2 },
     { id: 'paiements', label: 'Paiements', icon: CreditCard },
     { id: 'annees', label: 'Années Académiques', icon: Clock },
-    { id: 'utilisateurs', label: 'Utilisateurs', icon: Users },
+    { id: 'administrateurs', label: 'Administrateurs', icon: ShieldCheck },
     { id: 'corbeille', label: 'Corbeille', icon: Trash2 },
     { id: 'historique', label: 'Historique', icon: History },
     { id: 'profil_admin', label: 'Mon Profil', icon: User },

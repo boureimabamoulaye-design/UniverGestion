@@ -323,7 +323,7 @@ app.post("/api/mysql/authenticate", async (req, res) => {
     if (pool) {
       try {
         const [rows]: any = await pool.query(
-          "SELECT * FROM utilisateurs WHERE (LOWER(email) = LOWER(?) OR LOWER(nom) = LOWER(?)) LIMIT 1",
+          "SELECT * FROM administrateurs WHERE (LOWER(email) = LOWER(?) OR LOWER(nom) = LOWER(?)) LIMIT 1",
           [sanitizedLogin, sanitizedLogin]
         );
 
@@ -367,17 +367,17 @@ app.post("/api/mysql/authenticate", async (req, res) => {
     }
 
     // 2. Check JSON database file
-    let jsonUtilisateurs: any[] = [];
+    let jsonAdministrateurs: any[] = [];
     if (fs.existsSync(DATA_FILE)) {
       try {
         const db = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
-        jsonUtilisateurs = db.unigestion_utilisateurs || db.utilisateurs || [];
+        jsonAdministrateurs = db.unigestion_administrateurs || db.administrateurs || db.unigestion_utilisateurs || [];
       } catch (e) {
         console.warn("JSON Admin Auth error:", e);
       }
     }
 
-    let adminUser = jsonUtilisateurs.find((u: any) => 
+    let adminUser = jsonAdministrateurs.find((u: any) => 
       (u.email && u.email.toLowerCase() === sanitizedLogin.toLowerCase()) ||
       (u.nom && u.nom.toLowerCase() === sanitizedLogin.toLowerCase())
     );
@@ -771,25 +771,21 @@ app.post("/api/mysql/init-schema", async (req, res) => {
         date_generation DATETIME DEFAULT CURRENT_TIMESTAMP
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
 
-      `CREATE TABLE IF NOT EXISTS utilisateurs (
+      `DROP TABLE IF EXISTS utilisateurs;`,
+
+      `CREATE TABLE IF NOT EXISTS administrateurs (
         id INT AUTO_INCREMENT PRIMARY KEY,
         nom VARCHAR(100) NOT NULL,
         prenom VARCHAR(100) NOT NULL,
         email VARCHAR(100) NOT NULL UNIQUE,
         mot_de_passe VARCHAR(255) NOT NULL,
-        role VARCHAR(50) DEFAULT 'Administrateur',
-        universite_id INT NOT NULL DEFAULT 1,
-        dernier_acces DATETIME DEFAULT NULL
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
-
-      `CREATE TABLE IF NOT EXISTS administrateurs (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        utilisateur_id INT NOT NULL,
-        nom VARCHAR(100) NOT NULL,
-        prenom VARCHAR(100) NOT NULL,
-        email VARCHAR(100) NOT NULL,
         telephone VARCHAR(30) DEFAULT NULL,
-        role_admin VARCHAR(50) DEFAULT 'Super Admin'
+        role VARCHAR(50) DEFAULT 'ADMIN',
+        role_admin VARCHAR(50) DEFAULT 'Super Admin',
+        statut VARCHAR(30) DEFAULT 'Actif',
+        universite_id INT DEFAULT 1,
+        date_creation DATE DEFAULT NULL,
+        dernier_acces DATETIME DEFAULT NULL
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`,
 
       `CREATE TABLE IF NOT EXISTS autorisations_filieres (
@@ -1189,7 +1185,6 @@ app.get("/api/data/all", async (req, res) => {
     const [classes]: any = await pool.query("SELECT * FROM classes ORDER BY id ASC").catch(() => [[]]);
     const [matieres]: any = await pool.query("SELECT * FROM matieres ORDER BY id ASC").catch(() => [[]]);
     const [administrateurs]: any = await pool.query("SELECT * FROM administrateurs ORDER BY id ASC").catch(() => [[]]);
-    const [utilisateurs]: any = await pool.query("SELECT * FROM utilisateurs ORDER BY id ASC").catch(() => [[]]);
 
     return res.json({
       success: true,
@@ -1202,8 +1197,7 @@ app.get("/api/data/all", async (req, res) => {
         filieres,
         classes,
         matieres,
-        administrateurs,
-        utilisateurs
+        administrateurs
       }
     });
   } catch (error: any) {
@@ -1432,17 +1426,18 @@ async function syncSnapshotToMySQL(data: Record<string, any>) {
       }
     }
 
-    // 11. Utilisateurs
-    const utilisateurs = getArr('unigestion_utilisateurs', 'utilisateurs');
-    if (utilisateurs !== null) {
-      await connection.query("DELETE FROM utilisateurs;");
-      for (const u of utilisateurs) {
+    // 11. Administrateurs
+    const administrateurs = getArr('unigestion_administrateurs', 'administrateurs') || getArr('unigestion_utilisateurs', 'utilisateurs');
+    if (administrateurs !== null) {
+      await connection.query("DELETE FROM administrateurs;");
+      for (const a of administrateurs) {
         await connection.query(
-          `INSERT INTO utilisateurs (id, nom, prenom, email, mot_de_passe, role, universite_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO administrateurs (id, nom, prenom, email, mot_de_passe, telephone, role, role_admin, statut, universite_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
-            u.id, u.nom, u.prenom, u.email, u.mot_de_passe || 'admin123',
-            u.role || 'Administrateur', u.universite_id || 1
+            a.id, a.nom, a.prenom, a.email, a.mot_de_passe || 'admin123',
+            a.telephone || '+223 70 00 00 00', a.role || 'ADMIN', a.role_admin || 'Super Admin',
+            a.statut || 'Actif', a.universite_id || 1
           ]
         );
       }

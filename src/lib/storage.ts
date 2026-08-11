@@ -292,7 +292,7 @@ export class DB {
   }
 
   static getUtilisateurs(): Utilisateur[] {
-    return getItem(STORAGE_KEYS.UTILISATEURS, INITIAL_UTILISATEURS);
+    return this.getAdministrateurs();
   }
 
   static getAdministrateurs(): Administrateur[] {
@@ -929,24 +929,32 @@ export class DB {
     setItem(STORAGE_KEYS.PAIEMENTS, this.getPaiements().filter(p => p.id !== id));
   }
 
-  static saveUtilisateur(item: Omit<Utilisateur, 'id'> & { id?: number }): Utilisateur {
-    const list = this.getUtilisateurs();
-    let result: Utilisateur;
+  static saveAdministrateur(item: Omit<Administrateur, 'id'> & { id?: number }): Administrateur {
+    const list = this.getAdministrateurs();
+    let result: Administrateur;
     if (item.id) {
       const idx = list.findIndex(u => u.id === item.id);
       if (idx !== -1) list[idx] = { ...list[idx], ...item };
       result = list[idx];
     } else {
       const nextId = Math.max(0, ...list.map(u => u.id)) + 1;
-      result = { ...item, id: nextId } as Utilisateur;
+      result = { ...item, id: nextId } as Administrateur;
       list.push(result);
     }
-    setItem(STORAGE_KEYS.UTILISATEURS, list);
+    setItem(STORAGE_KEYS.ADMINISTRATEURS, list);
     return result;
   }
 
+  static deleteAdministrateur(id: number): void {
+    setItem(STORAGE_KEYS.ADMINISTRATEURS, this.getAdministrateurs().filter(u => u.id !== id));
+  }
+
+  static saveUtilisateur(item: Omit<Utilisateur, 'id'> & { id?: number }): Utilisateur {
+    return this.saveAdministrateur(item);
+  }
+
   static deleteUtilisateur(id: number): void {
-    setItem(STORAGE_KEYS.UTILISATEURS, this.getUtilisateurs().filter(u => u.id !== id));
+    this.deleteAdministrateur(id);
   }
 
   static saveBulletin(item: Omit<Bulletin, 'id'> & { id?: number }): Bulletin {

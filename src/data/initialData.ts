@@ -556,19 +556,36 @@ export const INITIAL_PAIEMENTS: Paiement[] = [
 
 export const INITIAL_SUPPORTS_COURS: SupportCours[] = [];
 
-export const INITIAL_UTILISATEURS: Utilisateur[] = [
+export const INITIAL_ADMINISTRATEURS: Administrateur[] = [
   {
     id: 1,
     nom: 'Administrateur',
     prenom: 'Principal',
     email: 'admin@unigestion.edu.ml',
     mot_de_passe: 'admin123',
-    role: 'Administrateur',
-    universite_id: 1
+    role: 'ADMIN',
+    role_admin: 'Super Admin',
+    telephone: '+223 70 00 00 00',
+    statut: 'Actif',
+    universite_id: 1,
+    date_creation: '2025-01-01'
+  },
+  {
+    id: 2,
+    nom: 'Administrateur',
+    prenom: 'Système',
+    email: 'admin',
+    mot_de_passe: 'admin123',
+    role: 'ADMIN',
+    role_admin: 'Super Admin',
+    telephone: '+223 70 00 00 01',
+    statut: 'Actif',
+    universite_id: 1,
+    date_creation: '2025-01-01'
   }
 ];
 
-export const INITIAL_ADMINISTRATEURS: Administrateur[] = [];
+export const INITIAL_UTILISATEURS: Utilisateur[] = INITIAL_ADMINISTRATEURS;
 
 export const INITIAL_NOTIFICATIONS: NotificationAlerte[] = [];
 

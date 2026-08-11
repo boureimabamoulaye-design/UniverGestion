@@ -22,19 +22,19 @@ export const ProfilAdminView: React.FC<ProfilAdminViewProps> = ({ currentUser })
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Update user list if found
-    const users = DB.getUtilisateurs();
-    const idx = users.findIndex(u => u.email === currentUser.email_or_matricule);
+    // Update admin list if found
+    const admins = DB.getAdministrateurs();
+    const idx = admins.findIndex(u => u.email === currentUser.email_or_matricule);
     if (idx !== -1) {
-      users[idx] = {
-        ...users[idx],
+      admins[idx] = {
+        ...admins[idx],
         nom: formData.nom,
         prenom: formData.prenom,
         email: formData.email,
         ...(formData.nouveauMotDePasse ? { mot_de_passe: formData.nouveauMotDePasse } : {})
       };
-      // Save updated user via DB helper (in-memory)
-      DB.saveUtilisateur(users[idx]);
+      // Save updated admin via DB helper
+      DB.saveAdministrateur(admins[idx]);
     }
 
     setMessage('Votre profil administrateur a été mis à jour avec succès.');

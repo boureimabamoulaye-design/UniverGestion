@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import { DB } from '../lib/storage';
-import { Utilisateur } from '../types/database';
+import { Administrateur } from '../types/database';
 import { Modal } from '../components/Modal';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { Users, Plus, Key, ShieldCheck, UserX, UserCheck, Trash2 } from 'lucide-react';
 
 export const UtilisateursView: React.FC = () => {
-  const [list, setList] = useState<Utilisateur[]>(DB.getUtilisateurs());
+  const [list, setList] = useState<Administrateur[]>(DB.getAdministrateurs());
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [resetPassUser, setResetPassUser] = useState<Utilisateur | null>(null);
-  const [deleteUserItem, setDeleteUserItem] = useState<Utilisateur | null>(null);
+  const [resetPassUser, setResetPassUser] = useState<Administrateur | null>(null);
+  const [deleteUserItem, setDeleteUserItem] = useState<Administrateur | null>(null);
 
   const [formData, setFormData] = useState({
     nom: '',
@@ -23,48 +23,48 @@ export const UtilisateursView: React.FC = () => {
     e.preventDefault();
     if (!formData.email || !formData.nom) return;
 
-    DB.saveUtilisateur({
+    DB.saveAdministrateur({
       ...formData,
       statut: 'Actif',
       date_creation: new Date().toISOString().split('T')[0]
     });
 
-    setList(DB.getUtilisateurs());
+    setList(DB.getAdministrateurs());
     setIsModalOpen(false);
   };
 
-  const handleToggleStatus = (u: Utilisateur) => {
-    DB.saveUtilisateur({
+  const handleToggleStatus = (u: Administrateur) => {
+    DB.saveAdministrateur({
       ...u,
       statut: u.statut === 'Actif' ? 'Inactif' : 'Actif'
     });
-    setList(DB.getUtilisateurs());
+    setList(DB.getAdministrateurs());
   };
 
-  const handleResetPassword = (u: Utilisateur) => {
+  const handleResetPassword = (u: Administrateur) => {
     setResetPassUser(u);
   };
 
   const executeResetPassword = () => {
     if (resetPassUser) {
-      DB.saveUtilisateur({
+      DB.saveAdministrateur({
         ...resetPassUser,
         mot_de_passe: 'admin123'
       });
-      setList(DB.getUtilisateurs());
+      setList(DB.getAdministrateurs());
       setResetPassUser(null);
     }
   };
 
-  const handleDeleteUser = (u: Utilisateur) => {
+  const handleDeleteUser = (u: Administrateur) => {
     setDeleteUserItem(u);
   };
 
   const executeDeleteUser = () => {
     if (deleteUserItem) {
       DB.moveToCorbeille('UTILISATEUR', deleteUserItem.id, `${deleteUserItem.prenom} ${deleteUserItem.nom}`, `Rôle: ${deleteUserItem.role}`, deleteUserItem);
-      DB.deleteUtilisateur(deleteUserItem.id);
-      setList(DB.getUtilisateurs());
+      DB.deleteAdministrateur(deleteUserItem.id);
+      setList(DB.getAdministrateurs());
       setDeleteUserItem(null);
     }
   };
