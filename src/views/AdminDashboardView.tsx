@@ -110,6 +110,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ setActiv
         </div>
         <div className="flex items-center gap-2">
           <button
+            type="button"
             onClick={() => setActiveTab('inscriptions')}
             className="h-[38px] px-4 bg-[#0066FF] hover:bg-blue-700 text-white rounded-[12px] text-xs font-semibold transition-colors shadow-xs flex items-center gap-2"
           >
@@ -117,6 +118,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ setActiv
             + Nouvelle Inscription
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab('notes')}
             className="h-[38px] px-4 bg-white border border-[#E5E7EB] hover:bg-gray-50 text-[#374151] rounded-[12px] text-xs font-semibold transition-colors flex items-center gap-2"
           >

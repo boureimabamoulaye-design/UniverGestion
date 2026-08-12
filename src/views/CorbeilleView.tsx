@@ -80,6 +80,7 @@ export const CorbeilleView: React.FC = () => {
 
         <div className="flex flex-wrap items-center gap-2">
           <button
+            type="button"
             onClick={loadCorbeille}
             className="h-[36px] px-3 bg-white hover:bg-slate-50 text-slate-700 border border-gray-300 rounded-[6px] text-xs font-semibold flex items-center gap-1.5 transition-colors"
           >
@@ -89,6 +90,7 @@ export const CorbeilleView: React.FC = () => {
 
           {items.length > 0 && (
             <button
+              type="button"
               onClick={handleEmptyTrash}
               className="h-[36px] px-4 bg-red-700 hover:bg-red-800 text-white rounded-[6px] text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs"
             >
@@ -177,6 +179,7 @@ export const CorbeilleView: React.FC = () => {
                     <td className="px-4 py-3 text-center">
                       <div className="flex items-center justify-center gap-2">
                         <button
+                          type="button"
                           onClick={() => handleRestore(item.id, item.titre)}
                           className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-[5px] text-[11px] font-bold flex items-center gap-1 transition-colors"
                           title="Restaurer cet élément"
@@ -185,6 +188,7 @@ export const CorbeilleView: React.FC = () => {
                           <span>Restaurer</span>
                         </button>
                         <button
+                          type="button"
                           onClick={() => handleDeletePermanent(item.id, item.titre)}
                           className="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-800 border border-red-300 rounded-[5px] text-[11px] font-bold flex items-center gap-1 transition-colors"
                           title="Supprimer définitivement"

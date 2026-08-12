@@ -42,6 +42,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
               <p className="text-xs text-slate-600 mt-1 leading-relaxed">{message}</p>
             </div>
             <button 
+              type="button"
               onClick={onClose}
               className="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100 transition-colors"
             >

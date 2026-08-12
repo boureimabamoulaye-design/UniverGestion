@@ -27,6 +27,7 @@ export const Modal: React.FC<ModalProps> = ({
         <div className="px-4 py-3.5 sm:px-6 sm:py-5 border-b border-gray-100 flex items-center justify-between bg-white">
           <h2 className="text-base sm:text-lg font-bold text-[#1A1A1A] truncate pr-2">{title}</h2>
           <button
+            type="button"
             onClick={onClose}
             className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors shrink-0"
           >

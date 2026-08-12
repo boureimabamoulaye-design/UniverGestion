@@ -573,13 +573,14 @@ export const NotesView: React.FC = () => {
             <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
             <span className="whitespace-pre-line">{errorBanner}</span>
           </div>
-          <button onClick={() => setErrorBanner(null)} className="text-rose-600 hover:text-rose-900 font-extrabold text-sm">✕</button>
+          <button type="button" onClick={() => setErrorBanner(null)} className="text-rose-600 hover:text-rose-900 font-extrabold text-sm">✕</button>
         </div>
       )}
 
       {/* Global Toolbar Tools */}
         <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
           <button
+            type="button"
             onClick={() => setIsImportModalOpen(true)}
             className="h-[40px] px-3.5 bg-white hover:bg-slate-50 text-slate-700 border border-gray-300 rounded-[14px] text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-xs"
           >
@@ -588,6 +589,7 @@ export const NotesView: React.FC = () => {
           </button>
 
           <button
+            type="button"
             onClick={handleExportCsv}
             className="h-[40px] px-3.5 bg-white hover:bg-slate-50 text-slate-700 border border-gray-300 rounded-[14px] text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-xs"
           >
@@ -596,6 +598,7 @@ export const NotesView: React.FC = () => {
           </button>
 
           <button
+            type="button"
             onClick={() => setIsPrintModalOpen(true)}
             className="h-[40px] px-3.5 bg-white hover:bg-slate-50 text-slate-700 border border-gray-300 rounded-[14px] text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-xs"
           >
@@ -1041,12 +1044,14 @@ export const NotesView: React.FC = () => {
 
           <div className="flex items-center justify-end gap-3 pt-3 border-t">
             <button
+              type="button"
               onClick={() => setIsImportModalOpen(false)}
               className="px-4 py-2 border border-[#E5E7EB] rounded-[10px] text-gray-600 font-semibold"
             >
               Annuler
             </button>
             <button
+              type="button"
               onClick={handleProcessImportCsv}
               className="px-5 py-2 bg-[#0066FF] hover:bg-blue-700 text-white font-bold rounded-[10px]"
             >
@@ -1137,12 +1142,14 @@ export const NotesView: React.FC = () => {
 
           <div className="flex items-center justify-end gap-3 pt-4 border-t">
             <button
+              type="button"
               onClick={() => setIsPrintModalOpen(false)}
               className="px-4 py-2 border border-[#E5E7EB] rounded-[10px] font-semibold"
             >
               Fermer
             </button>
             <button
+              type="button"
               onClick={() => window.print()}
               className="px-5 py-2 bg-[#0066FF] hover:bg-blue-700 text-white font-bold rounded-[10px] flex items-center gap-2"
             >

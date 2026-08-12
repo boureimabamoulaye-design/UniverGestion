@@ -31,6 +31,7 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Hamburger Menu Toggle (Mobile) */}
         {onToggleMobileMenu && (
           <button
+            type="button"
             onClick={onToggleMobileMenu}
             className="lg:hidden p-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-[12px] transition-colors -ml-1"
             title="Ouvrir le menu de navigation"
@@ -73,6 +74,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Logout button */}
         <button
+          type="button"
           onClick={onLogout}
           title="Déconnexion"
           className="w-[40px] h-[40px] lg:w-[44px] lg:h-[44px] flex items-center justify-center text-red-600 border border-red-100 rounded-[14px] hover:bg-red-50 transition-colors"

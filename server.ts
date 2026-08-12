@@ -203,6 +203,138 @@ app.post("/api/etudiant/authorize", (req, res) => {
   }
 });
 
+// SAISIE COLLECTIVE NOTES API
+app.post("/api/notes/saisie-collective", (req, res) => {
+  try {
+    const { grades, annee_academique_id, filiere_id, semestre_id } = req.body;
+    if (Array.isArray(grades) && grades.length > 0) {
+      const db = readDatabase();
+      let currentNotes = db.unigestion_notes || db.notes || [];
+      for (const item of grades) {
+        const etudiant_id = Number(item.etudiant_id);
+        const matiere_id = Number(item.matiere_id);
+        const ccVal = Number(item.note_cc) || 0;
+        const examVal = Number(item.note_examen) || 0;
+        const finaleVal = parseFloat(((ccVal * 0.4) + (examVal * 0.6)).toFixed(2));
+        const app = item.appreciation || (finaleVal >= 10 ? 'Validé' : 'Ajourné');
+
+        const existingIndex = currentNotes.findIndex((n: any) =>
+          Number(n.etudiant_id) === etudiant_id &&
+          Number(n.matiere_id) === matiere_id &&
+          Number(n.semestre_id) === Number(semestre_id) &&
+          Number(n.annee_academique_id) === Number(annee_academique_id)
+        );
+
+        if (existingIndex >= 0) {
+          currentNotes[existingIndex] = {
+            ...currentNotes[existingIndex],
+            note_cc: ccVal,
+            note_examen: examVal,
+            note_finale: finaleVal,
+            appreciation: app
+          };
+        } else {
+          currentNotes.push({
+            id: currentNotes.length > 0 ? Math.max(...currentNotes.map((n: any) => n.id || 0)) + 1 : 1,
+            etudiant_id,
+            matiere_id,
+            semestre_id: Number(semestre_id),
+            annee_academique_id: Number(annee_academique_id),
+            note_cc: ccVal,
+            note_examen: examVal,
+            note_finale: finaleVal,
+            appreciation: app,
+            date_saisie: new Date().toISOString().split('T')[0]
+          });
+        }
+      }
+      db.unigestion_notes = currentNotes;
+      saveDatabase(db);
+    }
+    return res.json({ success: true, message: "Notes enregistrées avec succès" });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// CREATE INSCRIPTION API
+app.post("/api/inscriptions/create", (req, res) => {
+  try {
+    const db = readDatabase();
+    let inscriptions = db.unigestion_inscriptions || db.inscriptions || [];
+    const newInscription = {
+      id: inscriptions.length > 0 ? Math.max(...inscriptions.map((i: any) => i.id || 0)) + 1 : 1,
+      ...req.body,
+      date_inscription: req.body.date_inscription || new Date().toISOString().split('T')[0]
+    };
+    inscriptions.push(newInscription);
+    db.unigestion_inscriptions = inscriptions;
+    saveDatabase(db);
+    return res.json({ success: true, data: newInscription });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// COLLECTIVE INSCRIPTION API
+app.post("/api/inscriptions/collective", (req, res) => {
+  try {
+    const { target_classe_id, annee_academique_id, student_ids, type_inscription, frais_inscription, statut_paiement, statut_validation } = req.body;
+    const db = readDatabase();
+    let inscriptions = db.unigestion_inscriptions || db.inscriptions || [];
+    let etudiants = db.unigestion_etudiants || db.etudiants || [];
+
+    if (Array.isArray(student_ids)) {
+      student_ids.forEach((stId: number) => {
+        const nextId = inscriptions.length > 0 ? Math.max(...inscriptions.map((i: any) => i.id || 0)) + 1 : 1;
+        inscriptions.push({
+          id: nextId,
+          etudiant_id: Number(stId),
+          classe_id: Number(target_classe_id),
+          annee_academique_id: Number(annee_academique_id),
+          date_inscription: new Date().toISOString().split('T')[0],
+          statut: 'Validée',
+          frais_inscription: Number(frais_inscription) || 150000,
+          type_inscription: type_inscription || 'Réinscription',
+          statut_paiement: statut_paiement || 'Payé',
+          statut_validation: statut_validation || 'Validé'
+        });
+
+        const stIdx = etudiants.findIndex((e: any) => e.id === Number(stId));
+        if (stIdx >= 0) {
+          etudiants[stIdx].classe_id = Number(target_classe_id);
+          etudiants[stIdx].statut = 'Inscrit';
+        }
+      });
+      db.unigestion_inscriptions = inscriptions;
+      db.unigestion_etudiants = etudiants;
+      saveDatabase(db);
+    }
+    return res.json({ success: true, message: "Inscriptions collectives effectuées" });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// CREATE PAIEMENT API
+app.post("/api/paiements/create", (req, res) => {
+  try {
+    const db = readDatabase();
+    let paiements = db.unigestion_paiements || db.paiements || [];
+    const newPaiement = {
+      id: paiements.length > 0 ? Math.max(...paiements.map((p: any) => p.id || 0)) + 1 : 1,
+      ...req.body,
+      date_paiement: req.body.date_paiement || new Date().toISOString().split('T')[0]
+    };
+    paiements.push(newPaiement);
+    db.unigestion_paiements = paiements;
+    saveDatabase(db);
+    return res.json({ success: true, data: newPaiement });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // BATCH NOTES ENTRY API
 app.post("/api/notes/batch", (req, res) => {
   const { notes, annee_academique_id, semestre_id, filiere_id, classe_id, matiere_id } = req.body;

@@ -286,6 +286,7 @@ export const InscriptionsView: React.FC = () => {
 
         <div className="flex items-center gap-2">
           <button
+            type="button"
             onClick={() => setIsCollectiveModalOpen(true)}
             className="h-[44px] px-4 bg-white border border-[#E5E7EB] hover:bg-slate-50 text-slate-800 rounded-[14px] text-xs font-bold flex items-center gap-2 transition-all shadow-2xs hover:border-slate-300"
           >
@@ -294,6 +295,7 @@ export const InscriptionsView: React.FC = () => {
           </button>
 
           <button
+            type="button"
             onClick={handleOpenIndivModal}
             className="h-[44px] px-5 bg-blue-600 hover:bg-blue-700 text-white rounded-[14px] text-xs font-bold flex items-center gap-2 transition-colors shadow-xs"
           >
