@@ -10,7 +10,7 @@ interface SupportsCoursViewProps {
 }
 
 export const SupportsCoursView: React.FC<SupportsCoursViewProps> = ({ currentUser }) => {
-  const isAdmin = currentUser.role === 'ADMIN';
+  const isAdmin = currentUser.role?.toUpperCase() !== 'ETUDIANT';
   const [list, setList] = useState<SupportCours[]>(DB.getSupportsCours());
 
   useEffect(() => {

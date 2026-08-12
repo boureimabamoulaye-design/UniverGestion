@@ -172,7 +172,8 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
   const [viewingReceipt, setViewingReceipt] = useState<Paiement | null>(null);
 
   // Current selected tab state helper
-  const currentTab = activeTab === 'dashboard' || !activeTab ? 'bulletins' : activeTab;
+  const validStudentTabs = ['bulletins', 'examen', 'paiements', 'profil_etudiant', 'absences'];
+  const currentTab = validStudentTabs.includes(activeTab) ? activeTab : 'bulletins';
 
   const handleUpdateProfile = (e: React.FormEvent) => {
     e.preventDefault();

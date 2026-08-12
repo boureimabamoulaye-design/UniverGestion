@@ -25,6 +25,8 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleMobileMenu
 }) => {
 
+  const isStaffOrAdmin = user.role?.toUpperCase() !== 'ETUDIANT';
+
   return (
     <header className="h-[70px] lg:h-[80px] bg-white border-b border-[#E5E7EB] flex items-center justify-between px-4 sm:px-6 lg:px-10 sticky top-0 z-20">
       <div className="flex items-center gap-3 sm:gap-4">
@@ -42,7 +44,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         <div className="min-w-0 flex-1">
           <h1 className="text-xs sm:text-base lg:text-xl font-bold text-[#1A1A1A] truncate max-w-xs sm:max-w-md lg:max-w-none leading-snug">
-            {user.role === 'ADMIN' 
+            {isStaffOrAdmin 
               ? (user.universite_nom || 'Université des Sciences, des Techniques et des Technologies de Bamako')
               : 'Espace Étudiant Mali'}
           </h1>
@@ -65,7 +67,7 @@ export const Header: React.FC<HeaderProps> = ({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={user.role === 'ADMIN' ? "Rechercher étudiant, matricule, classe..." : "Rechercher matière, note..."}
+            placeholder={isStaffOrAdmin ? "Rechercher étudiant, matricule, classe..." : "Rechercher matière, note..."}
             className="w-[200px] lg:w-[300px] h-[40px] lg:h-[44px] bg-[#F9FAFB] border border-[#E5E7EB] rounded-[14px] pl-10 pr-4 text-xs lg:text-sm text-[#1A1A1A] placeholder-gray-400 focus:outline-none focus:border-[#0066FF] focus:bg-white transition-all"
           />
           <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />

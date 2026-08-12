@@ -75,7 +75,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isMobileOpen = false,
   setIsMobileOpen
 }) => {
-  const isAdmin = user.role === 'ADMIN';
+  const isAdmin = user.role?.toUpperCase() !== 'ETUDIANT';
 
   const adminNav = [
     { id: 'dashboard', label: 'Tableau de bord', icon: LayoutDashboard },

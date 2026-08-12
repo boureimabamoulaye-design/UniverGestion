@@ -39,8 +39,10 @@ export default function App() {
     }
   });
 
+  const isStaffOrAdmin = currentUser ? currentUser.role?.toUpperCase() !== 'ETUDIANT' : false;
+
   const [activeTab, setActiveTab] = useState<ActiveTab>(() => {
-    return currentUser?.role === 'ADMIN' ? 'dashboard' : 'bulletins';
+    return isStaffOrAdmin ? 'dashboard' : 'bulletins';
   });
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -83,7 +85,8 @@ export default function App() {
       <LoginView
         onLoginSuccess={(u) => {
           handleSetCurrentUser(u);
-          setActiveTab(u.role === 'ADMIN' ? 'dashboard' : 'bulletins');
+          const isStaff = u.role?.toUpperCase() !== 'ETUDIANT';
+          setActiveTab(isStaff ? 'dashboard' : 'bulletins');
         }}
       />
     );
@@ -124,11 +127,11 @@ export default function App() {
 
           {/* Tab Views Router */}
           <main className="flex-1 p-3.5 sm:p-6 lg:p-10 max-w-7xl w-full mx-auto">
-            {activeTab === 'dashboard' && currentUser.role === 'ADMIN' && (
+            {activeTab === 'dashboard' && isStaffOrAdmin && (
               <AdminDashboardView setActiveTab={setActiveTab} />
             )}
 
-            {activeTab === 'profil_admin' && currentUser.role === 'ADMIN' && (
+            {activeTab === 'profil_admin' && isStaffOrAdmin && (
               <ProfilAdminView currentUser={currentUser} />
             )}
 
@@ -136,11 +139,11 @@ export default function App() {
               <SupportsCoursView currentUser={currentUser} />
             )}
 
-            {currentUser.role === 'ETUDIANT' && activeTab !== 'supports_cours' && (
+            {!isStaffOrAdmin && activeTab !== 'supports_cours' && (
               <EtudiantPortalView user={currentUser} activeTab={activeTab} setActiveTab={setActiveTab} />
             )}
 
-            {currentUser.role === 'ADMIN' && (
+            {isStaffOrAdmin && (
               <>
                 {activeTab === 'filieres' && <FilieresView />}
                 {activeTab === 'classes' && <ClassesView />}
