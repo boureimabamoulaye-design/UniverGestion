@@ -215,7 +215,7 @@ app.post("/api/notes/saisie-collective", (req, res) => {
         const matiere_id = Number(item.matiere_id);
         const ccVal = Number(item.note_cc) || 0;
         const examVal = Number(item.note_examen) || 0;
-        const finaleVal = parseFloat(((ccVal * 0.4) + (examVal * 0.6)).toFixed(2));
+        const finaleVal = parseFloat(((ccVal * 0.3) + (examVal * 0.7)).toFixed(2));
         const app = item.appreciation || (finaleVal >= 10 ? 'Validé' : 'Ajourné');
 
         const existingIndex = currentNotes.findIndex((n: any) =>

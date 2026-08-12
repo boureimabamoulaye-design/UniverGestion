@@ -411,7 +411,7 @@ export const NotesView: React.FC = () => {
           const g = getStudentGrade(st.id, m.id);
           const ccVal = g.cc === '' || g.cc === undefined || g.cc === null ? 0 : Number(g.cc);
           const examVal = g.exam === '' || g.exam === undefined || g.exam === null ? 0 : Number(g.exam);
-          const noteFinale = parseFloat(((ccVal * 0.4) + (examVal * 0.6)).toFixed(2));
+          const noteFinale = parseFloat(((ccVal * 0.3) + (examVal * 0.7)).toFixed(2));
 
           const existingNote = notesList.find(
             n => n.etudiant_id === st.id &&
