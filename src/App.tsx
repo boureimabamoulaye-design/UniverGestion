@@ -40,9 +40,37 @@ export default function App() {
 
   const isStaffOrAdmin = currentUser ? currentUser.role?.toUpperCase() !== 'ETUDIANT' : false;
 
-  const [activeTab, setActiveTab] = useState<ActiveTab>(() => {
+  const getInitialTab = (): ActiveTab => {
+    try {
+      const hash = window.location.hash.replace(/^#\/?/, '').trim() as ActiveTab;
+      if (hash) return hash;
+      const saved = localStorage.getItem('unigestion_active_tab') as ActiveTab;
+      if (saved) return saved;
+    } catch {}
     return isStaffOrAdmin ? 'dashboard' : 'bulletins';
-  });
+  };
+
+  const [activeTab, setActiveTabState] = useState<ActiveTab>(getInitialTab);
+
+  const handleTabChange = (tab: ActiveTab) => {
+    setActiveTabState(tab);
+    try {
+      window.location.hash = tab;
+      localStorage.setItem('unigestion_active_tab', tab);
+    } catch {}
+  };
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace(/^#\/?/, '').trim() as ActiveTab;
+      if (hash) {
+        setActiveTabState(hash);
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -84,7 +112,8 @@ export default function App() {
         onLoginSuccess={(u) => {
           handleSetCurrentUser(u);
           const isStaff = u.role?.toUpperCase() !== 'ETUDIANT';
-          setActiveTab(isStaff ? 'dashboard' : 'bulletins');
+          const defaultTab = isStaff ? 'dashboard' : 'bulletins';
+          handleTabChange(defaultTab);
         }}
       />
     );
@@ -98,7 +127,7 @@ export default function App() {
         <Sidebar
           user={currentUser}
           activeTab={activeTab}
-          setActiveTab={setActiveTab}
+          setActiveTab={handleTabChange}
           isCollapsed={isSidebarCollapsed}
           setIsCollapsed={setIsSidebarCollapsed}
           onLogout={handleLogout}
@@ -125,7 +154,7 @@ export default function App() {
           {/* Tab Views Router */}
           <main className="flex-1 p-3.5 sm:p-6 lg:p-10 max-w-7xl w-full mx-auto">
             {activeTab === 'dashboard' && isStaffOrAdmin && (
-              <AdminDashboardView setActiveTab={setActiveTab} />
+              <AdminDashboardView setActiveTab={handleTabChange} />
             )}
 
             {activeTab === 'profil_admin' && isStaffOrAdmin && (
@@ -137,7 +166,7 @@ export default function App() {
             )}
 
             {!isStaffOrAdmin && activeTab !== 'supports_cours' && (
-              <EtudiantPortalView user={currentUser} activeTab={activeTab} setActiveTab={setActiveTab} />
+              <EtudiantPortalView user={currentUser} activeTab={activeTab} setActiveTab={handleTabChange} />
             )}
 
             {isStaffOrAdmin && (

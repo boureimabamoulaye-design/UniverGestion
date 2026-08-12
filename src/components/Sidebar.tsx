@@ -175,6 +175,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             return (
               <button
                 key={item.id}
+                type="button"
                 onClick={() => handleTabClick(item.id as ActiveTab)}
                 title={isCollapsed ? item.label : undefined}
                 className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-[14px] text-sm font-medium transition-all ${
@@ -253,6 +254,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 return (
                   <button
                     key={item.id}
+                    type="button"
                     onClick={() => handleTabClick(item.id as ActiveTab)}
                     className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-[12px] text-sm font-medium transition-all ${
                       isActive
