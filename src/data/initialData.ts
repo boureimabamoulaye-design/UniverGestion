@@ -95,7 +95,8 @@ export const INITIAL_ANNEES_ACADEMIQUES: AnneeAcademique[] = [
 
 export const INITIAL_CLASSES: Classe[] = [
   { id: 1, code: 'L1-IGL-A', nom: 'Licence 1 Informatique A', filiere_id: 1, niveau_id: 1, capacite: 50, annee_academique_id: 1 },
-  { id: 2, code: 'L1-FC-A', nom: 'Licence 1 Finance A', filiere_id: 2, niveau_id: 1, capacite: 60, annee_academique_id: 1 }
+  { id: 2, code: 'L1-FC-A', nom: 'Licence 1 Finance A', filiere_id: 2, niveau_id: 1, capacite: 60, annee_academique_id: 1 },
+  { id: 3, code: 'L1-DA-A', nom: 'Licence 1 Droit A', filiere_id: 3, niveau_id: 1, capacite: 50, annee_academique_id: 1 }
 ];
 
 export const INITIAL_ENSEIGNANTS: Enseignant[] = [
@@ -501,6 +502,29 @@ export const INITIAL_ETUDIANTS: Etudiant[] = [
     tuteur_telephone: '+223 65 98 76 54',
     date_inscription: '2025-10-08',
     mot_de_passe: 'etudiant123'
+  },
+  {
+    id: 3,
+    matricule: '2026-MAT-103',
+    nom: 'Sangaré',
+    prenom: 'Oumar',
+    date_naissance: '2003-11-10',
+    lieu_naissance: 'Ségou',
+    sexe: 'M',
+    nationalite: 'Mali',
+    email: 'oumar.sangare@usttb.edu.ml',
+    telephone: '+223 70 44 55 66',
+    adresse: 'Hamdallaye ACI 2000, Bamako',
+    classe_id: 3,
+    filiere_id: 3,
+    statut: 'Inscrit',
+    est_bloque: false,
+    statut_compte: 'Actif',
+    tuteur_nom: 'Sangaré',
+    tuteur_prenom: 'Kassim',
+    tuteur_telephone: '+223 60 44 55 66',
+    date_inscription: '2025-10-10',
+    mot_de_passe: 'etudiant123'
   }
 ];
 
@@ -513,7 +537,9 @@ export const INITIAL_INSCRIPTIONS: Inscription[] = [
     date_inscription: '2025-10-05',
     statut: 'Validée',
     frais_inscription: 350000,
-    type_inscription: 'Inscrire'
+    type_inscription: 'Inscrire',
+    statut_paiement: 'Payé',
+    statut_validation: 'Validé'
   },
   {
     id: 2,
@@ -523,15 +549,93 @@ export const INITIAL_INSCRIPTIONS: Inscription[] = [
     date_inscription: '2025-10-08',
     statut: 'Validée',
     frais_inscription: 400000,
-    type_inscription: 'Inscrire'
+    type_inscription: 'Inscrire',
+    statut_paiement: 'Payé',
+    statut_validation: 'Validé'
+  },
+  {
+    id: 3,
+    etudiant_id: 3,
+    classe_id: 3,
+    annee_academique_id: 1,
+    date_inscription: '2025-10-10',
+    statut: 'Validée',
+    frais_inscription: 300000,
+    type_inscription: 'Inscrire',
+    statut_paiement: 'Payé',
+    statut_validation: 'Validé'
   }
 ];
 
-export const INITIAL_NOTES: Note[] = [];
+export const INITIAL_NOTES: Note[] = [
+  // Étudiant 1: Mamadou Traoré (IGL)
+  { id: 1, etudiant_id: 1, matiere_id: 1, semestre_id: 1, annee_academique_id: 1, note_cc: 16, note_examen: 15, note_finale: 15.3, appreciation: 'Très Bon Travail' },
+  { id: 2, etudiant_id: 1, matiere_id: 2, semestre_id: 1, annee_academique_id: 1, note_cc: 14, note_examen: 16, note_finale: 15.4, appreciation: 'Bien Maîtrisé' },
+  { id: 3, etudiant_id: 1, matiere_id: 3, semestre_id: 1, annee_academique_id: 1, note_cc: 13, note_examen: 14, note_finale: 13.7, appreciation: 'Assez Bien' },
+  { id: 4, etudiant_id: 1, matiere_id: 4, semestre_id: 1, annee_academique_id: 1, note_cc: 15, note_examen: 17, note_finale: 16.4, appreciation: 'Excellent' },
 
-export const INITIAL_ABSENCES: Absence[] = [];
+  // Étudiant 2: Aïssata Diarra (FC)
+  { id: 5, etudiant_id: 2, matiere_id: 9, semestre_id: 1, annee_academique_id: 1, note_cc: 17, note_examen: 16, note_finale: 16.3, appreciation: 'Excellent' },
+  { id: 6, etudiant_id: 2, matiere_id: 10, semestre_id: 1, annee_academique_id: 1, note_cc: 15, note_examen: 14, note_finale: 14.3, appreciation: 'Bien' },
+  { id: 7, etudiant_id: 2, matiere_id: 11, semestre_id: 1, annee_academique_id: 1, note_cc: 14, note_examen: 15, note_finale: 14.7, appreciation: 'Bien' },
+  { id: 8, etudiant_id: 2, matiere_id: 12, semestre_id: 1, annee_academique_id: 1, note_cc: 16, note_examen: 18, note_finale: 17.4, appreciation: 'Très Bien' },
 
-export const INITIAL_BULLETINS: Bulletin[] = [];
+  // Étudiant 3: Oumar Sangaré (DA)
+  { id: 9, etudiant_id: 3, matiere_id: 17, semestre_id: 1, annee_academique_id: 1, note_cc: 14, note_examen: 13, note_finale: 13.3, appreciation: 'Assez Bien' },
+  { id: 10, etudiant_id: 3, matiere_id: 18, semestre_id: 1, annee_academique_id: 1, note_cc: 15, note_examen: 15, note_finale: 15.0, appreciation: 'Bien' },
+  { id: 11, etudiant_id: 3, matiere_id: 19, semestre_id: 1, annee_academique_id: 1, note_cc: 12, note_examen: 14, note_finale: 13.4, appreciation: 'Assez Bien' },
+  { id: 12, etudiant_id: 3, matiere_id: 20, semestre_id: 1, annee_academique_id: 1, note_cc: 16, note_examen: 16, note_finale: 16.0, appreciation: 'Très Bien' }
+];
+
+export const INITIAL_ABSENCES: Absence[] = [
+  { id: 1, etudiant_id: 1, matiere_id: 3, date_absence: '2025-11-12', heures: 2, justifiee: true, motif: 'Raison médicale certifiée' },
+  { id: 2, etudiant_id: 2, matiere_id: 10, date_absence: '2025-12-01', heures: 2, justifiee: false, motif: 'Absence non justifiée' }
+];
+
+export const INITIAL_BULLETINS: Bulletin[] = [
+  {
+    id: 1,
+    etudiant_id: 1,
+    classe_id: 1,
+    semestre_id: 1,
+    annee_academique_id: 1,
+    moyenne: 15.2,
+    total_credits: 18,
+    total_credits_valides: 18,
+    decision: 'Admis',
+    mention: 'Bien',
+    rang: 1,
+    date_generation: '2026-02-15'
+  },
+  {
+    id: 2,
+    etudiant_id: 2,
+    classe_id: 2,
+    semestre_id: 1,
+    annee_academique_id: 1,
+    moyenne: 15.7,
+    total_credits: 18,
+    total_credits_valides: 18,
+    decision: 'Admis',
+    mention: 'Bien',
+    rang: 1,
+    date_generation: '2026-02-15'
+  },
+  {
+    id: 3,
+    etudiant_id: 3,
+    classe_id: 3,
+    semestre_id: 1,
+    annee_academique_id: 1,
+    moyenne: 14.4,
+    total_credits: 18,
+    total_credits_valides: 18,
+    decision: 'Admis',
+    mention: 'Bien',
+    rang: 1,
+    date_generation: '2026-02-15'
+  }
+];
 
 export const INITIAL_PAIEMENTS: Paiement[] = [
   {
@@ -541,6 +645,8 @@ export const INITIAL_PAIEMENTS: Paiement[] = [
     filiere_id: 1,
     filiere_code: 'IGL',
     filiere_nom: 'Informatique & Génie Logiciel',
+    classe_id: 1,
+    classe_nom: 'Licence 1 Informatique A',
     annee_libelle: '2025 - 2026',
     type_frais: 'Scolarité',
     montant: 350000,
@@ -551,10 +657,73 @@ export const INITIAL_PAIEMENTS: Paiement[] = [
     date_paiement: '2025-10-05',
     statut: 'Complet',
     remarque: 'Payé intégralement à l\'inscription'
+  },
+  {
+    id: 2,
+    etudiant_id: 2,
+    annee_academique_id: 1,
+    filiere_id: 2,
+    filiere_code: 'FC',
+    filiere_nom: 'Finance & Comptabilité',
+    classe_id: 2,
+    classe_nom: 'Licence 1 Finance A',
+    annee_libelle: '2025 - 2026',
+    type_frais: 'Scolarité',
+    montant: 400000,
+    montant_paye: 400000,
+    reste_a_payer: 0,
+    mode_paiement: 'Moov Money',
+    reference_recu: 'REC-2025-002',
+    date_paiement: '2025-10-08',
+    statut: 'Complet',
+    remarque: 'Payé intégralement à l\'inscription'
+  },
+  {
+    id: 3,
+    etudiant_id: 3,
+    annee_academique_id: 1,
+    filiere_id: 3,
+    filiere_code: 'DA',
+    filiere_nom: 'Droit des Affaires',
+    classe_id: 3,
+    classe_nom: 'Licence 1 Droit A',
+    annee_libelle: '2025 - 2026',
+    type_frais: 'Scolarité',
+    montant: 300000,
+    montant_paye: 300000,
+    reste_a_payer: 0,
+    mode_paiement: 'Espèces',
+    reference_recu: 'REC-2025-003',
+    date_paiement: '2025-10-10',
+    statut: 'Complet',
+    remarque: 'Payé intégralement à l\'inscription'
   }
 ];
 
-export const INITIAL_SUPPORTS_COURS: SupportCours[] = [];
+export const INITIAL_SUPPORTS_COURS: SupportCours[] = [
+  {
+    id: 1,
+    titre: 'Support de cours Algorithmique & Programmation C',
+    matiere_id: 1,
+    filiere_id: 1,
+    type_document: 'PDF',
+    fichier_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    description: 'Bases de l\'algorithmique, boucles, fonctions et pointeurs C.',
+    publie_par: 'Dr. Sékou Konaté',
+    date_publication: '2025-10-15'
+  },
+  {
+    id: 2,
+    titre: 'Guide pratique des requêtes SQL & Modélisation BDD',
+    matiere_id: 2,
+    filiere_id: 1,
+    type_document: 'PDF',
+    fichier_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    description: 'Création de tables, requêtes SELECT, JOIN et sous-requêtes SQL.',
+    publie_par: 'Dr. Sékou Konaté',
+    date_publication: '2025-10-20'
+  }
+];
 
 export const INITIAL_ADMINISTRATEURS: Administrateur[] = [
   {
@@ -564,7 +733,7 @@ export const INITIAL_ADMINISTRATEURS: Administrateur[] = [
     email: 'admin@unigestion.edu.ml',
     mot_de_passe: 'admin123',
     role: 'ADMIN',
-    role_admin: 'Super Admin',
+    role_admin: 'Administrateur',
     telephone: '+223 70 00 00 00',
     statut: 'Actif',
     universite_id: 1,
@@ -577,7 +746,7 @@ export const INITIAL_ADMINISTRATEURS: Administrateur[] = [
     email: 'admin',
     mot_de_passe: 'admin123',
     role: 'ADMIN',
-    role_admin: 'Super Admin',
+    role_admin: 'Administrateur',
     telephone: '+223 70 00 00 01',
     statut: 'Actif',
     universite_id: 1,
@@ -587,7 +756,16 @@ export const INITIAL_ADMINISTRATEURS: Administrateur[] = [
 
 export const INITIAL_UTILISATEURS: Utilisateur[] = INITIAL_ADMINISTRATEURS;
 
-export const INITIAL_NOTIFICATIONS: NotificationAlerte[] = [];
+export const INITIAL_NOTIFICATIONS: NotificationAlerte[] = [
+  {
+    id: 1,
+    destinateur_type: 'ALL',
+    titre: 'Bienvenue sur UniGestion',
+    message: 'Système de gestion universitaire opérationnel.',
+    type_alerte: 'INFO',
+    lu: true,
+    created_at: '2025-10-01'
+  }
+];
 
 export const INITIAL_HISTORIQUE: HistoriqueAcces[] = [];
-

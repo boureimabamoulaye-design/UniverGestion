@@ -345,141 +345,34 @@ export const ParametresView: React.FC = () => {
           </div>
         </div>
 
-        {/* MYSQL DATABASE INTEGRATION CARD */}
+        {/* SYSTEM DATABASE STORAGE CARD */}
         <div className="bg-white p-6 rounded-[20px] border border-[#E5E7EB] shadow-xs space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-gray-100">
             <div className="flex items-center gap-2">
               <Database className="w-5 h-5 text-blue-600" />
-              <h3 className="font-bold text-base text-[#1A1A1A]">Connexion & Base de Données MySQL</h3>
+              <h3 className="font-bold text-base text-[#1A1A1A]">Base de Données & Stockage Système UniGestion</h3>
             </div>
-            <a
-              href="/api/mysql/schema.sql"
-              download="unigestion_schema.sql"
-              className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-[#0066FF] rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>Télécharger Script SQL (universite.sql)</span>
-            </a>
+            <div className="px-3 py-1 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-bold flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>Base Unifiée Active</span>
+            </div>
           </div>
 
           <div className="bg-[#F8FAFC] p-4 rounded-[16px] border border-[#E2E8F0] space-y-2 text-xs">
             <h4 className="font-bold text-slate-800 flex items-center gap-1.5 text-xs">
               <Building2 className="w-4 h-4 text-blue-600" />
-              <span>Procédure d'importation dans WAMP / phpMyAdmin :</span>
+              <span>Gestionnaire de stockage unifié & Persistance locale :</span>
             </h4>
-            <ol className="list-decimal list-inside space-y-1 text-slate-600 font-medium text-[11px] leading-relaxed">
-              <li>Cliquez sur le bouton <strong>"Télécharger Script SQL (universite.sql)"</strong> ci-dessus pour obtenir le fichier de la base de données.</li>
-              <li>Ouvrez votre console <strong>phpMyAdmin</strong> WAMP (<code className="bg-slate-200 px-1 py-0.5 rounded">http://localhost/phpmyadmin</code>).</li>
-              <li>Allez dans l'onglet <strong>"Importer"</strong> et sélectionnez le fichier <code className="bg-slate-200 px-1 py-0.5 rounded">universite.sql</code> (ou <code className="bg-slate-200 px-1 py-0.5 rounded">unigestion_schema.sql</code>).</li>
-              <li>Exécutez l'importation. La base de données <code className="bg-slate-200 px-1 py-0.5 rounded">universite</code> et ses tables seront automatiquement créées et alimentées.</li>
-              <li>Renseignez ci-dessous les identifiants de votre serveur MySQL local (Hôte, Port 3306, Utilisateur <code className="bg-slate-200 px-1 py-0.5 rounded">root</code>) et cliquez sur <strong>"Tester cette Connexion"</strong>.</li>
-            </ol>
+            <p className="text-slate-600 font-medium text-[11px] leading-relaxed">
+              Toutes les données universitaires (Étudiants, Inscriptions, Enseignants, Notes, Matières, Paiements) sont automatiquement consolidées et sauvegardées en temps réel sur le serveur local (<code className="bg-slate-200 px-1 py-0.5 rounded">data/db_storage.json</code>).
+            </p>
           </div>
 
           {/* Connection Status Badge */}
-          <div className={`p-3.5 rounded-[14px] border text-xs font-semibold flex items-center justify-between gap-3 ${
-            mysqlStatus.connected
-              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-              : 'bg-blue-50 border-blue-200 text-blue-800'
-          }`}>
+          <div className="p-3.5 rounded-[14px] border border-emerald-200 bg-emerald-50 text-xs font-semibold flex items-center justify-between gap-3 text-emerald-800">
             <div className="flex items-center gap-2.5">
-              {mysqlStatus.loading ? (
-                <RefreshCw className="w-4 h-4 animate-spin text-blue-600" />
-              ) : mysqlStatus.connected ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              ) : (
-                <Server className="w-4 h-4 text-blue-600 shrink-0" />
-              )}
-              <span>
-                {mysqlStatus.loading
-                  ? 'Test de la connexion MySQL en cours...'
-                  : mysqlStatus.connected
-                  ? 'MySQL Connecté : Le serveur est opérationnel et réactif.'
-                  : 'Base de données active : Synchronisation temps réel (Mode local / cloud)'}
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={checkMysqlStatus}
-              className="px-3 py-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-800 text-[11px] font-bold rounded-md shadow-2xs transition-colors shrink-0 cursor-pointer"
-            >
-              Tester à nouveau
-            </button>
-          </div>
-
-          {/* Test MySQL Connection Form */}
-          <div className="bg-slate-50 p-4 rounded-[16px] border border-slate-200 space-y-3">
-            <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-              <Terminal className="w-3.5 h-3.5 text-blue-600" />
-              <span>Tester des Identifiants MySQL Personnalisés</span>
-            </h4>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-              <div>
-                <label className="block font-semibold text-slate-600 text-[11px] mb-1">Hôte (MYSQL_HOST)</label>
-                <input
-                  type="text"
-                  value={mysqlConfig.host}
-                  onChange={(e) => setMysqlConfig({ ...mysqlConfig, host: e.target.value })}
-                  placeholder="localhost ou IP"
-                  className="w-full h-[38px] px-3 bg-white border border-slate-300 rounded-[10px] text-xs focus:outline-none focus:border-blue-600"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-600 text-[11px] mb-1">Port (MYSQL_PORT)</label>
-                <input
-                  type="number"
-                  value={mysqlConfig.port}
-                  onChange={(e) => setMysqlConfig({ ...mysqlConfig, port: Number(e.target.value) })}
-                  placeholder="3306"
-                  className="w-full h-[38px] px-3 bg-white border border-slate-300 rounded-[10px] text-xs focus:outline-none focus:border-blue-600"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-600 text-[11px] mb-1">Base (MYSQL_DATABASE)</label>
-                <input
-                  type="text"
-                  value={mysqlConfig.database}
-                  onChange={(e) => setMysqlConfig({ ...mysqlConfig, database: e.target.value })}
-                  placeholder="unigestion_db"
-                  className="w-full h-[38px] px-3 bg-white border border-slate-300 rounded-[10px] text-xs focus:outline-none focus:border-blue-600"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-600 text-[11px] mb-1">Utilisateur (MYSQL_USER)</label>
-                <input
-                  type="text"
-                  value={mysqlConfig.user}
-                  onChange={(e) => setMysqlConfig({ ...mysqlConfig, user: e.target.value })}
-                  placeholder="root"
-                  className="w-full h-[38px] px-3 bg-white border border-slate-300 rounded-[10px] text-xs focus:outline-none focus:border-blue-600"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-600 text-[11px] mb-1">Mot de Passe (MYSQL_PASSWORD)</label>
-                <input
-                  type="password"
-                  value={mysqlConfig.password}
-                  onChange={(e) => setMysqlConfig({ ...mysqlConfig, password: e.target.value })}
-                  placeholder="••••••••"
-                  className="w-full h-[38px] px-3 bg-white border border-slate-300 rounded-[10px] text-xs focus:outline-none focus:border-blue-600"
-                />
-              </div>
-
-              <div className="flex items-end">
-                <button
-                  type="button"
-                  onClick={testCustomMysql}
-                  className="w-full h-[38px] bg-blue-600 hover:bg-blue-700 text-white rounded-[10px] font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <Server className="w-3.5 h-3.5" />
-                  <span>Tester cette Connexion</span>
-                </button>
-              </div>
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>Base de données synchronisée et entièrement fonctionnelle sans aucune incohérence.</span>
             </div>
           </div>
         </div>

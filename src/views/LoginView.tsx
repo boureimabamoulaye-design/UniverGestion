@@ -58,7 +58,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
       });
 
       if (data.success && data.user) {
-        await DB.syncFromMySQL();
+        await DB.syncFromBackend();
         DB.logAccess('CONNEXION', `Connexion ${role.toLowerCase()} réussie (${login})`, data.user.id);
         onLoginSuccess(data.user);
         return;

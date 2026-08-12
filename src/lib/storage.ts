@@ -165,8 +165,8 @@ export class DB {
       console.warn("Failed to sync from backend:", e);
     }
 
-    // 3. Sync from live MySQL if backend MySQL pool is connected
-    await this.syncFromMySQL();
+    // 3. Sync from backend server storage
+    await this.syncFromBackend();
   }
   // Getters
   static getUniversites(): Universite[] {
@@ -201,7 +201,7 @@ export class DB {
     return getItem(STORAGE_KEYS.SEMESTRES, INITIAL_SEMESTRES);
   }
 
-  static async syncFromMySQL(): Promise<boolean> {
+  static async syncFromBackend(): Promise<boolean> {
     try {
       const res = await fetch('/api/data/all');
       if (!res.ok) return false;
@@ -258,7 +258,7 @@ export class DB {
         return true;
       }
     } catch (err) {
-      console.error("Erreur lors de la synchronisation MySQL", err);
+      console.error("Erreur lors de la synchronisation backend", err);
     }
     return false;
   }

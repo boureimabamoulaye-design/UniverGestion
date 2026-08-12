@@ -8,7 +8,6 @@ interface HeaderProps {
   notifications: NotificationAlerte[];
   onMarkNotificationRead: (id: number) => void;
   onOpenPHPExporter?: () => void;
-  onOpenMySQLConfig?: () => void;
   onLogout: () => void;
   searchQuery: string;
   setSearchQuery: (q: string) => void;
@@ -18,7 +17,6 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   user,
   activeAnnee,
-  onOpenMySQLConfig,
   onLogout,
   searchQuery,
   setSearchQuery,
