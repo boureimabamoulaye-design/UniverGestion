@@ -53,7 +53,7 @@ export const UtilisateursView: React.FC = () => {
       prenom: u.prenom || '',
       email: u.email || '',
       mot_de_passe: u.mot_de_passe || 'admin123',
-      role: u.role || 'ADMIN',
+      role: 'ADMIN',
       statut: (u.statut === 'Actif' ? 'Actif' : 'Inactif')
     });
     setIsModalOpen(true);
@@ -66,11 +66,13 @@ export const UtilisateursView: React.FC = () => {
     if (editingUser) {
       DB.saveUtilisateur({
         ...editingUser,
-        ...formData
+        ...formData,
+        role: 'ADMIN'
       });
     } else {
       DB.saveUtilisateur({
         ...formData,
+        role: 'ADMIN',
         date_creation: new Date().toISOString().split('T')[0]
       });
     }
@@ -124,7 +126,7 @@ export const UtilisateursView: React.FC = () => {
       prenom: 'Principal',
       email: 'admin@unigestion.edu.ml',
       mot_de_passe: 'admin123',
-      role: 'SUPER_ADMIN',
+      role: 'ADMIN',
       statut: 'Actif',
       universite_id: 1,
       date_creation: '2025-01-01'
@@ -135,7 +137,7 @@ export const UtilisateursView: React.FC = () => {
       prenom: 'Système',
       email: 'admin',
       mot_de_passe: 'admin123',
-      role: 'SUPER_ADMIN',
+      role: 'ADMIN',
       statut: 'Actif',
       universite_id: 1,
       date_creation: '2025-01-01'
@@ -147,20 +149,17 @@ export const UtilisateursView: React.FC = () => {
     const prenom = u.prenom || '';
     const nom = u.nom || '';
     const email = u.email || '';
-    const roleStr = (u.role || (u as any).role_admin || '').toString();
 
     const matchesSearch =
       `${prenom} ${nom}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      roleStr.toLowerCase().includes(searchQuery.toLowerCase());
+      email.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesRole =
+    const matchesStatus =
       roleFilter === 'TOUS' ||
-      roleStr.toUpperCase() === roleFilter ||
-      (roleFilter === 'SUPER_ADMIN' && roleStr.toUpperCase().includes('SUPER')) ||
-      (roleFilter === 'ADMIN' && roleStr.toUpperCase().includes('ADMIN'));
+      (roleFilter === 'ACTIF' && u.statut === 'Actif') ||
+      (roleFilter === 'INACTIF' && u.statut !== 'Actif');
 
-    return matchesSearch && matchesRole;
+    return matchesSearch && matchesStatus;
   });
 
   const activeCount = list.filter((u) => u.statut === 'Actif').length;
@@ -234,16 +233,20 @@ export const UtilisateursView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto">
-          <span className="text-xs font-semibold text-slate-500 whitespace-nowrap">Rôle :</span>
-          {['TOUS', 'SUPER_ADMIN', 'ADMIN', 'SCOLARITE', 'COMPTABILITE'].map((r) => (
+          <span className="text-xs font-semibold text-slate-500 whitespace-nowrap">Statut :</span>
+          {[
+            { id: 'TOUS', label: 'Tous' },
+            { id: 'ACTIF', label: 'Actifs (Autorisés)' },
+            { id: 'INACTIF', label: 'Bloqués' }
+          ].map((f) => (
             <button
-              key={r}
-              onClick={() => setRoleFilter(r)}
+              key={f.id}
+              onClick={() => setRoleFilter(f.id)}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                roleFilter === r ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                roleFilter === f.id ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              {r === 'TOUS' ? 'Tous' : r}
+              {f.label}
             </button>
           ))}
         </div>
@@ -257,7 +260,7 @@ export const UtilisateursView: React.FC = () => {
               <tr className="bg-slate-50 text-[11px] font-extrabold text-slate-500 uppercase tracking-wider border-b border-slate-200">
                 <th className="px-6 py-3.5">Utilisateur / Administrateur</th>
                 <th className="px-6 py-3.5">Email Officiel (Identifiant)</th>
-                <th className="px-6 py-3.5">Rôle Système</th>
+                <th className="px-6 py-3.5">Rôle & Droits d'Accès</th>
                 <th className="px-6 py-3.5">Mot de Passe</th>
                 <th className="px-6 py-3.5">Accès au Site</th>
                 <th className="px-6 py-3.5 text-right">Actions</th>
@@ -269,7 +272,7 @@ export const UtilisateursView: React.FC = () => {
                   <td colSpan={6} className="text-center py-12 text-slate-500 font-medium space-y-3">
                     <p className="text-sm font-semibold text-slate-700">Aucun compte utilisateur trouvé.</p>
                     {searchQuery || roleFilter !== 'TOUS' ? (
-                      <p className="text-xs text-slate-400">Essayez de réinitialiser la recherche ou le filtre de rôle.</p>
+                      <p className="text-xs text-slate-400">Essayez de réinitialiser la recherche ou le filtre.</p>
                     ) : (
                       <div className="pt-2">
                         <button
@@ -301,7 +304,7 @@ export const UtilisateursView: React.FC = () => {
                     <td className="px-6 py-4">
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-700 rounded-md font-bold text-[11px]">
                         <Shield className="w-3.5 h-3.5" />
-                        {u.role || 'ADMIN'}
+                        Administrateur (Accès Total)
                       </span>
                     </td>
                     <td className="px-6 py-4 font-mono text-slate-500">
@@ -412,18 +415,13 @@ export const UtilisateursView: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block font-bold text-slate-700 mb-1">Rôle Système</label>
-              <select
-                value={formData.role}
-                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                className="w-full h-10 px-3 border border-slate-300 rounded-lg bg-white font-bold text-slate-800"
-              >
-                <option value="SUPER_ADMIN">Super Administrateur</option>
-                <option value="ADMIN">Administrateur Général</option>
-                <option value="SCOLARITE">Agent Scolarité</option>
-                <option value="COMPTABILITE">Comptable / Caisse</option>
-                <option value="ENSEIGNANT">Enseignant / Formateur</option>
-              </select>
+              <label className="block font-bold text-slate-700 mb-1">Rôle & Droits d'Accès</label>
+              <input
+                type="text"
+                value="Administrateur (Accès à toutes les rubriques)"
+                disabled
+                className="w-full h-10 px-3 border border-slate-200 rounded-lg bg-slate-100 font-bold text-slate-700 cursor-not-allowed"
+              />
             </div>
             <div>
               <label className="block font-bold text-slate-700 mb-1">Mot de passe *</label>

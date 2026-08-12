@@ -203,7 +203,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   {user.prenom} {user.nom}
                 </p>
                 <p className="text-[10px] text-gray-500 truncate">
-                  {isAdmin ? 'Super Administrateur' : `Mat: ${user.etudiantDetail?.matricule}`}
+                  {isAdmin ? 'Administrateur' : `Mat: ${user.etudiantDetail?.matricule}`}
                 </p>
               </div>
             )}
@@ -279,7 +279,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     {user.prenom} {user.nom}
                   </p>
                   <p className="text-[10px] text-gray-500 truncate">
-                    {isAdmin ? 'Super Administrateur' : `Mat: ${user.etudiantDetail?.matricule}`}
+                    {isAdmin ? 'Administrateur' : `Mat: ${user.etudiantDetail?.matricule}`}
                   </p>
                 </div>
               </div>
