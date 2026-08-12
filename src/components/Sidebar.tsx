@@ -91,7 +91,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'bulletins', label: 'Bulletins', icon: FileCheck2 },
     { id: 'paiements', label: 'Paiements', icon: CreditCard },
     { id: 'annees', label: 'Années Académiques', icon: Clock },
-    { id: 'administrateurs', label: 'Administrateurs', icon: ShieldCheck },
+    { id: 'utilisateurs', label: 'Utilisateurs & Accès', icon: ShieldCheck },
     { id: 'corbeille', label: 'Corbeille', icon: Trash2 },
     { id: 'historique', label: 'Historique', icon: History },
     { id: 'profil_admin', label: 'Mon Profil', icon: User },

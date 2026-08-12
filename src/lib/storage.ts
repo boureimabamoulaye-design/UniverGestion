@@ -292,11 +292,13 @@ export class DB {
   }
 
   static getUtilisateurs(): Utilisateur[] {
-    return this.getAdministrateurs();
+    const list = getItem(STORAGE_KEYS.UTILISATEURS, []);
+    if (list && list.length > 0) return list;
+    return getItem(STORAGE_KEYS.ADMINISTRATEURS, INITIAL_ADMINISTRATEURS);
   }
 
   static getAdministrateurs(): Administrateur[] {
-    return getItem(STORAGE_KEYS.ADMINISTRATEURS, INITIAL_ADMINISTRATEURS);
+    return this.getUtilisateurs();
   }
 
   static getNotifications(): NotificationAlerte[] {
@@ -930,7 +932,7 @@ export class DB {
   }
 
   static saveAdministrateur(item: Omit<Administrateur, 'id'> & { id?: number }): Administrateur {
-    const list = this.getAdministrateurs();
+    const list = this.getUtilisateurs();
     let result: Administrateur;
     if (item.id) {
       const idx = list.findIndex(u => u.id === item.id);
@@ -941,12 +943,15 @@ export class DB {
       result = { ...item, id: nextId } as Administrateur;
       list.push(result);
     }
+    setItem(STORAGE_KEYS.UTILISATEURS, list);
     setItem(STORAGE_KEYS.ADMINISTRATEURS, list);
     return result;
   }
 
   static deleteAdministrateur(id: number): void {
-    setItem(STORAGE_KEYS.ADMINISTRATEURS, this.getAdministrateurs().filter(u => u.id !== id));
+    const updated = this.getUtilisateurs().filter(u => u.id !== id);
+    setItem(STORAGE_KEYS.UTILISATEURS, updated);
+    setItem(STORAGE_KEYS.ADMINISTRATEURS, updated);
   }
 
   static saveUtilisateur(item: Omit<Utilisateur, 'id'> & { id?: number }): Utilisateur {

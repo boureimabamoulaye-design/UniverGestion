@@ -6,7 +6,7 @@ import { ConfirmModal } from '../components/ConfirmModal';
 import { Users, Plus, Key, ShieldCheck, UserX, UserCheck, Trash2, Edit, Search, Shield, CheckCircle, XCircle } from 'lucide-react';
 
 export const UtilisateursView: React.FC = () => {
-  const [list, setList] = useState<Administrateur[]>(DB.getAdministrateurs());
+  const [list, setList] = useState<Administrateur[]>(DB.getUtilisateurs());
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('TOUS');
 
@@ -55,29 +55,29 @@ export const UtilisateursView: React.FC = () => {
     if (!formData.email.trim() || !formData.nom.trim()) return;
 
     if (editingUser) {
-      DB.saveAdministrateur({
+      DB.saveUtilisateur({
         ...editingUser,
         ...formData
       });
     } else {
-      DB.saveAdministrateur({
+      DB.saveUtilisateur({
         ...formData,
         date_creation: new Date().toISOString().split('T')[0]
       });
     }
 
-    setList(DB.getAdministrateurs());
+    setList(DB.getUtilisateurs());
     setIsModalOpen(false);
   };
 
   const handleToggleStatus = (u: Administrateur) => {
     const newStatus = u.statut === 'Actif' ? 'Inactif' : 'Actif';
-    DB.saveAdministrateur({
+    DB.saveUtilisateur({
       ...u,
       statut: newStatus
     });
     DB.logAccess('SECURITE', `Accès au site pour ${u.prenom} ${u.nom} (${u.email}) : ${newStatus === 'Actif' ? 'AUTORISÉ' : 'BLOQUÉ'}`);
-    setList(DB.getAdministrateurs());
+    setList(DB.getUtilisateurs());
   };
 
   const handleResetPassword = (u: Administrateur) => {
@@ -86,11 +86,11 @@ export const UtilisateursView: React.FC = () => {
 
   const executeResetPassword = () => {
     if (resetPassUser) {
-      DB.saveAdministrateur({
+      DB.saveUtilisateur({
         ...resetPassUser,
         mot_de_passe: 'admin123'
       });
-      setList(DB.getAdministrateurs());
+      setList(DB.getUtilisateurs());
       setResetPassUser(null);
     }
   };
@@ -102,8 +102,8 @@ export const UtilisateursView: React.FC = () => {
   const executeDeleteUser = () => {
     if (deleteUserItem) {
       DB.moveToCorbeille('UTILISATEUR', deleteUserItem.id, `${deleteUserItem.prenom} ${deleteUserItem.nom}`, `Rôle: ${deleteUserItem.role}`, deleteUserItem);
-      DB.deleteAdministrateur(deleteUserItem.id);
-      setList(DB.getAdministrateurs());
+      DB.deleteUtilisateur(deleteUserItem.id);
+      setList(DB.getUtilisateurs());
       setDeleteUserItem(null);
     }
   };

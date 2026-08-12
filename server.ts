@@ -324,8 +324,8 @@ app.post("/api/mysql/authenticate", async (req, res) => {
     if (pool) {
       try {
         const [rows]: any = await pool.query(
-          "SELECT * FROM administrateurs WHERE (LOWER(email) = LOWER(?) OR LOWER(nom) = LOWER(?)) LIMIT 1",
-          [sanitizedLogin, sanitizedLogin]
+          "SELECT * FROM utilisateurs WHERE (LOWER(email) = LOWER(?) OR LOWER(nom) = LOWER(?) OR LOWER(prenom) = LOWER(?)) LIMIT 1",
+          [sanitizedLogin, sanitizedLogin, sanitizedLogin]
         );
 
         if (rows && rows.length > 0) {
@@ -1454,20 +1454,24 @@ async function syncSnapshotToMySQL(data: Record<string, any>) {
       }
     }
 
-    // 11. Administrateurs
-    const administrateurs = getArr('unigestion_administrateurs', 'administrateurs') || getArr('unigestion_utilisateurs', 'utilisateurs');
-    if (administrateurs !== null) {
-      await connection.query("DELETE FROM administrateurs;");
-      for (const a of administrateurs) {
-        await connection.query(
-          `INSERT INTO administrateurs (id, nom, prenom, email, mot_de_passe, telephone, role, role_admin, statut, universite_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            a.id, a.nom, a.prenom, a.email, a.mot_de_passe || 'admin123',
-            a.telephone || '+223 70 00 00 00', a.role || 'ADMIN', a.role_admin || 'Super Admin',
-            a.statut || 'Actif', a.universite_id || 1
-          ]
-        );
+    // 11. Utilisateurs (Table unifiée Utilisateurs & Administrateurs)
+    const utilisateurs = getArr('unigestion_utilisateurs', 'utilisateurs') || getArr('unigestion_administrateurs', 'administrateurs');
+    if (utilisateurs !== null) {
+      try {
+        await connection.query("DELETE FROM utilisateurs;");
+        for (const u of utilisateurs) {
+          await connection.query(
+            `INSERT INTO utilisateurs (id, nom, prenom, email, mot_de_passe, telephone, role, statut, universite_id, date_creation)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              u.id, u.nom, u.prenom, u.email, u.mot_de_passe || 'admin123',
+              u.telephone || null, u.role || 'ADMIN', u.statut || 'Actif',
+              u.universite_id || 1, u.date_creation || new Date().toISOString().split('T')[0]
+            ]
+          );
+        }
+      } catch (err) {
+        console.warn("Sync utilisateurs warning:", err);
       }
     }
 

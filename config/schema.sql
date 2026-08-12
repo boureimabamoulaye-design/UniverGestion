@@ -256,32 +256,23 @@ CREATE TABLE IF NOT EXISTS `bulletins` (
   FOREIGN KEY (`classe_id`) REFERENCES `classes`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 16. Table: utilisateurs
+-- 16. Table: utilisateurs (Table unifiée Utilisateurs & Administrateurs)
 CREATE TABLE IF NOT EXISTS `utilisateurs` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `nom` VARCHAR(100) NOT NULL,
   `prenom` VARCHAR(100) NOT NULL,
   `email` VARCHAR(100) NOT NULL UNIQUE,
-  `mot_de_passe` VARCHAR(255) NOT NULL,
-  `role` VARCHAR(50) DEFAULT 'Administrateur',
+  `mot_de_passe` VARCHAR(255) NOT NULL DEFAULT 'admin123',
+  `telephone` VARCHAR(30) DEFAULT NULL,
+  `role` VARCHAR(50) DEFAULT 'ADMIN',
+  `statut` VARCHAR(20) DEFAULT 'Actif',
   `universite_id` INT NOT NULL DEFAULT 1,
+  `date_creation` DATE DEFAULT NULL,
   `dernier_acces` DATETIME DEFAULT NULL,
   FOREIGN KEY (`universite_id`) REFERENCES `universites`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 17. Table: administrateurs
-CREATE TABLE IF NOT EXISTS `administrateurs` (
-  `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `utilisateur_id` INT NOT NULL,
-  `nom` VARCHAR(100) NOT NULL,
-  `prenom` VARCHAR(100) NOT NULL,
-  `email` VARCHAR(100) NOT NULL,
-  `telephone` VARCHAR(30) DEFAULT NULL,
-  `role_admin` VARCHAR(50) DEFAULT 'Super Admin',
-  FOREIGN KEY (`utilisateur_id`) REFERENCES `utilisateurs`(`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- 18. Table: autorisations_filieres
+-- 17. Table: autorisations_filieres
 CREATE TABLE IF NOT EXISTS `autorisations_filieres` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `utilisateur_id` INT NOT NULL,
@@ -361,12 +352,9 @@ INSERT INTO `classes` (`id`, `filiere_id`, `niveau_id`, `annee_academique_id`, `
 (2, 1, 2, 2, 'L2-INFO-A', 'Licence 2 Informatique - Section A', 'L2', 50, 50)
 ON DUPLICATE KEY UPDATE `nom`=`nom`;
 
-INSERT INTO `utilisateurs` (`id`, `nom`, `prenom`, `email`, `mot_de_passe`, `role`, `universite_id`) VALUES
-(1, 'Diakité', 'Sékou', 'admin@unigestion.edu.ml', '$2y$10$e.PqM6v0NqI5aJkM4f/eSuJ9x.A.kG3M1iJ.f9yN1j/4k2m.3b.2u', 'Administrateur', 1)
-ON DUPLICATE KEY UPDATE `email`=`email`;
-
-INSERT INTO `administrateurs` (`id`, `utilisateur_id`, `nom`, `prenom`, `email`, `telephone`, `role_admin`) VALUES
-(1, 1, 'Diakité', 'Sékou', 'admin@unigestion.edu.ml', '+223 70 00 11 22', 'Super Admin')
+INSERT INTO `utilisateurs` (`id`, `nom`, `prenom`, `email`, `mot_de_passe`, `telephone`, `role`, `statut`, `universite_id`) VALUES
+(1, 'Diakité', 'Sékou', 'admin@unigestion.edu.ml', 'admin123', '+223 70 00 11 22', 'SUPER_ADMIN', 'Actif', 1),
+(2, 'Administrateur', 'Système', 'admin', 'admin123', '+223 70 00 00 01', 'SUPER_ADMIN', 'Actif', 1)
 ON DUPLICATE KEY UPDATE `email`=`email`;
 
 INSERT INTO `etudiants` (`id`, `matricule`, `nom`, `prenom`, `date_naissance`, `lieu_naissance`, `sexe`, `genre`, `nationalite`, `email`, `telephone`, `adresse`, `classe_id`, `filiere_id`, `statut`, `statut_compte`, `est_bloque`, `date_inscription`, `mot_de_passe`) VALUES
