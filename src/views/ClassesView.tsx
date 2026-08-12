@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DB } from '../lib/storage';
 import { Classe } from '../types/database';
 import { Modal } from '../components/Modal';
@@ -7,6 +7,14 @@ import { Users, Plus, Search } from 'lucide-react';
 
 export const ClassesView: React.FC = () => {
   const [list, setList] = useState<Classe[]>(DB.getClasses());
+
+  useEffect(() => {
+    const handleSync = () => {
+      setList(DB.getClasses());
+    };
+    window.addEventListener('unigestion_db_change', handleSync);
+    return () => window.removeEventListener('unigestion_db_change', handleSync);
+  }, []);
   const filieres = DB.getFilieres();
   const activeAnnee = DB.getActiveAnneeAcademique();
   const etudiants = DB.getEtudiants();

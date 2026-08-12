@@ -9,6 +9,14 @@ import { UserPlus, Users, Search, CheckCircle, Clock, Trash2, AlertCircle, Arrow
 
 export const InscriptionsView: React.FC = () => {
   const [list, setList] = useState<Inscription[]>(DB.getInscriptions());
+
+  useEffect(() => {
+    const handleSync = () => {
+      setList(DB.getInscriptions());
+    };
+    window.addEventListener('unigestion_db_change', handleSync);
+    return () => window.removeEventListener('unigestion_db_change', handleSync);
+  }, []);
   const etudiants = DB.getEtudiants();
   const classes = DB.getClasses();
   const filieres = DB.getFilieres();

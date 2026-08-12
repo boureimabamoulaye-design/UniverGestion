@@ -29,6 +29,14 @@ interface DraftGrade {
 
 export const NotesView: React.FC = () => {
   const [notesList, setNotesList] = useState(() => DB.getNotes());
+
+  useEffect(() => {
+    const handleSync = () => {
+      setNotesList(DB.getNotes());
+    };
+    window.addEventListener('unigestion_db_change', handleSync);
+    return () => window.removeEventListener('unigestion_db_change', handleSync);
+  }, []);
   const annees = DB.getAnneesAcademiques();
   const filieres = DB.getFilieres();
   const classes = DB.getClasses();

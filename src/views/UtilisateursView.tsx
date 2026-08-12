@@ -13,6 +13,12 @@ export const UtilisateursView: React.FC = () => {
   useEffect(() => {
     const users = DB.getUtilisateurs();
     setList(users);
+
+    const handleSync = () => {
+      setList(DB.getUtilisateurs());
+    };
+    window.addEventListener('unigestion_db_change', handleSync);
+    return () => window.removeEventListener('unigestion_db_change', handleSync);
   }, []);
 
   const refreshList = () => {

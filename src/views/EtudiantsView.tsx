@@ -25,6 +25,15 @@ import {
 
 export const EtudiantsView: React.FC = () => {
   const [list, setList] = useState<Etudiant[]>(DB.getEtudiants());
+
+  React.useEffect(() => {
+    const handleSync = () => {
+      setList(DB.getEtudiants());
+    };
+    window.addEventListener('unigestion_db_change', handleSync);
+    return () => window.removeEventListener('unigestion_db_change', handleSync);
+  }, []);
+
   const classes = DB.getClasses();
   const filieres = DB.getFilieres();
   const notes = DB.getNotes();

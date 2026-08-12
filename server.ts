@@ -1187,36 +1187,65 @@ app.post("/api/notes/saisie-collective", async (req, res) => {
 // 5. GET ALL DATA FROM MYSQL TABLES FOR REAL REFRESH
 app.get("/api/data/all", async (req, res) => {
   const pool = getMysqlPool();
-  if (!pool) return res.status(503).json({ success: false, message: "MySQL non disponible." });
+  if (pool) {
+    try {
+      const [etudiants]: any = await pool.query("SELECT id, matricule, nom, prenom, date_naissance, lieu_naissance, sexe, genre, nationalite, email, telephone, adresse, classe_id, filiere_id, statut, est_bloque, statut_compte, tuteur_nom, tuteur_prenom, tuteur_telephone, date_inscription, photo_url FROM etudiants ORDER BY id DESC").catch(() => [[]]);
+      const [inscriptions]: any = await pool.query("SELECT * FROM inscriptions ORDER BY id DESC").catch(() => [[]]);
+      const [paiements]: any = await pool.query("SELECT * FROM paiements ORDER BY id DESC").catch(() => [[]]);
+      const [notes]: any = await pool.query("SELECT * FROM notes ORDER BY id DESC").catch(() => [[]]);
+      const [bulletins]: any = await pool.query("SELECT * FROM bulletins ORDER BY id DESC").catch(() => [[]]);
+      const [filieres]: any = await pool.query("SELECT * FROM filieres ORDER BY id ASC").catch(() => [[]]);
+      const [classes]: any = await pool.query("SELECT * FROM classes ORDER BY id ASC").catch(() => [[]]);
+      const [matieres]: any = await pool.query("SELECT * FROM matieres ORDER BY id ASC").catch(() => [[]]);
+      const [enseignants]: any = await pool.query("SELECT * FROM enseignants ORDER BY id ASC").catch(() => [[]]);
+      const [semestres]: any = await pool.query("SELECT * FROM semestres ORDER BY id ASC").catch(() => [[]]);
+      const [annees]: any = await pool.query("SELECT * FROM annees_academiques ORDER BY id ASC").catch(() => [[]]);
+      const [absences]: any = await pool.query("SELECT * FROM absences ORDER BY id DESC").catch(() => [[]]);
 
-  try {
-    const [etudiants]: any = await pool.query("SELECT id, matricule, nom, prenom, date_naissance, lieu_naissance, sexe, genre, nationalite, email, telephone, adresse, classe_id, filiere_id, statut, est_bloque, statut_compte, tuteur_nom, tuteur_prenom, tuteur_telephone, date_inscription, photo_url FROM etudiants ORDER BY id DESC").catch(() => [[]]);
-    const [inscriptions]: any = await pool.query("SELECT * FROM inscriptions ORDER BY id DESC").catch(() => [[]]);
-    const [paiements]: any = await pool.query("SELECT * FROM paiements ORDER BY id DESC").catch(() => [[]]);
-    const [notes]: any = await pool.query("SELECT * FROM notes ORDER BY id DESC").catch(() => [[]]);
-    const [bulletins]: any = await pool.query("SELECT * FROM bulletins ORDER BY id DESC").catch(() => [[]]);
-    const [filieres]: any = await pool.query("SELECT * FROM filieres ORDER BY id ASC").catch(() => [[]]);
-    const [classes]: any = await pool.query("SELECT * FROM classes ORDER BY id ASC").catch(() => [[]]);
-    const [matieres]: any = await pool.query("SELECT * FROM matieres ORDER BY id ASC").catch(() => [[]]);
-    const [administrateurs]: any = await pool.query("SELECT id, nom, prenom, email, telephone, role, role_admin, statut, universite_id, dernier_acces FROM administrateurs ORDER BY id ASC").catch(() => [[]]);
-
-    return res.json({
-      success: true,
-      data: {
-        etudiants,
-        inscriptions,
-        paiements,
-        notes,
-        bulletins,
-        filieres,
-        classes,
-        matieres,
-        administrateurs
+      let [utilisateurs]: any = await pool.query("SELECT id, nom, prenom, email, telephone, role, statut, universite_id FROM utilisateurs ORDER BY id ASC").catch(() => [[]]);
+      if (!utilisateurs || utilisateurs.length === 0) {
+        [utilisateurs] = await pool.query("SELECT id, nom, prenom, email, telephone, role, role_admin, statut, universite_id FROM administrateurs ORDER BY id ASC").catch(() => [[]]);
       }
-    });
-  } catch (error: any) {
-    return res.status(500).json({ success: false, error: error.code, message: error.message });
+
+      if (
+        (etudiants && etudiants.length > 0) ||
+        (filieres && filieres.length > 0) ||
+        (utilisateurs && utilisateurs.length > 0)
+      ) {
+        return res.json({
+          success: true,
+          data: {
+            etudiants,
+            inscriptions,
+            paiements,
+            notes,
+            bulletins,
+            filieres,
+            classes,
+            matieres,
+            enseignants,
+            semestres,
+            annees,
+            absences,
+            utilisateurs,
+            administrateurs: utilisateurs
+          }
+        });
+      }
+    } catch (error: any) {
+      console.warn("MySQL read in /api/data/all warning:", error?.message);
+    }
   }
+
+  // Fallback to JSON database file if MySQL has no data or is offline
+  if (fs.existsSync(DATA_FILE)) {
+    try {
+      const data = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
+      return res.json({ success: true, data });
+    } catch (e) {}
+  }
+
+  return res.json({ success: true, data: null });
 });
 
 // Test custom MySQL parameters provided in body

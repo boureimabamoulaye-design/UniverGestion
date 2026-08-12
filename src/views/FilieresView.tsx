@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DB } from '../lib/storage';
 import { Filiere } from '../types/database';
 import { Modal } from '../components/Modal';
@@ -7,6 +7,14 @@ import { Layers, Plus, Search } from 'lucide-react';
 
 export const FilieresView: React.FC = () => {
   const [list, setList] = useState<Filiere[]>(DB.getFilieres());
+
+  useEffect(() => {
+    const handleSync = () => {
+      setList(DB.getFilieres());
+    };
+    window.addEventListener('unigestion_db_change', handleSync);
+    return () => window.removeEventListener('unigestion_db_change', handleSync);
+  }, []);
   const classes = DB.getClasses();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Filiere | null>(null);
