@@ -292,9 +292,19 @@ export class DB {
   }
 
   static getUtilisateurs(): Utilisateur[] {
-    const list = getItem(STORAGE_KEYS.UTILISATEURS, []);
-    if (list && list.length > 0) return list;
-    return getItem(STORAGE_KEYS.ADMINISTRATEURS, INITIAL_ADMINISTRATEURS);
+    const list = getItem(STORAGE_KEYS.UTILISATEURS, null as any);
+    if (Array.isArray(list) && list.length > 0) return list;
+
+    const adminList = getItem(STORAGE_KEYS.ADMINISTRATEURS, null as any);
+    if (Array.isArray(adminList) && adminList.length > 0) {
+      setItem(STORAGE_KEYS.UTILISATEURS, adminList);
+      return adminList;
+    }
+
+    const fallback = INITIAL_UTILISATEURS && INITIAL_UTILISATEURS.length > 0 ? INITIAL_UTILISATEURS : INITIAL_ADMINISTRATEURS;
+    setItem(STORAGE_KEYS.UTILISATEURS, fallback);
+    setItem(STORAGE_KEYS.ADMINISTRATEURS, fallback);
+    return fallback;
   }
 
   static getAdministrateurs(): Administrateur[] {

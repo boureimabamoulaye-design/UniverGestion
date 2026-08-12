@@ -1,14 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DB } from '../lib/storage';
 import { Administrateur } from '../types/database';
 import { Modal } from '../components/Modal';
 import { ConfirmModal } from '../components/ConfirmModal';
-import { Users, Plus, Key, ShieldCheck, UserX, UserCheck, Trash2, Edit, Search, Shield, CheckCircle, XCircle } from 'lucide-react';
+import { Users, Plus, Key, ShieldCheck, UserX, UserCheck, Trash2, Edit, Search, Shield, CheckCircle, XCircle, RotateCcw } from 'lucide-react';
 
 export const UtilisateursView: React.FC = () => {
-  const [list, setList] = useState<Administrateur[]>(DB.getUtilisateurs());
+  const [list, setList] = useState<Administrateur[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('TOUS');
+
+  useEffect(() => {
+    const users = DB.getUtilisateurs();
+    setList(users);
+  }, []);
+
+  const refreshList = () => {
+    setList(DB.getUtilisateurs());
+  };
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<Administrateur | null>(null);
@@ -108,13 +117,48 @@ export const UtilisateursView: React.FC = () => {
     }
   };
 
-  const filteredList = list.filter((u) => {
-    const matchesSearch =
-      `${u.prenom} ${u.nom}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (u.role || '').toLowerCase().includes(searchQuery.toLowerCase());
+  const handleRestoreDefaults = () => {
+    DB.saveUtilisateur({
+      id: 1,
+      nom: 'Administrateur',
+      prenom: 'Principal',
+      email: 'admin@unigestion.edu.ml',
+      mot_de_passe: 'admin123',
+      role: 'SUPER_ADMIN',
+      statut: 'Actif',
+      universite_id: 1,
+      date_creation: '2025-01-01'
+    });
+    DB.saveUtilisateur({
+      id: 2,
+      nom: 'Administrateur',
+      prenom: 'Système',
+      email: 'admin',
+      mot_de_passe: 'admin123',
+      role: 'SUPER_ADMIN',
+      statut: 'Actif',
+      universite_id: 1,
+      date_creation: '2025-01-01'
+    });
+    setList(DB.getUtilisateurs());
+  };
 
-    const matchesRole = roleFilter === 'TOUS' || u.role === roleFilter;
+  const filteredList = list.filter((u) => {
+    const prenom = u.prenom || '';
+    const nom = u.nom || '';
+    const email = u.email || '';
+    const roleStr = (u.role || (u as any).role_admin || '').toString();
+
+    const matchesSearch =
+      `${prenom} ${nom}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      roleStr.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesRole =
+      roleFilter === 'TOUS' ||
+      roleStr.toUpperCase() === roleFilter ||
+      (roleFilter === 'SUPER_ADMIN' && roleStr.toUpperCase().includes('SUPER')) ||
+      (roleFilter === 'ADMIN' && roleStr.toUpperCase().includes('ADMIN'));
 
     return matchesSearch && matchesRole;
   });
@@ -222,8 +266,21 @@ export const UtilisateursView: React.FC = () => {
             <tbody className="text-xs divide-y divide-slate-100">
               {filteredList.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-8 text-slate-500 font-medium">
-                    Aucun compte utilisateur trouvé.
+                  <td colSpan={6} className="text-center py-12 text-slate-500 font-medium space-y-3">
+                    <p className="text-sm font-semibold text-slate-700">Aucun compte utilisateur trouvé.</p>
+                    {searchQuery || roleFilter !== 'TOUS' ? (
+                      <p className="text-xs text-slate-400">Essayez de réinitialiser la recherche ou le filtre de rôle.</p>
+                    ) : (
+                      <div className="pt-2">
+                        <button
+                          onClick={handleRestoreDefaults}
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs inline-flex items-center gap-2 transition-all cursor-pointer"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>Restaurer les comptes administrateurs par défaut</span>
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ) : (
