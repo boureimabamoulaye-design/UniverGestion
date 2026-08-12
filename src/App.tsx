@@ -42,8 +42,6 @@ export default function App() {
 
   const getInitialTab = (): ActiveTab => {
     try {
-      const hash = window.location.hash.replace(/^#\/?/, '').trim() as ActiveTab;
-      if (hash) return hash;
       const saved = localStorage.getItem('unigestion_active_tab') as ActiveTab;
       if (saved) return saved;
     } catch {}
@@ -55,21 +53,9 @@ export default function App() {
   const handleTabChange = (tab: ActiveTab) => {
     setActiveTabState(tab);
     try {
-      window.location.hash = tab;
       localStorage.setItem('unigestion_active_tab', tab);
     } catch {}
   };
-
-  useEffect(() => {
-    const handleHashChange = () => {
-      const hash = window.location.hash.replace(/^#\/?/, '').trim() as ActiveTab;
-      if (hash) {
-        setActiveTabState(hash);
-      }
-    };
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
-  }, []);
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
