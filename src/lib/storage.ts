@@ -95,15 +95,30 @@ function triggerServerSync() {
   if (syncTimer) clearTimeout(syncTimer);
   syncTimer = setTimeout(async () => {
     try {
-      const fullSnapshot: Record<string, any> = {};
-      Object.entries(STORAGE_KEYS).forEach(([_, key]) => {
-        const val = inMemoryStore[key] || localStorage.getItem(key);
-        if (val) {
-          try {
-            fullSnapshot[key] = JSON.parse(val);
-          } catch {}
-        }
-      });
+      const fullSnapshot: Record<string, any> = {
+        [STORAGE_KEYS.UNIVERSITES]: DB.getUniversites(),
+        [STORAGE_KEYS.FACULTES]: DB.getFacultes(),
+        [STORAGE_KEYS.FILIERES]: DB.getFilieres(),
+        [STORAGE_KEYS.NIVEAUX]: DB.getNiveaux(),
+        [STORAGE_KEYS.ANNEES]: DB.getAnneesAcademiques(),
+        [STORAGE_KEYS.CLASSES]: DB.getClasses(),
+        [STORAGE_KEYS.ENSEIGNANTS]: DB.getEnseignants(),
+        [STORAGE_KEYS.SEMESTRES]: DB.getSemestres(),
+        [STORAGE_KEYS.MATIERES]: DB.getMatieres(),
+        [STORAGE_KEYS.ETUDIANTS]: DB.getEtudiants(),
+        [STORAGE_KEYS.INSCRIPTIONS]: DB.getInscriptions(),
+        [STORAGE_KEYS.NOTES]: DB.getNotes(),
+        [STORAGE_KEYS.ABSENCES]: DB.getAbsences(),
+        [STORAGE_KEYS.BULLETINS]: DB.getBulletins(),
+        [STORAGE_KEYS.PAIEMENTS]: DB.getPaiements(),
+        [STORAGE_KEYS.UTILISATEURS]: DB.getUtilisateurs(),
+        [STORAGE_KEYS.ADMINISTRATEURS]: DB.getAdministrateurs(),
+        [STORAGE_KEYS.NOTIFICATIONS]: DB.getNotifications(),
+        [STORAGE_KEYS.HISTORIQUE]: DB.getHistorique(),
+        [STORAGE_KEYS.CORBEILLE]: DB.getCorbeille(),
+        [STORAGE_KEYS.SUPPORTS_COURS]: DB.getSupportsCours(),
+        [STORAGE_KEYS.GLOBAL_STUDENT_LOCK]: DB.isGlobalStudentLockActive(),
+      };
 
       await fetch('/api/db/sync', {
         method: 'POST',
@@ -113,7 +128,7 @@ function triggerServerSync() {
     } catch (e) {
       console.warn("Server DB sync error:", e);
     }
-  }, 200);
+  }, 100);
 }
 
 function setItemWithoutSync<T>(key: string, value: T): void {
@@ -146,14 +161,14 @@ export class DB {
       } catch {}
     });
 
-    // 2. Load backend database snapshot (/api/db/sync)
+    // 2. Load backend database snapshot if available
     try {
       const res = await fetch('/api/db/sync');
       if (res.ok) {
         const json = await res.json();
-        if (json.success && json.data) {
+        if (json.success && json.data && typeof json.data === 'object') {
           Object.entries(json.data).forEach(([key, val]) => {
-            if (val !== undefined && val !== null) {
+            if (val !== undefined && val !== null && !localStorage.getItem(key)) {
               const str = typeof val === 'string' ? val : JSON.stringify(val);
               inMemoryStore[key] = str;
               try { localStorage.setItem(key, str); } catch {}
@@ -165,8 +180,29 @@ export class DB {
       console.warn("Failed to sync from backend:", e);
     }
 
-    // 3. Sync from backend server storage
-    await this.syncFromBackend();
+    // 3. Ensure defaults are populated if nothing was stored yet
+    if (!localStorage.getItem(STORAGE_KEYS.UNIVERSITES)) setItemWithoutSync(STORAGE_KEYS.UNIVERSITES, INITIAL_UNIVERSITES);
+    if (!localStorage.getItem(STORAGE_KEYS.FACULTES)) setItemWithoutSync(STORAGE_KEYS.FACULTES, INITIAL_FACULTES);
+    if (!localStorage.getItem(STORAGE_KEYS.FILIERES)) setItemWithoutSync(STORAGE_KEYS.FILIERES, INITIAL_FILIERES);
+    if (!localStorage.getItem(STORAGE_KEYS.NIVEAUX)) setItemWithoutSync(STORAGE_KEYS.NIVEAUX, INITIAL_NIVEAUX);
+    if (!localStorage.getItem(STORAGE_KEYS.ANNEES)) setItemWithoutSync(STORAGE_KEYS.ANNEES, INITIAL_ANNEES_ACADEMIQUES);
+    if (!localStorage.getItem(STORAGE_KEYS.CLASSES)) setItemWithoutSync(STORAGE_KEYS.CLASSES, INITIAL_CLASSES);
+    if (!localStorage.getItem(STORAGE_KEYS.ENSEIGNANTS)) setItemWithoutSync(STORAGE_KEYS.ENSEIGNANTS, INITIAL_ENSEIGNANTS);
+    if (!localStorage.getItem(STORAGE_KEYS.SEMESTRES)) setItemWithoutSync(STORAGE_KEYS.SEMESTRES, INITIAL_SEMESTRES);
+    if (!localStorage.getItem(STORAGE_KEYS.MATIERES)) setItemWithoutSync(STORAGE_KEYS.MATIERES, INITIAL_MATIERES);
+    if (!localStorage.getItem(STORAGE_KEYS.ETUDIANTS)) setItemWithoutSync(STORAGE_KEYS.ETUDIANTS, INITIAL_ETUDIANTS);
+    if (!localStorage.getItem(STORAGE_KEYS.INSCRIPTIONS)) setItemWithoutSync(STORAGE_KEYS.INSCRIPTIONS, INITIAL_INSCRIPTIONS);
+    if (!localStorage.getItem(STORAGE_KEYS.NOTES)) setItemWithoutSync(STORAGE_KEYS.NOTES, INITIAL_NOTES);
+    if (!localStorage.getItem(STORAGE_KEYS.ABSENCES)) setItemWithoutSync(STORAGE_KEYS.ABSENCES, INITIAL_ABSENCES);
+    if (!localStorage.getItem(STORAGE_KEYS.BULLETINS)) setItemWithoutSync(STORAGE_KEYS.BULLETINS, INITIAL_BULLETINS);
+    if (!localStorage.getItem(STORAGE_KEYS.PAIEMENTS)) setItemWithoutSync(STORAGE_KEYS.PAIEMENTS, INITIAL_PAIEMENTS);
+    if (!localStorage.getItem(STORAGE_KEYS.UTILISATEURS)) setItemWithoutSync(STORAGE_KEYS.UTILISATEURS, INITIAL_UTILISATEURS);
+    if (!localStorage.getItem(STORAGE_KEYS.ADMINISTRATEURS)) setItemWithoutSync(STORAGE_KEYS.ADMINISTRATEURS, INITIAL_ADMINISTRATEURS);
+    if (!localStorage.getItem(STORAGE_KEYS.NOTIFICATIONS)) setItemWithoutSync(STORAGE_KEYS.NOTIFICATIONS, INITIAL_NOTIFICATIONS);
+    if (!localStorage.getItem(STORAGE_KEYS.HISTORIQUE)) setItemWithoutSync(STORAGE_KEYS.HISTORIQUE, INITIAL_HISTORIQUE);
+    if (!localStorage.getItem(STORAGE_KEYS.SUPPORTS_COURS)) setItemWithoutSync(STORAGE_KEYS.SUPPORTS_COURS, INITIAL_SUPPORTS_COURS);
+
+    triggerServerSync();
   }
   // Getters
   static getUniversites(): Universite[] {
@@ -377,6 +413,10 @@ export class DB {
   static deleteUniversite(id: number): void {
     const list = this.getUniversites().filter(u => u.id !== id);
     setItem(STORAGE_KEYS.UNIVERSITES, list);
+    // Cascade delete facultes belonging to this university
+    const facultes = this.getFacultes().filter(f => f.universite_id === id);
+    facultes.forEach(f => this.deleteFaculte(f.id));
+    this.logAccess('SUPPRESSION', `Suppression université ID #${id} et ses facultés rattachées`);
   }
 
   static saveFaculte(item: Omit<Faculte, 'id'> & { id?: number }): Faculte {
@@ -397,6 +437,10 @@ export class DB {
 
   static deleteFaculte(id: number): void {
     setItem(STORAGE_KEYS.FACULTES, this.getFacultes().filter(f => f.id !== id));
+    // Cascade delete filieres belonging to this faculte
+    const filieres = this.getFilieres().filter(f => f.faculte_id === id);
+    filieres.forEach(f => this.deleteFiliere(f.id));
+    this.logAccess('SUPPRESSION', `Suppression faculté ID #${id} et ses filières rattachées`);
   }
 
   static saveFiliere(item: Omit<Filiere, 'id'> & { id?: number }): Filiere {
@@ -417,6 +461,12 @@ export class DB {
 
   static deleteFiliere(id: number): void {
     setItem(STORAGE_KEYS.FILIERES, this.getFilieres().filter(f => f.id !== id));
+    // Cascade delete classes, matieres, niveaux
+    const classes = this.getClasses().filter(c => c.filiere_id === id);
+    classes.forEach(c => this.deleteClasse(c.id));
+    setItem(STORAGE_KEYS.MATIERES, this.getMatieres().filter(m => m.filiere_id !== id));
+    setItem(STORAGE_KEYS.NIVEAUX, this.getNiveaux().filter(n => n.filiere_id !== id));
+    this.logAccess('SUPPRESSION', `Suppression filière ID #${id} et ses classes/matières rattachées`);
   }
 
   static saveSemestre(item: Omit<Semestre, 'id'> & { id?: number }): Semestre {
@@ -441,6 +491,9 @@ export class DB {
       this.moveToCorbeille('SEMESTRE', sem.id, `${sem.code} - ${sem.libelle}`, `Semestre ${sem.libelle}`, sem);
     }
     setItem(STORAGE_KEYS.SEMESTRES, this.getSemestres().filter(s => s.id !== id));
+    setItem(STORAGE_KEYS.NOTES, this.getNotes().filter(n => n.semestre_id !== id));
+    setItem(STORAGE_KEYS.BULLETINS, this.getBulletins().filter(b => b.semestre_id !== id));
+    this.logAccess('SUPPRESSION', `Suppression semestre ID #${id} et ses notes/bulletins rattachés`);
   }
 
   static saveNiveau(item: Omit<Niveau, 'id'> & { id?: number }): Niveau {
@@ -481,6 +534,9 @@ export class DB {
 
   static deleteClasse(id: number): void {
     setItem(STORAGE_KEYS.CLASSES, this.getClasses().filter(c => c.id !== id));
+    setItem(STORAGE_KEYS.INSCRIPTIONS, this.getInscriptions().filter(i => i.classe_id !== id));
+    setItem(STORAGE_KEYS.BULLETINS, this.getBulletins().filter(b => b.classe_id !== id));
+    this.logAccess('SUPPRESSION', `Suppression classe ID #${id} et ses inscriptions/bulletins rattachés`);
   }
 
   static saveAnneeAcademique(item: Omit<AnneeAcademique, 'id'> & { id?: number }): AnneeAcademique {
@@ -511,7 +567,21 @@ export class DB {
   }
 
   static deleteAnneeAcademique(id: number): void {
-    setItem(STORAGE_KEYS.ANNEES, this.getAnneesAcademiques().filter(a => a.id !== id));
+    const active = this.getActiveAnneeAcademique();
+    if (active.id === id) {
+      const remaining = this.getAnneesAcademiques().filter(a => a.id !== id);
+      if (remaining.length > 0) {
+        remaining[0].est_active = true;
+        setItem(STORAGE_KEYS.ANNEES, remaining);
+      }
+    } else {
+      setItem(STORAGE_KEYS.ANNEES, this.getAnneesAcademiques().filter(a => a.id !== id));
+    }
+    setItem(STORAGE_KEYS.INSCRIPTIONS, this.getInscriptions().filter(i => i.annee_academique_id !== id));
+    setItem(STORAGE_KEYS.NOTES, this.getNotes().filter(n => n.annee_academique_id !== id));
+    setItem(STORAGE_KEYS.BULLETINS, this.getBulletins().filter(b => b.annee_academique_id !== id));
+    setItem(STORAGE_KEYS.PAIEMENTS, this.getPaiements().filter(p => p.annee_academique_id !== id));
+    this.logAccess('SUPPRESSION', `Suppression année académique ID #${id} et ses données rattachées`);
   }
 
   static saveEtudiant(item: Omit<Etudiant, 'id'> & { id?: number }): Etudiant {
@@ -565,6 +635,12 @@ export class DB {
 
   static deleteEtudiant(id: number): void {
     setItem(STORAGE_KEYS.ETUDIANTS, this.getEtudiants().filter(e => e.id !== id));
+    setItem(STORAGE_KEYS.INSCRIPTIONS, this.getInscriptions().filter(i => i.etudiant_id !== id));
+    setItem(STORAGE_KEYS.NOTES, this.getNotes().filter(n => n.etudiant_id !== id));
+    setItem(STORAGE_KEYS.ABSENCES, this.getAbsences().filter(a => a.etudiant_id !== id));
+    setItem(STORAGE_KEYS.PAIEMENTS, this.getPaiements().filter(p => p.etudiant_id !== id));
+    setItem(STORAGE_KEYS.BULLETINS, this.getBulletins().filter(b => b.etudiant_id !== id));
+    this.logAccess('SUPPRESSION', `Suppression définitive étudiant ID #${id}`);
   }
 
   static saveEnseignant(item: Omit<Enseignant, 'id'> & { id?: number }): Enseignant {
@@ -586,18 +662,31 @@ export class DB {
 
   static deleteEnseignant(id: number): void {
     setItem(STORAGE_KEYS.ENSEIGNANTS, this.getEnseignants().filter(e => e.id !== id));
+    // Clear enseignant_id from matieres
+    const matieres = this.getMatieres().map(m => m.enseignant_id === id ? { ...m, enseignant_id: undefined, enseignant_nom: undefined } : m);
+    setItem(STORAGE_KEYS.MATIERES, matieres);
+    this.logAccess('SUPPRESSION', `Suppression enseignant ID #${id}`);
   }
 
   static saveMatiere(item: Omit<Matiere, 'id'> & { id?: number }): Matiere {
     const list = this.getMatieres();
+    let enseignant_nom = item.enseignant_nom;
+    if (item.enseignant_id && !enseignant_nom) {
+      const ens = this.getEnseignants().find(e => e.id === item.enseignant_id);
+      if (ens) {
+        enseignant_nom = `${ens.titre} ${ens.prenom} ${ens.nom}`;
+      }
+    }
+    const fullItem = { ...item, ...(enseignant_nom ? { enseignant_nom } : {}) };
+
     let result: Matiere;
     if (item.id) {
       const idx = list.findIndex(m => m.id === item.id);
-      if (idx !== -1) list[idx] = { ...list[idx], ...item };
+      if (idx !== -1) list[idx] = { ...list[idx], ...fullItem };
       result = list[idx];
     } else {
       const nextId = Math.max(0, ...list.map(m => m.id)) + 1;
-      result = { ...item, id: nextId } as Matiere;
+      result = { ...fullItem, id: nextId } as Matiere;
       list.push(result);
     }
     setItem(STORAGE_KEYS.MATIERES, list);
@@ -605,7 +694,23 @@ export class DB {
   }
 
   static deleteMatiere(id: number): void {
+    const affectedNotes = this.getNotes().filter(n => n.matiere_id === id);
     setItem(STORAGE_KEYS.MATIERES, this.getMatieres().filter(m => m.id !== id));
+    setItem(STORAGE_KEYS.NOTES, this.getNotes().filter(n => n.matiere_id !== id));
+    setItem(STORAGE_KEYS.ABSENCES, this.getAbsences().filter(a => a.matiere_id !== id));
+    setItem(STORAGE_KEYS.SUPPORTS_COURS, this.getSupportsCours().filter(s => s.matiere_id !== id));
+    
+    // Recalculate bulletins for affected students
+    const studentSemesters = new Set<string>();
+    affectedNotes.forEach(n => {
+      studentSemesters.add(`${n.etudiant_id}_${n.semestre_id}_${n.annee_academique_id}`);
+    });
+    studentSemesters.forEach(key => {
+      const [etudId, semId, anneeId] = key.split('_').map(Number);
+      this.recalculateBulletin(etudId, semId, anneeId);
+    });
+
+    this.logAccess('SUPPRESSION', `Suppression matière ID #${id} et ses notes/absences rattachées`);
   }
 
   // Global Student Lock
@@ -712,10 +817,10 @@ export class DB {
 
   static saveNote(item: Omit<Note, 'id'> & { id?: number }): Note {
     const list = this.getNotes();
-    // Formula: Note Finale = (30% CC) + (70% Examen)
-    const note_cc = Number(item.note_cc) || 0;
-    const note_examen = Number(item.note_examen) || 0;
-    const note_finale = Number(((note_cc * 0.3) + (note_examen * 0.7)).toFixed(2));
+    // Formula: Note Finale = (40% CC) + (60% Examen) [Standard LMD]
+    const note_cc = Math.max(0, Math.min(20, Number(item.note_cc) || 0));
+    const note_examen = Math.max(0, Math.min(20, Number(item.note_examen) || 0));
+    const note_finale = Number(((note_cc * 0.4) + (note_examen * 0.6)).toFixed(2));
 
     let appreciation = 'Insuffisant';
     if (note_finale >= 16) appreciation = 'Très Bien';
@@ -899,8 +1004,25 @@ export class DB {
       statut = montant_paye > 0 ? 'Partiel' : 'En retard';
     }
 
+    const student = this.getEtudiants().find(e => e.id === item.etudiant_id);
+    const classes = this.getClasses();
+    const filieres = this.getFilieres();
+    const annees = this.getAnneesAcademiques();
+    const activeYear = this.getActiveAnneeAcademique();
+
+    const classeObj = classes.find(c => c.id === (item.classe_id || student?.classe_id));
+    const filiereObj = filieres.find(f => f.id === (item.filiere_id || classeObj?.filiere_id || (student as any)?.filiere_id));
+    const anneeObj = annees.find(a => a.id === (item.annee_academique_id || activeYear.id));
+
     const fullPaiement = {
       ...item,
+      annee_academique_id: item.annee_academique_id || anneeObj?.id || activeYear.id,
+      filiere_id: item.filiere_id || filiereObj?.id,
+      filiere_code: item.filiere_code || filiereObj?.code,
+      filiere_nom: item.filiere_nom || filiereObj?.nom,
+      classe_id: item.classe_id || classeObj?.id,
+      classe_nom: item.classe_nom || classeObj?.nom,
+      annee_libelle: item.annee_libelle || anneeObj?.libelle,
       montant,
       montant_paye,
       reste_a_payer,
@@ -921,7 +1043,6 @@ export class DB {
     setItem(STORAGE_KEYS.PAIEMENTS, list);
 
     // Notify student
-    const student = this.getEtudiants().find(e => e.id === result.etudiant_id);
     if (student) {
       this.addNotification({
         destinateur_type: 'ETUDIANT',

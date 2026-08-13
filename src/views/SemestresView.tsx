@@ -91,6 +91,7 @@ export const SemestresView: React.FC = () => {
           </p>
         </div>
         <button
+          type="button"
           onClick={() => handleOpenModal()}
           className="h-[44px] px-4 bg-[#0066FF] hover:bg-blue-700 text-white rounded-[14px] text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-sm"
         >
@@ -153,6 +154,7 @@ export const SemestresView: React.FC = () => {
                       <td className="px-6 py-4 text-center font-bold text-gray-700">{item.ordre}</td>
                       <td className="px-6 py-4 text-right space-x-2">
                         <button
+                          type="button"
                           onClick={() => handleOpenModal(item)}
                           className="p-1.5 text-gray-400 hover:text-[#0066FF] rounded-lg hover:bg-blue-50 transition-colors"
                           title="Modifier"
@@ -160,6 +162,7 @@ export const SemestresView: React.FC = () => {
                           <Pencil className="w-4 h-4" />
                         </button>
                         <button
+                          type="button"
                           onClick={() => handleDelete(item.id)}
                           className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
                           title="Supprimer"

@@ -183,7 +183,7 @@ export const UtilisateursView: React.FC = () => {
           </p>
         </div>
 
-        <button
+        <button type="button"
           onClick={handleOpenAdd}
           className="h-[44px] px-5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-sm cursor-pointer shrink-0"
         >
@@ -245,7 +245,7 @@ export const UtilisateursView: React.FC = () => {
             { id: 'ACTIF', label: 'Actifs (Autorisés)' },
             { id: 'INACTIF', label: 'Bloqués' }
           ].map((f) => (
-            <button
+            <button type="button"
               key={f.id}
               onClick={() => setRoleFilter(f.id)}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
@@ -281,7 +281,7 @@ export const UtilisateursView: React.FC = () => {
                       <p className="text-xs text-slate-400">Essayez de réinitialiser la recherche ou le filtre.</p>
                     ) : (
                       <div className="pt-2">
-                        <button
+                        <button type="button"
                           onClick={handleRestoreDefaults}
                           className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs inline-flex items-center gap-2 transition-all cursor-pointer"
                         >
@@ -317,7 +317,7 @@ export const UtilisateursView: React.FC = () => {
                       {u.mot_de_passe || '••••••••'}
                     </td>
                     <td className="px-6 py-4">
-                      <button
+                      <button type="button"
                         onClick={() => handleToggleStatus(u)}
                         className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold cursor-pointer transition-all border ${
                           u.statut === 'Actif'
@@ -341,7 +341,7 @@ export const UtilisateursView: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-1.5">
-                        <button
+                        <button type="button"
                           onClick={() => handleOpenEdit(u)}
                           className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer"
                           title="Modifier les informations du compte"
@@ -350,7 +350,7 @@ export const UtilisateursView: React.FC = () => {
                           <span>Éditer</span>
                         </button>
 
-                        <button
+                        <button type="button"
                           onClick={() => handleResetPassword(u)}
                           className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold cursor-pointer"
                           title="Réinitialiser le mot de passe"
@@ -358,7 +358,7 @@ export const UtilisateursView: React.FC = () => {
                           Reset MDP
                         </button>
 
-                        <button
+                        <button type="button"
                           onClick={() => handleDeleteUser(u)}
                           className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs font-semibold cursor-pointer inline-flex items-center"
                           title="Supprimer le compte"

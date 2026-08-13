@@ -172,7 +172,7 @@ exit;`
         {/* File Selector Tabs */}
         <div className="flex gap-2 border-b border-gray-200 pb-2 overflow-x-auto">
           {(Object.keys(files) as Array<keyof typeof files>).map((key) => (
-            <button
+            <button type="button"
               key={key}
               onClick={() => setSelectedFile(key)}
               className={`px-4 py-2 rounded-[12px] text-xs font-semibold whitespace-nowrap transition-colors ${
@@ -198,7 +198,7 @@ exit;`
             </div>
             <div className="flex items-center gap-2">
               {selectedFile === 'sql' && (
-                <button
+                <button type="button"
                   onClick={handleDownloadSQL}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-[10px] text-xs font-semibold hover:bg-emerald-700 transition-colors"
                 >
@@ -206,7 +206,7 @@ exit;`
                   Télécharger .sql
                 </button>
               )}
-              <button
+              <button type="button"
                 onClick={() => handleCopy(files[selectedFile].code, selectedFile)}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-[10px] text-xs font-semibold transition-colors"
               >

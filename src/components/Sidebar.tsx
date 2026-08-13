@@ -152,7 +152,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             )}
           </div>
 
-          <button
+          <button type="button"
             onClick={() => setIsCollapsed(!isCollapsed)}
             className="p-1.5 rounded-[10px] text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
             title={isCollapsed ? 'Déplier le menu' : 'Rétracter le menu'}
@@ -234,7 +234,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <span className="text-[10px] text-gray-400 uppercase font-semibold">Mali SaaS</span>
                 </div>
               </div>
-              <button
+              <button type="button"
                 onClick={() => setIsMobileOpen && setIsMobileOpen(false)}
                 className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors"
               >

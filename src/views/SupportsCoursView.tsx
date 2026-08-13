@@ -160,7 +160,7 @@ export const SupportsCoursView: React.FC<SupportsCoursViewProps> = ({ currentUse
           <p className="text-xs text-gray-500 mt-0.5">Consultez, téléchargez et téléversez des supports depuis votre galerie/appareil (PDF, PPT, Fiches TP).</p>
         </div>
         {isAdmin && (
-          <button
+          <button type="button"
             onClick={() => handleOpenModal()}
             className="h-[40px] px-3.5 bg-[#0066FF] hover:bg-blue-700 text-white rounded-[12px] text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-xs shrink-0"
           >
@@ -218,7 +218,7 @@ export const SupportsCoursView: React.FC<SupportsCoursViewProps> = ({ currentUse
 
           {/* Mode Switcher */}
           <div className="col-span-1 sm:col-span-2 lg:col-span-1 flex items-center justify-center gap-1 bg-[#F9FAFB] p-1 border border-[#E5E7EB] rounded-[12px] h-[40px] shrink-0">
-            <button
+            <button type="button"
               onClick={() => setViewMode('grid')}
               className={`flex-1 lg:flex-none px-3 h-full rounded-[8px] text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
                 viewMode === 'grid' ? 'bg-white text-[#0066FF] shadow-xs' : 'text-gray-500 hover:text-gray-900'
@@ -228,7 +228,7 @@ export const SupportsCoursView: React.FC<SupportsCoursViewProps> = ({ currentUse
               <LayoutGrid className="w-3.5 h-3.5" />
               <span>Rectangles</span>
             </button>
-            <button
+            <button type="button"
               onClick={() => setViewMode('table')}
               className={`flex-1 lg:flex-none px-3 h-full rounded-[8px] text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
                 viewMode === 'table' ? 'bg-white text-[#0066FF] shadow-xs' : 'text-gray-500 hover:text-gray-900'
@@ -280,14 +280,14 @@ export const SupportsCoursView: React.FC<SupportsCoursViewProps> = ({ currentUse
 
                     {isAdmin && (
                       <div className="flex items-center gap-1">
-                        <button
+                        <button type="button"
                           onClick={() => handleOpenModal(item)}
                           className="p-1.5 text-gray-400 hover:text-[#0066FF] rounded-lg hover:bg-blue-50 transition-colors"
                           title="Modifier"
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
-                        <button
+                        <button type="button"
                           onClick={() => handleDelete(item.id)}
                           className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
                           title="Supprimer"
@@ -427,14 +427,14 @@ export const SupportsCoursView: React.FC<SupportsCoursViewProps> = ({ currentUse
                           )}
                           {isAdmin && (
                             <>
-                              <button
+                              <button type="button"
                                 onClick={() => handleOpenModal(item)}
                                 className="p-1.5 text-gray-400 hover:text-[#0066FF] rounded-lg hover:bg-blue-50 transition-colors"
                                 title="Modifier"
                               >
                                 <Pencil className="w-4 h-4" />
                               </button>
-                              <button
+                              <button type="button"
                                 onClick={() => handleDelete(item.id)}
                                 className="p-1.5 text-gray-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
                                 title="Supprimer"

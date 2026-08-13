@@ -78,7 +78,7 @@ export const AbsencesView: React.FC = () => {
           <p className="text-xs text-gray-500 mt-1">Saisie des cours, vérification des justificatifs et avertissements d'assiduité.</p>
         </div>
 
-        <button
+        <button type="button"
           onClick={() => setIsModalOpen(true)}
           className="h-[44px] px-5 bg-[#0066FF] hover:bg-blue-700 text-white rounded-[14px] text-xs font-semibold flex items-center gap-2 transition-colors shadow-xs"
         >
@@ -130,7 +130,7 @@ export const AbsencesView: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-gray-500">{item.motif || 'Aucun motif'}</td>
                     <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
-                      <button
+                      <button type="button"
                         onClick={() => handleToggleJustify(item)}
                         className={`px-3 py-1 rounded-full text-[10px] font-bold transition-colors ${
                           item.justifie
@@ -140,7 +140,7 @@ export const AbsencesView: React.FC = () => {
                       >
                         {item.justifie ? 'Justifié' : 'Non Justifié (Valider)'}
                       </button>
-                      <button
+                      <button type="button"
                         onClick={() => handleDelete(item.id)}
                         className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-[10px] text-xs font-semibold inline-flex items-center"
                         title="Supprimer la saisie d'absence"

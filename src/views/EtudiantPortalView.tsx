@@ -453,7 +453,7 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
           {/* Header & Semester Selection Bar */}
           <div className="bg-white p-4 sm:p-5 rounded-[20px] border border-[#E5E7EB] shadow-xs flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <button
+              <button type="button"
                 onClick={() => window.print()}
                 className="p-2 sm:px-3 sm:py-2 bg-[#0066FF] hover:bg-blue-700 text-white rounded-[10px] text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all active:scale-95 shrink-0"
                 title="Télécharger / Imprimer le bulletin"
@@ -515,7 +515,7 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
             </div>
 
             <div className="flex items-center gap-3">
-              <button
+              <button type="button"
                 onClick={() => window.print()}
                 className="h-10 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-xs shrink-0"
               >
@@ -529,7 +529,7 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
 
           {/* View Filter Switcher Tabs */}
           <div className="flex flex-wrap items-center gap-2 p-1.5 bg-slate-100 rounded-xl border border-slate-200">
-            <button
+            <button type="button"
               onClick={() => setExamenViewFilter(0)}
               className={`px-4 py-2 rounded-lg text-xs font-extrabold transition-all flex items-center gap-2 ${
                 examenViewFilter === 0
@@ -547,7 +547,7 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
             </button>
 
             {semestresCalculations.map(sc => (
-              <button
+              <button type="button"
                 key={sc.semestre.id}
                 onClick={() => setExamenViewFilter(sc.semestre.id)}
                 className={`px-4 py-2 rounded-lg text-xs font-extrabold transition-all flex items-center gap-2 ${
@@ -829,7 +829,7 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
                           </span>
                         </td>
                         <td className="px-4 sm:px-6 py-3.5 text-right whitespace-nowrap">
-                          <button
+                          <button type="button"
                             onClick={() => setViewingReceipt(item)}
                             className="px-2.5 py-1.5 bg-[#0066FF] hover:bg-blue-700 text-white rounded-[8px] sm:rounded-[10px] text-xs font-bold flex items-center gap-1.5 ml-auto transition-colors shadow-xs"
                           >
@@ -1107,7 +1107,7 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
               </div>
             </div>
 
-            <button
+            <button type="button"
               onClick={() => window.print()}
               className="w-full h-[44px] bg-[#0066FF] hover:bg-blue-700 text-white font-bold rounded-[14px] flex items-center justify-center gap-2 transition-colors mt-4"
             >

@@ -110,7 +110,7 @@ export const HistoriqueView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <button
+          <button type="button"
             onClick={refreshLogs}
             className="h-[40px] px-3 bg-white border border-[#E5E7EB] hover:bg-gray-50 text-slate-700 rounded-[12px] text-xs font-semibold flex items-center gap-2 transition-all shadow-2xs"
           >
@@ -119,7 +119,7 @@ export const HistoriqueView: React.FC = () => {
           </button>
 
           {logs.length > 0 && (
-            <button
+            <button type="button"
               onClick={handleClear}
               className="h-[40px] px-3 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-[12px] text-xs font-semibold flex items-center gap-2 transition-all shadow-2xs"
             >
@@ -215,7 +215,7 @@ export const HistoriqueView: React.FC = () => {
               Affichage de {((currentPage - 1) * itemsPerPage) + 1} à {Math.min(currentPage * itemsPerPage, filteredLogs.length)} sur {filteredLogs.length} entrées
             </div>
             <div className="flex items-center gap-1">
-              <button
+              <button type="button"
                 disabled={currentPage === 1}
                 onClick={() => setCurrentPage(prev => prev - 1)}
                 className="px-3 py-1.5 border border-gray-200 rounded-lg disabled:opacity-40 hover:bg-gray-50 font-semibold"
@@ -225,7 +225,7 @@ export const HistoriqueView: React.FC = () => {
               <span className="px-3 font-bold text-slate-800">
                 {currentPage} / {totalPages}
               </span>
-              <button
+              <button type="button"
                 disabled={currentPage === totalPages}
                 onClick={() => setCurrentPage(prev => prev + 1)}
                 className="px-3 py-1.5 border border-gray-200 rounded-lg disabled:opacity-40 hover:bg-gray-50 font-semibold"

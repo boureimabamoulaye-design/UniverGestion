@@ -304,7 +304,7 @@ export const BulletinsView: React.FC = () => {
           </select>
         </div>
 
-        <button
+        <button type="button"
           onClick={handleGenerateBulletin}
           className="w-full lg:w-auto h-[38px] px-5 bg-slate-900 hover:bg-slate-800 text-white rounded-[6px] text-xs font-bold flex items-center justify-center gap-2 transition-colors shadow-xs shrink-0"
         >
@@ -364,7 +364,7 @@ export const BulletinsView: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-right space-x-1.5 whitespace-nowrap">
                       {/* Modifier Button */}
-                      <button
+                      <button type="button"
                         onClick={() => handleOpenEditModal(b)}
                         title="Modifier directement le bulletin"
                         className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-[10px] text-xs font-bold transition-colors inline-flex items-center gap-1 cursor-pointer"
@@ -374,7 +374,7 @@ export const BulletinsView: React.FC = () => {
                       </button>
 
                       {/* Exporter PDF Button */}
-                      <button
+                      <button type="button"
                         onClick={() => { setViewingBulletin(b); setIsDetailOpen(true); }}
                         title="Télécharger / Exporter le bulletin en PDF"
                         className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-[10px] text-xs font-bold transition-colors inline-flex items-center gap-1 cursor-pointer"
@@ -383,7 +383,7 @@ export const BulletinsView: React.FC = () => {
                         <span>Exporter en PDF</span>
                       </button>
 
-                      <button
+                      <button type="button"
                         onClick={() => { setViewingBulletin(b); setIsDetailOpen(true); }}
                         className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-[#0066FF] rounded-[10px] text-xs font-bold transition-colors inline-flex items-center gap-1 cursor-pointer"
                       >

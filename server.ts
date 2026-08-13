@@ -58,7 +58,7 @@ function getInitialDatabase() {
     unigestion_bulletins: INITIAL_BULLETINS,
     unigestion_paiements: INITIAL_PAIEMENTS,
     unigestion_utilisateurs: INITIAL_UTILISATEURS,
-    unigestion_administrateURS: INITIAL_ADMINISTRATEURS,
+    unigestion_administrateurs: INITIAL_ADMINISTRATEURS,
     unigestion_notifications: INITIAL_NOTIFICATIONS,
     unigestion_historique: INITIAL_HISTORIQUE,
     unigestion_supports_cours: INITIAL_SUPPORTS_COURS,
@@ -66,6 +66,9 @@ function getInitialDatabase() {
     unigestion_global_student_lock: false,
     
     // Direct alias mappings
+    universites: INITIAL_UNIVERSITES,
+    facultes: INITIAL_FACULTES,
+    niveaux: INITIAL_NIVEAUX,
     etudiants: INITIAL_ETUDIANTS,
     filieres: INITIAL_FILIERES,
     classes: INITIAL_CLASSES,
@@ -215,7 +218,7 @@ app.post("/api/notes/saisie-collective", (req, res) => {
         const matiere_id = Number(item.matiere_id);
         const ccVal = Number(item.note_cc) || 0;
         const examVal = Number(item.note_examen) || 0;
-        const finaleVal = parseFloat(((ccVal * 0.3) + (examVal * 0.7)).toFixed(2));
+        const finaleVal = parseFloat(((ccVal * 0.4) + (examVal * 0.6)).toFixed(2));
         const app = item.appreciation || (finaleVal >= 10 ? 'Validé' : 'Ajourné');
 
         const existingIndex = currentNotes.findIndex((n: any) =>
@@ -358,7 +361,7 @@ app.post("/api/notes/batch", (req, res) => {
       const mat_id = Number(item.matiere_id || matiere_id);
       const ccVal = Math.min(20, Math.max(0, Number(item.note_cc) || 0));
       const examVal = Math.min(20, Math.max(0, Number(item.note_examen) || 0));
-      const finaleVal = Math.round((ccVal * 0.3 + examVal * 0.7) * 100) / 100;
+      const finaleVal = Math.round((ccVal * 0.4 + examVal * 0.6) * 100) / 100;
 
       let app = item.appreciation;
       if (!app) {
@@ -563,27 +566,18 @@ app.get("/api/data/all", (req, res) => {
 // SYNC FULL DATABASE SNAPSHOT (READ & WRITE)
 app.get("/api/db/sync", (req, res) => {
   const db = readDatabase();
-  const sanitized = JSON.parse(JSON.stringify(db));
-  ['unigestion_etudiants', 'etudiants', 'unigestion_administrateurs', 'administrateurs', 'unigestion_utilisateurs', 'utilisateurs'].forEach(key => {
-    if (Array.isArray(sanitized[key])) {
-      sanitized[key] = sanitized[key].map((item: any) => {
-        const copy = { ...item };
-        delete copy.mot_de_passe;
-        delete copy.password;
-        return copy;
-      });
-    }
-  });
-  return res.json({ success: true, data: sanitized });
+  return res.json({ success: true, data: db });
 });
 
 app.post("/api/db/sync", (req, res) => {
   try {
     const { data } = req.body;
     if (data && typeof data === 'object') {
-      saveDatabase(data);
+      const existing = readDatabase();
+      const merged = { ...existing, ...data };
+      saveDatabase(merged);
     }
-    res.json({ success: true, message: "Base de données sauvegardée avec succès!" });
+    res.json({ success: true, message: "Base de données synchronisée avec succès!" });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }

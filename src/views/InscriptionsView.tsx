@@ -312,7 +312,7 @@ export const InscriptionsView: React.FC = () => {
             <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
             <span className="whitespace-pre-line">{errorBanner}</span>
           </div>
-          <button onClick={() => setErrorBanner(null)} className="text-rose-600 hover:text-rose-900 font-extrabold text-sm">✕</button>
+          <button type="button" onClick={() => setErrorBanner(null)} className="text-rose-600 hover:text-rose-900 font-extrabold text-sm">✕</button>
         </div>
       )}
 
@@ -323,7 +323,7 @@ export const InscriptionsView: React.FC = () => {
             <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>{successBanner}</span>
           </div>
-          <button onClick={() => setSuccessBanner(null)} className="text-emerald-600 hover:text-emerald-900 font-extrabold">✕</button>
+          <button type="button" onClick={() => setSuccessBanner(null)} className="text-emerald-600 hover:text-emerald-900 font-extrabold">✕</button>
         </div>
       )}
 
@@ -406,6 +406,7 @@ export const InscriptionsView: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <button
+                          type="button"
                           onClick={() => handleDelete(item.id)}
                           className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-[10px] text-xs font-semibold inline-flex items-center"
                           title="Annuler / Supprimer l'inscription"

@@ -142,6 +142,7 @@ export const MatieresView: React.FC = () => {
           <p className="text-xs text-gray-500 mt-1">Modules, crédits ECTS/LMD et enseignants responsables.</p>
         </div>
         <button
+          type="button"
           onClick={() => handleOpenModal()}
           className="h-[44px] px-5 bg-[#0066FF] hover:bg-blue-700 text-white rounded-[14px] text-xs font-semibold flex items-center gap-2 transition-colors shadow-xs"
         >
@@ -212,12 +213,14 @@ export const MatieresView: React.FC = () => {
                     <td className="px-6 py-4 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-2 whitespace-nowrap">
                         <button
+                          type="button"
                           onClick={() => handleOpenModal(item)}
                           className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-[10px] text-xs font-semibold shrink-0"
                         >
                           Modifier
                         </button>
                         <button
+                          type="button"
                           onClick={() => handleDelete(item.id)}
                           className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-[10px] text-xs font-semibold shrink-0"
                         >

@@ -234,6 +234,7 @@ export const EtudiantsView: React.FC = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:flex md:flex-wrap items-center gap-2 w-full lg:w-auto">
           <button
+            type="button"
             onClick={() => setIsImportModalOpen(true)}
             className="h-[40px] sm:h-[44px] px-3 sm:px-4 bg-white border border-[#E5E7EB] hover:bg-gray-50 text-gray-700 rounded-[12px] sm:rounded-[14px] text-xs font-semibold flex items-center justify-center gap-1.5 sm:gap-2 transition-colors w-full sm:w-auto"
           >
@@ -242,6 +243,7 @@ export const EtudiantsView: React.FC = () => {
           </button>
 
           <button
+            type="button"
             onClick={handleExportCSV}
             className="h-[40px] sm:h-[44px] px-3 sm:px-4 bg-white border border-[#E5E7EB] hover:bg-gray-50 text-gray-700 rounded-[12px] sm:rounded-[14px] text-xs font-semibold flex items-center justify-center gap-1.5 sm:gap-2 transition-colors w-full sm:w-auto"
           >
@@ -250,6 +252,7 @@ export const EtudiantsView: React.FC = () => {
           </button>
 
           <button
+            type="button"
             onClick={handlePrint}
             className="h-[40px] sm:h-[44px] px-3 sm:px-4 bg-white border border-[#E5E7EB] hover:bg-gray-50 text-gray-700 rounded-[12px] sm:rounded-[14px] text-xs font-semibold flex items-center justify-center gap-1.5 sm:gap-2 transition-colors w-full sm:w-auto"
           >
@@ -258,6 +261,7 @@ export const EtudiantsView: React.FC = () => {
           </button>
 
           <button
+            type="button"
             onClick={() => handleOpenModal()}
             className="h-[40px] sm:h-[44px] px-4 sm:px-5 bg-[#0066FF] hover:bg-blue-700 text-white rounded-[12px] sm:rounded-[14px] text-xs font-semibold flex items-center justify-center gap-1.5 sm:gap-2 transition-colors shadow-xs w-full sm:w-auto"
           >
@@ -384,6 +388,7 @@ export const EtudiantsView: React.FC = () => {
                         {/* Quick Lock / Unlock Buttons */}
                         {isBlocked ? (
                           <button
+                            type="button"
                             onClick={() => handleToggleStudentLock(item, 'Actif')}
                             title="Débloquer le compte étudiant"
                             className="p-1.5 bg-emerald-50 text-emerald-700 rounded-[8px] hover:bg-emerald-100 transition-colors inline-flex items-center justify-center gap-1"
@@ -392,6 +397,7 @@ export const EtudiantsView: React.FC = () => {
                           </button>
                         ) : (
                           <button
+                            type="button"
                             onClick={() => handleToggleStudentLock(item, 'Bloqué')}
                             title="Bloquer l'accès étudiant"
                             className="p-1.5 bg-red-50 text-red-600 rounded-[8px] hover:bg-red-100 transition-colors inline-flex items-center justify-center gap-1"
@@ -401,6 +407,7 @@ export const EtudiantsView: React.FC = () => {
                         )}
 
                         <button
+                          type="button"
                           onClick={() => { setViewingItem(item); setIsDetailModalOpen(true); }}
                           title="Consulter la fiche complète"
                           className="p-1.5 bg-blue-50 text-[#0066FF] rounded-[8px] hover:bg-blue-100 transition-colors inline-flex items-center justify-center"
@@ -408,6 +415,7 @@ export const EtudiantsView: React.FC = () => {
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
+                          type="button"
                           onClick={() => handleOpenModal(item)}
                           title="Modifier"
                           className="p-1.5 bg-gray-100 text-gray-700 rounded-[8px] hover:bg-gray-200 transition-colors inline-flex items-center justify-center"
@@ -415,6 +423,7 @@ export const EtudiantsView: React.FC = () => {
                           <Edit2 className="w-4 h-4" />
                         </button>
                         <button
+                          type="button"
                           onClick={() => handleDelete(item.id)}
                           title="Supprimer"
                           className="p-1.5 bg-red-50 text-red-600 rounded-[8px] hover:bg-red-100 transition-colors"
@@ -756,6 +765,7 @@ export const EtudiantsView: React.FC = () => {
 
             <div className="pt-4 flex justify-end">
               <button
+                type="button"
                 onClick={() => setIsDetailModalOpen(false)}
                 className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 font-semibold rounded-[12px]"
               >

@@ -411,7 +411,7 @@ export const NotesView: React.FC = () => {
           const g = getStudentGrade(st.id, m.id);
           const ccVal = g.cc === '' || g.cc === undefined || g.cc === null ? 0 : Number(g.cc);
           const examVal = g.exam === '' || g.exam === undefined || g.exam === null ? 0 : Number(g.exam);
-          const noteFinale = parseFloat(((ccVal * 0.3) + (examVal * 0.7)).toFixed(2));
+          const noteFinale = parseFloat(((ccVal * 0.4) + (examVal * 0.6)).toFixed(2));
 
           const existingNote = notesList.find(
             n => n.etudiant_id === st.id &&
@@ -737,14 +737,14 @@ export const NotesView: React.FC = () => {
             </span>
 
             <div className="flex items-center gap-1">
-              <button
+              <button type="button"
                 disabled={currentPage <= 1}
                 onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                 className="p-1.5 bg-white border border-gray-300 rounded-[6px] hover:bg-gray-100 disabled:opacity-40 disabled:hover:bg-white"
               >
                 <ChevronLeft className="w-4 h-4 text-gray-700" />
               </button>
-              <button
+              <button type="button"
                 disabled={currentPage >= totalPages}
                 onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                 className="p-1.5 bg-white border border-gray-300 rounded-[6px] hover:bg-gray-100 disabled:opacity-40 disabled:hover:bg-white"

@@ -200,7 +200,7 @@ export const PaiementsView: React.FC = () => {
           <p className="text-xs text-gray-500 mt-1">Scolarité, frais d'inscription, règlements par Orange Money, Wave ou Virement.</p>
         </div>
 
-        <button
+        <button type="button"
           onClick={handleOpenCreateModal}
           className="h-[44px] px-5 bg-[#0066FF] hover:bg-blue-700 text-white rounded-[14px] text-xs font-semibold flex items-center gap-2 transition-colors shadow-xs"
         >
@@ -216,7 +216,7 @@ export const PaiementsView: React.FC = () => {
             <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
             <span className="whitespace-pre-line">{errorBanner}</span>
           </div>
-          <button onClick={() => setErrorBanner(null)} className="text-rose-600 hover:text-rose-900 font-extrabold text-sm">✕</button>
+          <button type="button" onClick={() => setErrorBanner(null)} className="text-rose-600 hover:text-rose-900 font-extrabold text-sm">✕</button>
         </div>
       )}
 
@@ -267,21 +267,21 @@ export const PaiementsView: React.FC = () => {
                       <td className="px-6 py-4 text-gray-400 font-mono">{item.date_paiement}</td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                          <button
+                          <button type="button"
                             onClick={() => { setViewingReceipt(item); setIsReceiptModalOpen(true); }}
                             className="p-2 bg-blue-50 hover:bg-blue-100 text-[#0066FF] rounded-[10px] text-xs font-bold transition-colors"
                             title="Consulter / Imprimer le reçu"
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
-                          <button
+                          <button type="button"
                             onClick={() => handleOpenEditModal(item)}
                             className="p-2 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-[10px] text-xs font-bold transition-colors"
                             title="Modifier le paiement"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
-                          <button
+                          <button type="button"
                             onClick={() => setDeletingPaiement(item)}
                             className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-[10px] text-xs font-bold transition-colors"
                             title="Supprimer le paiement"
@@ -528,13 +528,13 @@ export const PaiementsView: React.FC = () => {
             })()}
 
             <div className="flex items-center justify-between pt-4 border-t">
-              <button
+              <button type="button"
                 onClick={() => setIsReceiptModalOpen(false)}
                 className="px-4 py-2 bg-gray-100 hover:bg-gray-200 font-semibold rounded-[12px]"
               >
                 Fermer
               </button>
-              <button
+              <button type="button"
                 onClick={handlePrint}
                 className="px-5 py-2.5 bg-[#0066FF] hover:bg-blue-700 text-white font-bold rounded-[12px] flex items-center gap-2"
               >

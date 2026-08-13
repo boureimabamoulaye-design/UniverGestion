@@ -84,7 +84,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ setActiv
           </div>
         </div>
 
-        <button
+        <button type="button"
           onClick={handleToggleGlobalLock}
           className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-2 shrink-0 ${
             isGlobalLocked

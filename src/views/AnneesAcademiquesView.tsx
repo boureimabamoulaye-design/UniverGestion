@@ -88,6 +88,7 @@ export const AnneesAcademiquesView: React.FC = () => {
           <p className="text-xs text-gray-500 mt-1">Gérer les périodes d'études, basculer l'année active et archiver les sessions écoulées.</p>
         </div>
         <button
+          type="button"
           onClick={() => handleOpenModal()}
           className="h-[44px] px-5 bg-[#0066FF] hover:bg-blue-700 text-white rounded-[14px] text-xs font-semibold flex items-center gap-2 transition-colors shadow-xs"
         >
@@ -135,6 +136,7 @@ export const AnneesAcademiquesView: React.FC = () => {
                   <td className="px-6 py-4 text-right space-x-2">
                     {!item.est_active && (
                       <button
+                        type="button"
                         onClick={() => handleActivate(item.id)}
                         className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-[#0066FF] rounded-[10px] text-xs font-semibold"
                       >
@@ -142,6 +144,7 @@ export const AnneesAcademiquesView: React.FC = () => {
                       </button>
                     )}
                     <button
+                      type="button"
                       onClick={() => handleOpenModal(item)}
                       className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-[10px] text-xs font-semibold"
                     >
@@ -149,6 +152,7 @@ export const AnneesAcademiquesView: React.FC = () => {
                     </button>
                     {!item.est_active && (
                       <button
+                        type="button"
                         onClick={() => handleDelete(item.id)}
                         className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-[10px] text-xs font-semibold inline-flex items-center"
                         title="Supprimer l'année académique"
