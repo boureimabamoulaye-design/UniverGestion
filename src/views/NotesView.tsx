@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { DB } from '../lib/storage';
 import { safeFetchJson } from '../lib/api';
 import { Modal } from '../components/Modal';
+import { NotesSkeleton } from '../components/skeletons/NotesSkeleton';
 import { 
   Save, 
   Search, 
@@ -28,7 +29,15 @@ interface DraftGrade {
 }
 
 export const NotesView: React.FC = () => {
+  const [isLoading, setIsLoading] = useState(true);
   const [notesList, setNotesList] = useState(() => DB.getNotes());
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 150);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     const handleSync = () => {
@@ -548,6 +557,10 @@ export const NotesView: React.FC = () => {
       setRawCsvText('');
     }, 1500);
   };
+
+  if (isLoading) {
+    return <NotesSkeleton />;
+  }
 
   return (
     <div className="space-y-5 animate-in fade-in duration-300">

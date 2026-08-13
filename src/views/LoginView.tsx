@@ -178,7 +178,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
             {/* Login Form or Blocked Message */}
             {role === 'ETUDIANT' && DB.isGlobalStudentLockActive() ? (
               <div className="p-5 bg-red-50 border border-red-200 rounded-2xl text-center space-y-3 my-2">
-                <div className="w-10 h-10 bg-red-100 text-red-600 rounded-xl flex items-center justify-center mx-auto shadow-inner">
+                <div className="w-10 h-10 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
                   <Lock className="w-5 h-5" />
                 </div>
                 <h3 className="font-extrabold text-xs text-red-900 uppercase tracking-tight">Accès Étudiant Bloqué</h3>
@@ -188,7 +188,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                 <button
                   type="button"
                   onClick={() => setSelectedPortal(null)}
-                  className="w-full mt-2 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg transition-all cursor-pointer"
+                  className="w-full mt-2 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-full transition-all cursor-pointer"
                 >
                   ← Retour
                 </button>
@@ -197,13 +197,13 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
               <form onSubmit={handleSubmit} className="space-y-3.5">
                 {role === 'ETUDIANT' && (
                   <div>
-                    <label className="block text-xs font-bold text-slate-800 mb-1">
+                    <label className="block text-xs font-bold text-slate-800 mb-1 px-1">
                       Filière d'études / Spécialité <span className="text-red-500">*</span>
                     </label>
                     <select
                       value={selectedFiliereId}
                       onChange={(e) => setSelectedFiliereId(Number(e.target.value))}
-                      className="w-full h-10 bg-white border border-slate-300 rounded-lg px-3 text-xs font-semibold text-slate-900 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                      className="w-full h-11 bg-white border border-slate-300 rounded-full px-4 text-xs font-semibold text-slate-900 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-xs"
                       required
                     >
                       <option value="">-- Choisir votre filière --</option>
@@ -215,7 +215,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                 )}
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-800 mb-1">
+                  <label className="block text-xs font-bold text-slate-800 mb-1 px-1">
                     {role === 'ADMIN' ? 'Email Administrateur' : 'Matricule Étudiant'} <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -223,13 +223,13 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                     value={login}
                     onChange={(e) => setLogin(e.target.value)}
                     placeholder={role === 'ADMIN' ? "nom@unigestion.edu.ml" : "Ex: 2026-MAT-101"}
-                    className="w-full h-10 bg-white border border-slate-300 rounded-lg px-3 text-xs font-semibold text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    className="w-full h-11 bg-white border border-slate-300 rounded-full px-4 text-xs font-semibold text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-xs"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-800 mb-1">
+                  <label className="block text-xs font-bold text-slate-800 mb-1 px-1">
                     Mot de passe <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -237,7 +237,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full h-10 bg-white border border-slate-300 rounded-lg px-3 text-xs font-semibold text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                    className="w-full h-11 bg-white border border-slate-300 rounded-full px-4 text-xs font-semibold text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-xs"
                     required
                   />
                 </div>
@@ -245,7 +245,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full h-10 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-sm active:scale-[0.99] mt-2 cursor-pointer"
+                  className="w-full h-11 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-md active:scale-[0.99] mt-3 cursor-pointer"
                 >
                   {isLoading ? (
                     <>
@@ -265,7 +265,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                   <button
                     type="button"
                     onClick={() => setSelectedPortal(null)}
-                    className="w-full py-2 text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                    className="w-full py-2 text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-full transition-all cursor-pointer flex items-center justify-center gap-1.5"
                   >
                     <span>← Retour</span>
                   </button>

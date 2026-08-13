@@ -1,11 +1,186 @@
 @import "tailwindcss";
 
 @layer base {
+  *, *::before, *::after {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
   body, button, input, select, textarea, table, th, td, span, div, p, h1, h2, h3, h4, h5, h6 {
     font-family: 'Times New Roman', Times, Baskerville, Georgia, serif !important;
+  }
+
+  svg {
+    shape-rendering: geometricPrecision;
+  }
+
+  img {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
   }
 }
 
 body {
   font-family: 'Times New Roman', Times, Baskerville, Georgia, serif !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* ==========================================================================
+   ULTRA-HD & 8K DISPLAY SCALING (High DPI & 4K / 8K Resolutions)
+   ========================================================================== */
+@media (min-width: 2560px) {
+  html {
+    font-size: 17px;
+  }
+}
+
+@media (min-width: 3840px) {
+  html {
+    font-size: 19px;
+  }
+  
+  .max-w-7xl {
+    max-width: 2400px !important;
+  }
+}
+
+@media (min-width: 7680px) {
+  html {
+    font-size: 24px;
+  }
+  
+  .max-w-7xl {
+    max-width: 4800px !important;
+  }
+}
+
+/* ==========================================================================
+   PRINT STYLESHEET (@media print - 8K Ultra-Crisp Vector Print Engine)
+   Dedicated printing styles for bulletins, transcripts, receipts, and reports.
+   ========================================================================== */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 8mm 10mm;
+  }
+
+  /* Reset layout constraints & background with 8K vector crispness */
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    min-width: 100% !important;
+    font-size: 11pt !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    -webkit-font-smoothing: antialiased !important;
+    text-rendering: optimizeLegibility !important;
+  }
+
+  /* Hide Header, Sidebar, Navbars, Toasts & Action buttons */
+  header,
+  aside,
+  nav,
+  #mobile-sidebar-backdrop,
+  #toast-container,
+  .toast-container,
+  button,
+  .print\:hidden,
+  [data-print-hide],
+  input[type="search"],
+  .no-print {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+  }
+
+  /* Expand main container to full width without scrolling/shadows */
+  main,
+  #root,
+  .min-h-screen {
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Remove modal backdrop & allow content to expand naturally */
+  .fixed.inset-0 {
+    position: static !important;
+    background: transparent !important;
+    padding: 0 !important;
+    display: block !important;
+    overflow: visible !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  .fixed.inset-0 > div {
+    max-height: none !important;
+    height: auto !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    overflow: visible !important;
+  }
+
+  .fixed.inset-0 > div > div:first-child {
+    display: none !important; /* Hide modal title header bar with close X button */
+  }
+
+  .fixed.inset-0 > div > div:last-child {
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Document content wrapper formatting */
+  #bulletin-document-content,
+  .printable-document {
+    margin: 0 auto !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Ensure table borders and zebra striping print cleanly */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    page-break-inside: auto;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tfoot {
+    display: table-footer-group;
+  }
+
+  th, td {
+    border-color: #cbd5e1 !important;
+  }
+
+  /* Prevent awkward page breaks across key sections */
+  .page-break-avoid,
+  .avoid-break {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
 }

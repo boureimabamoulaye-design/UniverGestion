@@ -139,7 +139,7 @@ export const INITIAL_MATIERES: Matiere[] = [
     credits: 5,
     ue_nom: 'UE2 - Ingénierie des Données & Systèmes',
     ue_type: 'Majeure',
-    support_fichier_nom: 'Cours_SQL_PostgreSQL_2026.pdf',
+    support_fichier_nom: 'Cours_SQL_Universite_2026.pdf',
     support_fichier_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf'
   },
   {

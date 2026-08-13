@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DB } from '../lib/storage';
 import { Etudiant } from '../types/database';
 import { Modal } from '../components/Modal';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { EtudiantsSkeleton } from '../components/skeletons/EtudiantsSkeleton';
 import {
   GraduationCap,
   Plus,
@@ -24,9 +25,17 @@ import {
 } from 'lucide-react';
 
 export const EtudiantsView: React.FC = () => {
+  const [isLoading, setIsLoading] = useState(true);
   const [list, setList] = useState<Etudiant[]>(DB.getEtudiants());
 
-  React.useEffect(() => {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 150);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
     const handleSync = () => {
       setList(DB.getEtudiants());
     };
@@ -219,6 +228,10 @@ export const EtudiantsView: React.FC = () => {
 
     return matchesSearch && matchesFiliere && matchesClasse;
   });
+
+  if (isLoading) {
+    return <EtudiantsSkeleton />;
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">

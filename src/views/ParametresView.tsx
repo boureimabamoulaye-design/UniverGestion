@@ -1,8 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { DB } from '../lib/storage';
-import { safeFetchJson } from '../lib/api';
-import { DatabaseErrorBanner } from '../components/DatabaseErrorBanner';
-import { Building2, Upload, CheckCircle2, Image as ImageIcon, Save, Database, Server, Download, XCircle, RefreshCw, Terminal, Check } from 'lucide-react';
+import { Building2, Upload, CheckCircle2, Image as ImageIcon, Save, Database, Server, Check } from 'lucide-react';
 
 export const ParametresView: React.FC = () => {
   const universites = DB.getUniversites();
@@ -32,76 +30,6 @@ export const ParametresView: React.FC = () => {
   });
 
   const [message, setMessage] = useState<string | null>(null);
-
-  // MySQL Configuration & Test State
-  const [mysqlConfig, setMysqlConfig] = useState({
-    host: 'localhost',
-    port: 3306,
-    user: 'root',
-    password: '',
-    database: 'universite'
-  });
-
-  const [mysqlStatus, setMysqlStatus] = useState<{
-    tested: boolean;
-    loading: boolean;
-    connected: boolean;
-    message: string;
-  }>({
-    tested: false,
-    loading: false,
-    connected: false,
-    message: ''
-  });
-
-  const checkMysqlStatus = async () => {
-    setMysqlStatus(prev => ({ ...prev, loading: true }));
-    try {
-      const data = await safeFetchJson('/api/mysql/status');
-      setMysqlStatus({
-        tested: true,
-        loading: false,
-        connected: !!data.connected,
-        message: data.message || 'Statut vérifié.'
-      });
-    } catch (err: any) {
-      setMysqlStatus({
-        tested: true,
-        loading: false,
-        connected: false,
-        message: "Serveur de base de données non connecté."
-      });
-    }
-  };
-
-  const testCustomMysql = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setMysqlStatus(prev => ({ ...prev, loading: true }));
-    try {
-      const data = await safeFetchJson('/api/mysql/test-config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(mysqlConfig)
-      });
-      setMysqlStatus({
-        tested: true,
-        loading: false,
-        connected: !!data.success,
-        message: data.message || data.error || 'Test effectué.'
-      });
-    } catch (err: any) {
-      setMysqlStatus({
-        tested: true,
-        loading: false,
-        connected: false,
-        message: "Erreur de connexion au serveur MySQL."
-      });
-    }
-  };
-
-  useEffect(() => {
-    checkMysqlStatus();
-  }, []);
 
   // Preset logo options for convenience
   const PRESET_LOGOS = [
@@ -350,29 +278,38 @@ export const ParametresView: React.FC = () => {
           <div className="flex items-center justify-between pb-3 border-b border-gray-100">
             <div className="flex items-center gap-2">
               <Database className="w-5 h-5 text-blue-600" />
-              <h3 className="font-bold text-base text-[#1A1A1A]">Base de Données & Stockage Système UniGestion</h3>
+              <h3 className="font-bold text-base text-[#1A1A1A]">Base de Données Principale : <span className="text-blue-600 font-mono">universite</span></h3>
             </div>
             <div className="px-3 py-1 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-bold flex items-center gap-1.5">
               <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Base Unifiée Active</span>
+              <span>Base Unique Active</span>
             </div>
           </div>
 
-          <div className="bg-[#F8FAFC] p-4 rounded-[16px] border border-[#E2E8F0] space-y-2 text-xs">
-            <h4 className="font-bold text-slate-800 flex items-center gap-1.5 text-xs">
-              <Building2 className="w-4 h-4 text-blue-600" />
-              <span>Gestionnaire de stockage unifié & Persistance locale :</span>
-            </h4>
-            <p className="text-slate-600 font-medium text-[11px] leading-relaxed">
-              Toutes les données universitaires (Étudiants, Inscriptions, Enseignants, Notes, Matières, Paiements) sont automatiquement consolidées et sauvegardées en temps réel sur le serveur local (<code className="bg-slate-200 px-1 py-0.5 rounded">data/db_storage.json</code>).
-            </p>
+          <div className="bg-[#F8FAFC] p-4 rounded-[16px] border border-[#E2E8F0] space-y-3 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-600 font-medium">Nom de la base de données :</span>
+              <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">universite</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-600 font-medium">Hôte standard local :</span>
+              <span className="font-mono font-semibold text-slate-800">localhost:3306</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-600 font-medium">Utilisateur par défaut :</span>
+              <span className="font-mono font-semibold text-slate-800">root</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-600 font-medium">Structure SQL :</span>
+              <span className="font-mono text-[11px] text-slate-700">universite.sql / config/schema.sql</span>
+            </div>
           </div>
 
           {/* Connection Status Badge */}
           <div className="p-3.5 rounded-[14px] border border-emerald-200 bg-emerald-50 text-xs font-semibold flex items-center justify-between gap-3 text-emerald-800">
             <div className="flex items-center gap-2.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>Base de données synchronisée et entièrement fonctionnelle sans aucune incohérence.</span>
+              <span>Base de données unique <strong className="font-mono">universite</strong> synchronisée en temps réel.</span>
             </div>
           </div>
         </div>
