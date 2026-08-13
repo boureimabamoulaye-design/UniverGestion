@@ -253,6 +253,12 @@ export class DB {
           return Array.isArray(val) ? val : null;
         };
 
+        const universites = getArr('unigestion_universites', 'universites');
+        if (universites) setItemWithoutSync(STORAGE_KEYS.UNIVERSITES, universites);
+
+        const facultes = getArr('unigestion_facultes', 'facultes');
+        if (facultes) setItemWithoutSync(STORAGE_KEYS.FACULTES, facultes);
+
         const etudiants = getArr('unigestion_etudiants', 'etudiants');
         if (etudiants) setItemWithoutSync(STORAGE_KEYS.ETUDIANTS, etudiants);
 
@@ -294,6 +300,12 @@ export class DB {
 
         const absences = getArr('unigestion_absences', 'absences');
         if (absences) setItemWithoutSync(STORAGE_KEYS.ABSENCES, absences);
+
+        const corbeille = getArr('unigestion_corbeille', 'corbeille');
+        if (corbeille) setItemWithoutSync(STORAGE_KEYS.CORBEILLE, corbeille);
+
+        const supports = getArr('unigestion_supports_cours', 'supports_cours');
+        if (supports) setItemWithoutSync(STORAGE_KEYS.SUPPORTS_COURS, supports);
 
         return true;
       }
