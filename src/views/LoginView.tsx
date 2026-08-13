@@ -79,34 +79,32 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
         backgroundImage: `linear-gradient(to bottom, rgba(15, 23, 42, 0.78), rgba(15, 23, 42, 0.90)), url('https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&w=1920&q=80')`
       }}
     >
-      <div className="w-[300px] max-w-[300px] bg-white/95 backdrop-blur-md rounded-2xl border border-white/40 shadow-2xl p-5 sm:p-6 relative z-10 my-6 transition-all duration-300">
+      <div className="w-full max-w-sm sm:max-w-md bg-white/95 backdrop-blur-md rounded-2xl border border-white/40 shadow-2xl p-5 sm:p-7 relative z-10 my-6 transition-all duration-300">
 
-        {/* Header Branding with Logo - Shown only on initial selection screen */}
-        {selectedPortal === null && (
-          <div className="flex flex-col items-center text-center mb-6 pb-4 border-b border-slate-200/80">
-            {universite?.logo_url ? (
-              <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center shadow-lg mb-3 border-2 border-slate-200/80 p-2 overflow-hidden">
-                <img
-                  src={universite.logo_url}
-                  alt={`Logo ${universite.nom}`}
-                  className="w-full h-full object-contain rounded-xl"
-                  referrerPolicy="no-referrer"
-                />
-              </div>
-            ) : (
-              <div className="w-16 h-16 bg-slate-900 text-white rounded-2xl flex items-center justify-center shadow-lg mb-3 border-2 border-white/50">
-                <GraduationCap className="w-9 h-9 text-blue-400" />
-              </div>
-            )}
-            <h1 className="font-black text-xl text-slate-900 tracking-tight leading-snug">
-              {universite?.nom || 'Université des Sciences et des Techniques de Bamako'}
-            </h1>
-            <p className="text-xs text-blue-600 font-bold tracking-wide uppercase mt-1 flex items-center gap-1 justify-center">
-              <Building2 className="w-3.5 h-3.5" />
-              Portail Officiel d'Accès UniGestion ML
-            </p>
-          </div>
-        )}
+        {/* Header Branding with Logo - ALWAYS visible on all login steps */}
+        <div className="flex flex-col items-center text-center mb-5 pb-4 border-b border-slate-200/80">
+          {universite?.logo_url ? (
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-2xl flex items-center justify-center shadow-md mb-3 border-2 border-slate-200/80 p-2 overflow-hidden">
+              <img
+                src={universite.logo_url}
+                alt={`Logo ${universite.nom}`}
+                className="w-full h-full object-contain rounded-xl"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+          ) : (
+            <div className="w-14 h-14 sm:w-16 sm:h-16 bg-slate-900 text-white rounded-2xl flex items-center justify-center shadow-md mb-3 border-2 border-white/50">
+              <GraduationCap className="w-8 h-8 text-blue-400" />
+            </div>
+          )}
+          <h1 className="font-black text-sm sm:text-base text-slate-900 tracking-tight leading-snug">
+            {universite?.nom || 'Université des Sciences et des Techniques de Bamako'}
+          </h1>
+          <p className="text-[11px] text-blue-600 font-bold tracking-wide uppercase mt-1 flex items-center gap-1 justify-center">
+            <Building2 className="w-3.5 h-3.5" />
+            {selectedPortal === 'ADMIN' ? 'Espace Administration — Connexion' : selectedPortal === 'ETUDIANT' ? 'Espace Étudiant — Connexion' : "Portail Officiel d'Accès UniGestion ML"}
+          </p>
+        </div>
 
         {/* Initial Portal Selection Screen */}
         {selectedPortal === null ? (

@@ -91,44 +91,48 @@ function getItem<T>(key: string, defaultValue: T): T {
 
 let syncTimer: any = null;
 
+export async function syncNowWithServer() {
+  try {
+    const fullSnapshot: Record<string, any> = {
+      [STORAGE_KEYS.UNIVERSITES]: DB.getUniversites(),
+      [STORAGE_KEYS.FACULTES]: DB.getFacultes(),
+      [STORAGE_KEYS.FILIERES]: DB.getFilieres(),
+      [STORAGE_KEYS.NIVEAUX]: DB.getNiveaux(),
+      [STORAGE_KEYS.ANNEES]: DB.getAnneesAcademiques(),
+      [STORAGE_KEYS.CLASSES]: DB.getClasses(),
+      [STORAGE_KEYS.ENSEIGNANTS]: DB.getEnseignants(),
+      [STORAGE_KEYS.SEMESTRES]: DB.getSemestres(),
+      [STORAGE_KEYS.MATIERES]: DB.getMatieres(),
+      [STORAGE_KEYS.ETUDIANTS]: DB.getEtudiants(),
+      [STORAGE_KEYS.INSCRIPTIONS]: DB.getInscriptions(),
+      [STORAGE_KEYS.NOTES]: DB.getNotes(),
+      [STORAGE_KEYS.ABSENCES]: DB.getAbsences(),
+      [STORAGE_KEYS.BULLETINS]: DB.getBulletins(),
+      [STORAGE_KEYS.PAIEMENTS]: DB.getPaiements(),
+      [STORAGE_KEYS.UTILISATEURS]: DB.getUtilisateurs(),
+      [STORAGE_KEYS.ADMINISTRATEURS]: DB.getAdministrateurs(),
+      [STORAGE_KEYS.NOTIFICATIONS]: DB.getNotifications(),
+      [STORAGE_KEYS.HISTORIQUE]: DB.getHistorique(),
+      [STORAGE_KEYS.CORBEILLE]: DB.getCorbeille(),
+      [STORAGE_KEYS.SUPPORTS_COURS]: DB.getSupportsCours(),
+      [STORAGE_KEYS.GLOBAL_STUDENT_LOCK]: DB.isGlobalStudentLockActive(),
+    };
+
+    await fetch('/api/db/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: fullSnapshot })
+    });
+  } catch (e) {
+    console.warn("Server DB sync error:", e);
+  }
+}
+
 function triggerServerSync() {
   if (syncTimer) clearTimeout(syncTimer);
-  syncTimer = setTimeout(async () => {
-    try {
-      const fullSnapshot: Record<string, any> = {
-        [STORAGE_KEYS.UNIVERSITES]: DB.getUniversites(),
-        [STORAGE_KEYS.FACULTES]: DB.getFacultes(),
-        [STORAGE_KEYS.FILIERES]: DB.getFilieres(),
-        [STORAGE_KEYS.NIVEAUX]: DB.getNiveaux(),
-        [STORAGE_KEYS.ANNEES]: DB.getAnneesAcademiques(),
-        [STORAGE_KEYS.CLASSES]: DB.getClasses(),
-        [STORAGE_KEYS.ENSEIGNANTS]: DB.getEnseignants(),
-        [STORAGE_KEYS.SEMESTRES]: DB.getSemestres(),
-        [STORAGE_KEYS.MATIERES]: DB.getMatieres(),
-        [STORAGE_KEYS.ETUDIANTS]: DB.getEtudiants(),
-        [STORAGE_KEYS.INSCRIPTIONS]: DB.getInscriptions(),
-        [STORAGE_KEYS.NOTES]: DB.getNotes(),
-        [STORAGE_KEYS.ABSENCES]: DB.getAbsences(),
-        [STORAGE_KEYS.BULLETINS]: DB.getBulletins(),
-        [STORAGE_KEYS.PAIEMENTS]: DB.getPaiements(),
-        [STORAGE_KEYS.UTILISATEURS]: DB.getUtilisateurs(),
-        [STORAGE_KEYS.ADMINISTRATEURS]: DB.getAdministrateurs(),
-        [STORAGE_KEYS.NOTIFICATIONS]: DB.getNotifications(),
-        [STORAGE_KEYS.HISTORIQUE]: DB.getHistorique(),
-        [STORAGE_KEYS.CORBEILLE]: DB.getCorbeille(),
-        [STORAGE_KEYS.SUPPORTS_COURS]: DB.getSupportsCours(),
-        [STORAGE_KEYS.GLOBAL_STUDENT_LOCK]: DB.isGlobalStudentLockActive(),
-      };
-
-      await fetch('/api/db/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data: fullSnapshot })
-      });
-    } catch (e) {
-      console.warn("Server DB sync error:", e);
-    }
-  }, 100);
+  syncTimer = setTimeout(() => {
+    syncNowWithServer();
+  }, 50);
 }
 
 function setItemWithoutSync<T>(key: string, value: T): void {

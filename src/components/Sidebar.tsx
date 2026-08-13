@@ -76,6 +76,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setIsMobileOpen
 }) => {
   const isAdmin = user.role?.toUpperCase() !== 'ETUDIANT';
+  const universite = DB.getUniversites()[0];
 
   const adminNav = [
     { id: 'dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
@@ -137,16 +138,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Brand Header */}
         <div className="p-6 pb-4 flex items-center justify-between">
           <div className="flex items-center gap-3 overflow-hidden">
-            <div className="w-10 h-10 bg-[#0066FF] rounded-[12px] flex items-center justify-center text-white font-bold text-xl flex-shrink-0">
-              U
-            </div>
+            {universite?.logo_url ? (
+              <div className="w-10 h-10 bg-white rounded-[12px] border border-slate-200 flex items-center justify-center p-1 flex-shrink-0 shadow-xs overflow-hidden">
+                <img
+                  src={universite.logo_url}
+                  alt="Logo"
+                  className="w-full h-full object-contain"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+            ) : (
+              <div className="w-10 h-10 bg-[#0066FF] rounded-[12px] flex items-center justify-center text-white font-bold text-xl flex-shrink-0">
+                U
+              </div>
+            )}
             {!isCollapsed && (
               <div className="overflow-hidden">
-                <span className="font-bold tracking-tight text-lg text-[#1A1A1A] block truncate">
-                  UniGestion
+                <span className="font-bold tracking-tight text-sm text-[#1A1A1A] block truncate max-w-[140px]" title={universite?.nom || 'UniGestion'}>
+                  {universite?.nom ? (universite.nom.length > 18 ? universite.nom.substring(0, 18) + '...' : universite.nom) : 'UniGestion'}
                 </span>
-                <span className="text-[10px] text-gray-400 uppercase font-semibold tracking-wider block">
-                  Mali SaaS
+                <span className="text-[10px] text-blue-600 uppercase font-bold tracking-wider block">
+                  UniGestion ML
                 </span>
               </div>
             )}
@@ -225,13 +237,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="relative w-[280px] max-w-[82vw] bg-white h-full flex flex-col z-50 shadow-2xl animate-in slide-in-from-left duration-250">
             {/* Mobile Header */}
             <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 bg-[#0066FF] rounded-[10px] flex items-center justify-center text-white font-bold text-lg">
-                  U
-                </div>
-                <div>
-                  <span className="font-bold text-base text-[#1A1A1A] block">UniGestion</span>
-                  <span className="text-[10px] text-gray-400 uppercase font-semibold">Mali SaaS</span>
+              <div className="flex items-center gap-3 overflow-hidden">
+                {universite?.logo_url ? (
+                  <div className="w-9 h-9 bg-white rounded-[10px] border border-slate-200 flex items-center justify-center p-1 flex-shrink-0 shadow-xs overflow-hidden">
+                    <img
+                      src={universite.logo_url}
+                      alt="Logo"
+                      className="w-full h-full object-contain"
+                      referrerPolicy="no-referrer"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-9 h-9 bg-[#0066FF] rounded-[10px] flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                    U
+                  </div>
+                )}
+                <div className="overflow-hidden">
+                  <span className="font-bold text-sm text-[#1A1A1A] block truncate max-w-[150px]">{universite?.nom || 'UniGestion'}</span>
+                  <span className="text-[10px] text-blue-600 uppercase font-bold">UniGestion ML</span>
                 </div>
               </div>
               <button type="button"

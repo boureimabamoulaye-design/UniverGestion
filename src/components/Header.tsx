@@ -1,6 +1,7 @@
 import React from 'react';
 import { Search, LogOut, Menu, Database } from 'lucide-react';
 import { AuthUser, NotificationAlerte, AnneeAcademique } from '../types/database';
+import { DB } from '../lib/storage';
 
 interface HeaderProps {
   user: AuthUser;
@@ -24,6 +25,7 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
 
   const isStaffOrAdmin = user.role?.toUpperCase() !== 'ETUDIANT';
+  const universite = DB.getUniversites()[0];
 
   return (
     <header className="h-[70px] lg:h-[80px] bg-white border-b border-[#E5E7EB] flex items-center justify-between px-4 sm:px-6 lg:px-10 sticky top-0 z-20">
@@ -39,6 +41,18 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Menu className="w-6 h-6" />
           </button>
+        )}
+
+        {/* University Logo if available */}
+        {universite?.logo_url && (
+          <div className="w-9 h-9 sm:w-10 sm:h-10 bg-white rounded-[10px] border border-slate-200 flex items-center justify-center p-1 flex-shrink-0 shadow-2xs overflow-hidden hidden sm:flex">
+            <img
+              src={universite.logo_url}
+              alt={`Logo ${universite.nom}`}
+              className="w-full h-full object-contain"
+              referrerPolicy="no-referrer"
+            />
+          </div>
         )}
 
         <div className="min-w-0 flex-1">
