@@ -66,10 +66,13 @@ export const ExcelBulletinView: React.FC<ExcelBulletinViewProps> = ({
   const studentClasseForSubject = classe || DB.getClasses().find(c => c.id === safeEtudiant.classe_id);
   const targetFiliereId = filiere?.id || studentClasseForSubject?.filiere_id || (safeEtudiant as any)?.filiere_id || 1;
 
-  // Filter matieres belonging strictly to this semester & filiere
-  const semesterMatieres = matieres.filter(
+  // Filter matieres belonging to this semester & filiere with robust fallback
+  const rawSemesterMatieres = matieres.filter(
     m => m.semestre_id === safeSemestreId && (!m.filiere_id || m.filiere_id === targetFiliereId)
   );
+  const semesterMatieres = rawSemesterMatieres.length > 0 
+    ? rawSemesterMatieres 
+    : matieres.filter(m => m.semestre_id === safeSemestreId);
 
   // Group matieres into UE Categories (UE MAJEURES, UE MINEURES, UE LIBRES)
   interface UESectionItem {

@@ -399,7 +399,6 @@ export class DB {
     setItem(STORAGE_KEYS.SUPPORTS_COURS, list);
     saveToBackendTable('supports_cours', result);
     this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Dépôt'} support de cours "${result.titre}"`);
-    toast.success(item.id ? "Support de cours modifié" : "Nouveau support de cours ajouté", result.titre);
     return result;
   }
 
@@ -439,7 +438,6 @@ export class DB {
     setItem(STORAGE_KEYS.UNIVERSITES, list);
     saveToBackendTable('universites', result);
     this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Création'} des paramètres de l'université "${result.nom}"`);
-    toast.success("Université enregistrée", result.nom);
     return result;
   }
 
@@ -468,7 +466,6 @@ export class DB {
     setItem(STORAGE_KEYS.FACULTES, list);
     saveToBackendTable('facultes', result);
     this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Création'} faculté "${result.nom}" (${result.code})`);
-    toast.success(item.id ? "Faculté modifiée" : "Faculté ajoutée", `${result.code} - ${result.nom}`);
     return result;
   }
 
@@ -496,7 +493,6 @@ export class DB {
     setItem(STORAGE_KEYS.FILIERES, list);
     saveToBackendTable('filieres', result);
     this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Création'} filière "${result.nom}" (${result.code})`);
-    toast.success(item.id ? "Filière mise à jour" : "Nouvelle filière enregistrée", `${result.code} - ${result.nom}`);
     return result;
   }
 
@@ -526,7 +522,6 @@ export class DB {
     setItem(STORAGE_KEYS.SEMESTRES, list);
     saveToBackendTable('semestres', result);
     this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Création'} semestre "${result.code} - ${result.libelle}"`);
-    toast.success(item.id ? "Semestre mis à jour" : "Nouveau semestre créé", `${result.code} - ${result.libelle}`);
     return result;
   }
 
@@ -557,7 +552,6 @@ export class DB {
     setItem(STORAGE_KEYS.NIVEAUX, list);
     saveToBackendTable('niveaux', result);
     this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Création'} niveau "${result.code} - ${result.nom}"`);
-    toast.success("Niveau enregistré", `${result.code} - ${result.nom}`);
     return result;
   }
 
@@ -582,7 +576,6 @@ export class DB {
     setItem(STORAGE_KEYS.CLASSES, list);
     saveToBackendTable('classes', result);
     this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Création'} classe "${result.code} - ${result.nom}"`);
-    toast.success(item.id ? "Classe mise à jour" : "Nouvelle classe créée", `${result.code} - ${result.nom}`);
     return result;
   }
 
@@ -612,7 +605,6 @@ export class DB {
     setItem(STORAGE_KEYS.ANNEES, list);
     saveToBackendTable('annees_academiques', result);
     this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Création'} année académique "${result.libelle}"`);
-    toast.success(item.id ? "Année académique mise à jour" : "Nouvelle année académique enregistrée", result.libelle);
     return result;
   }
 
@@ -626,7 +618,6 @@ export class DB {
     if (active) {
       saveToBackendTable('annees_academiques', active);
       this.logAccess('MODIFICATION', `Changement de l'année académique active : "${active.libelle}"`);
-      toast.info("Année académique active modifiée", active.libelle);
     }
   }
 
@@ -697,7 +688,6 @@ export class DB {
     setItem(STORAGE_KEYS.ETUDIANTS, list);
     saveToBackendTable('etudiants', result);
     this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Création'} dossier étudiant "${result.prenom} ${result.nom}" (${result.matricule})`, undefined, result.id);
-    toast.success(item.id ? "Dossier étudiant mis à jour" : "Nouvel étudiant enregistré", `${result.prenom} ${result.nom} (${result.matricule})`);
     return result;
   }
 
@@ -728,7 +718,6 @@ export class DB {
     setItem(STORAGE_KEYS.ENSEIGNANTS, list);
     saveToBackendTable('enseignants', result);
     this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Création'} enseignant "${result.titre} ${result.prenom} ${result.nom}" (${result.matricule})`);
-    toast.success(item.id ? "Enseignant mis à jour" : "Nouvel enseignant enregistré", `${result.titre} ${result.prenom} ${result.nom}`);
     return result;
   }
 
@@ -765,7 +754,6 @@ export class DB {
     setItem(STORAGE_KEYS.MATIERES, list);
     saveToBackendTable('matieres', result);
     this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Création'} matière "${result.code} - ${result.nom}"`);
-    toast.success(item.id ? "Matière mise à jour" : "Nouvelle matière enregistrée", `${result.code} - ${result.nom}`);
     return result;
   }
 
@@ -869,7 +857,6 @@ export class DB {
     setItem(STORAGE_KEYS.INSCRIPTIONS, list);
     saveToBackendTable('inscriptions', result);
     this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Validation'} inscription étudiant (ID #${result.etudiant_id})`, undefined, result.etudiant_id);
-    toast.success(item.id ? "Inscription mise à jour" : "Nouvelle inscription validée en base");
 
     // Auto-sync student active class & filiere so student gets instant access to all features
     if (result.etudiant_id && result.classe_id) {
@@ -939,7 +926,6 @@ export class DB {
     saveToBackendTable('notes', result);
     const matiere = this.getMatieres().find(m => m.id === result.matiere_id);
     this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Saisie'} note : ${matiere?.nom || 'Matière'} - Note finale: ${note_finale}/20 (${appreciation})`, undefined, result.etudiant_id);
-    toast.success("Note enregistrée en base", `Note Finale: ${note_finale}/20 (${appreciation})`);
 
     // Auto update/recalculate bulletin for student
     this.recalculateBulletin(result.etudiant_id, result.semestre_id, result.annee_academique_id);
@@ -989,7 +975,6 @@ export class DB {
     saveToBackendTable('absences', result);
     const subj = this.getMatieres().find(m => m.id === result.matiere_id);
     this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Enregistrement'} absence : ${result.heures}h ${subj ? `en ${subj.nom}` : ''} le ${result.date_absence} (${result.justifiee ? 'Justifiée' : 'Non justifiée'})`, undefined, result.etudiant_id);
-    toast.success(item.id ? "Absence modifiée" : "Absence consignée", `${result.heures}h le ${result.date_absence}`);
 
     // Notify student on absence record
     const student = this.getEtudiants().find(e => e.id === result.etudiant_id);
@@ -1144,7 +1129,6 @@ export class DB {
     setItem(STORAGE_KEYS.PAIEMENTS, list);
     saveToBackendTable('paiements', result);
     this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Enregistrement'} paiement : ${result.montant_paye.toLocaleString()} FCFA (${result.reference_recu} - ${result.mode_paiement})`, undefined, result.etudiant_id);
-    toast.success(item.id ? "Paiement mis à jour" : "Paiement enregistré avec succès", `Reçu: ${result.reference_recu} (${result.montant_paye.toLocaleString()} FCFA)`);
 
     // Notify student
     if (student) {
@@ -1184,7 +1168,6 @@ export class DB {
     setItem(STORAGE_KEYS.ADMINISTRATEURS, list);
     saveToBackendTable('utilisateurs', result);
     this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Création'} utilisateur "${result.prenom} ${result.nom}" (${result.email})`, result.id);
-    toast.success(item.id ? "Utilisateur mis à jour" : "Nouvel utilisateur créé", `${result.prenom} ${result.nom} (${result.role})`);
     return result;
   }
 
@@ -1219,7 +1202,6 @@ export class DB {
     setItem(STORAGE_KEYS.BULLETINS, list);
     saveToBackendTable('bulletins', result);
     this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `Génération bulletin étudiant ID #${result.etudiant_id} : Moyenne ${result.moyenne}/20 (${result.decision})`, undefined, result.etudiant_id);
-    toast.success("Bulletin généré et enregistré en base", `Moyenne: ${result.moyenne}/20 (${result.decision})`);
     return result;
   }
 
