@@ -95,7 +95,7 @@ export const ExcelBulletinView: React.FC<ExcelBulletinViewProps> = ({
 
   semesterMatieres.forEach((mat, idx) => {
     // Determine note for this student & subject
-    const noteObj = notes.find(n => n.matiere_id === mat.id && n.etudiant_id === safeEtudiant.id);
+    const noteObj = notes.find(n => Number(n.matiere_id) === Number(mat.id) && Number(n.etudiant_id) === Number(safeEtudiant.id));
     const cc = noteObj ? noteObj.note_cc : null;
     const exam = noteObj ? noteObj.note_examen : null;
     const noteFinale = noteObj ? noteObj.note_finale : (cc !== null && exam !== null ? Math.round((cc * 0.4 + exam * 0.6) * 100) / 100 : null);
@@ -176,7 +176,7 @@ export const ExcelBulletinView: React.FC<ExcelBulletinViewProps> = ({
   const moyenneMineures = creditsMineures > 0 ? (pointsMineures / creditsMineures).toFixed(2) : '0.00';
   // Check if an admin manually saved or overridden bulletin record exists
   const dbSavedBulletin = DB.getBulletins().find(
-    b => b.etudiant_id === safeEtudiant.id && b.semestre_id === safeSemestreId
+    b => Number(b.etudiant_id) === Number(safeEtudiant.id) && Number(b.semestre_id) === Number(safeSemestreId)
   );
 
   const moyenneGenerale = dbSavedBulletin?.moyenne_generale !== undefined && dbSavedBulletin?.moyenne_generale !== null
@@ -282,7 +282,7 @@ export const ExcelBulletinView: React.FC<ExcelBulletinViewProps> = ({
     let hasNotes = false;
 
     sMatieres.forEach(mat => {
-      const nObj = allDBNotes.find(n => n.matiere_id === mat.id && n.etudiant_id === safeEtudiant.id);
+      const nObj = allDBNotes.find(n => Number(n.matiere_id) === Number(mat.id) && Number(n.etudiant_id) === Number(safeEtudiant.id));
       const cc = nObj ? nObj.note_cc : null;
       const exam = nObj ? nObj.note_examen : null;
       const noteFin = nObj ? nObj.note_finale : (cc !== null && exam !== null ? Math.round((cc * 0.4 + exam * 0.6) * 100) / 100 : null);

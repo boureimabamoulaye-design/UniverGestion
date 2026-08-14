@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { AuthUser, Paiement } from '../types/database';
 import { DB } from '../lib/storage';
 import {
@@ -18,7 +18,8 @@ import {
   Building2,
   DollarSign,
   Download,
-  Lock
+  Lock,
+  RefreshCw
 } from 'lucide-react';
 import { Modal } from '../components/Modal';
 import { ExcelBulletinView } from '../components/ExcelBulletinView';
@@ -36,6 +37,7 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
 }) => {
   // Real-time synchronization tick with DB updates
   const [dbTick, setDbTick] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     const handleSync = () => setDbTick(t => t + 1);
@@ -47,17 +49,29 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
     };
   }, []);
 
+  const handleManualRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await DB.syncFromBackend();
+      setDbTick(t => t + 1);
+    } catch (e) {
+      console.error("Refresh error:", e);
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 500);
+    }
+  }, []);
+
   // Fetch updated student detail directly from DB
   const etudiants = DB.getEtudiants();
-  const targetId = user.etudiantDetail?.id || (user.role === 'etudiant' ? user.id : undefined);
+  const targetId = user.etudiantDetail?.id || (user.role?.toUpperCase() === 'ETUDIANT' ? user.id : undefined);
   const matchedEtudiant = etudiants.find(e => 
-    (targetId && e.id === targetId) || 
-    (user.matricule && e.matricule?.toLowerCase() === user.matricule.toLowerCase()) ||
+    (targetId && Number(e.id) === Number(targetId)) || 
+    (user.matricule && e.matricule?.trim().toLowerCase() === user.matricule.trim().toLowerCase()) ||
     (user.email_or_matricule && (
-      e.matricule?.toLowerCase() === user.email_or_matricule.toLowerCase() || 
-      e.email?.toLowerCase() === user.email_or_matricule.toLowerCase()
+      e.matricule?.trim().toLowerCase() === user.email_or_matricule.trim().toLowerCase() || 
+      e.email?.trim().toLowerCase() === user.email_or_matricule.trim().toLowerCase()
     )) || 
-    (user.email && e.email?.toLowerCase() === user.email.toLowerCase())
+    (user.email && e.email?.trim().toLowerCase() === user.email.trim().toLowerCase())
   );
 
   const etudiant = matchedEtudiant || user.etudiantDetail || etudiants[0] || {
@@ -81,11 +95,11 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
   };
 
   const classes = DB.getClasses();
-  const studentClass = classes.find(c => c.id === etudiant.classe_id) || classes[0];
+  const studentClass = classes.find(c => Number(c.id) === Number(etudiant.classe_id)) || classes[0];
   const filieres = DB.getFilieres();
-  const studentFiliere = filieres.find(f => f.id === studentClass?.filiere_id || f.id === etudiant.filiere_id) || filieres[0];
+  const studentFiliere = filieres.find(f => Number(f.id) === Number(studentClass?.filiere_id) || Number(f.id) === Number(etudiant.filiere_id)) || filieres[0];
   const facultes = DB.getFacultes();
-  const studentFaculte = facultes.find(f => f.id === studentFiliere?.faculte_id) || facultes[0];
+  const studentFaculte = facultes.find(f => Number(f.id) === Number(studentFiliere?.faculte_id)) || facultes[0];
   const universite = DB.getUniversites()[0];
   const activeAnnee = DB.getActiveAnneeAcademique();
 
@@ -93,9 +107,9 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
   const matieres = DB.getMatieres();
   
   // Dynamic student data from DB (automatically re-evaluated on dbTick change)
-  const notes = DB.getNotes().filter(n => n.etudiant_id === etudiant.id);
-  const paiements = DB.getPaiements().filter(p => p.etudiant_id === etudiant.id);
-  const absences = DB.getAbsences().filter(a => a.etudiant_id === etudiant.id);
+  const notes = DB.getNotes().filter(n => Number(n.etudiant_id) === Number(etudiant.id));
+  const paiements = DB.getPaiements().filter(p => Number(p.etudiant_id) === Number(etudiant.id));
+  const absences = DB.getAbsences().filter(a => Number(a.etudiant_id) === Number(etudiant.id));
 
   // States
   const [selectedSemestreId, setSelectedSemestreId] = useState<number>(semestres[0]?.id || 1);
@@ -108,7 +122,7 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
       setPhone(etudiant.telephone || '');
       setAdresse(etudiant.adresse || '');
     }
-  }, [etudiant.id, etudiant.telephone, etudiant.adresse, dbTick]);
+  }, [etudiant.id]);
 
   // Backend authorization state
   const [backendAuthDeniedReason, setBackendAuthDeniedReason] = useState<string | null>(null);
@@ -116,6 +130,7 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
   useEffect(() => {
     let isMounted = true;
     async function verifyBackendStudentAccess() {
+      if (!etudiant?.id) return;
       try {
         const response = await fetch('/api/etudiant/authorize', {
           method: 'POST',
@@ -144,7 +159,7 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
 
     verifyBackendStudentAccess();
     return () => { isMounted = false; };
-  }, [etudiant.id, studentFiliere?.id, etudiant.filiere_id, etudiant.classe_id, dbTick]);
+  }, [etudiant.id, studentFiliere?.id, etudiant.filiere_id, etudiant.classe_id]);
 
   // Student Password Change State
   const [newPassword, setNewPassword] = useState('');
@@ -218,21 +233,21 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
   const semestresCalculations = activeSemestres.map(sem => {
     // Matieres for this semester & filiere
     const semMatieres = matieres.filter(m => 
-      m.semestre_id === sem.id && 
-      (m.filiere_id === studentFiliere?.id || m.filiere_id === etudiant.filiere_id || !m.filiere_id)
+      Number(m.semestre_id) === Number(sem.id) && 
+      (!m.filiere_id || Number(m.filiere_id) === Number(studentFiliere?.id) || Number(m.filiere_id) === Number(etudiant.filiere_id))
     );
-    const applicableMatieres = semMatieres;
-    const semNotes = notes.filter(n => n.semestre_id === sem.id);
+    const applicableMatieres = semMatieres.length > 0 ? semMatieres : matieres.filter(m => Number(m.semestre_id) === Number(sem.id));
+    const semNotes = notes.filter(n => Number(n.semestre_id) === Number(sem.id));
 
     let semTotalPoints = 0;
     let semTotalCredits = 0;
     let semCreditsValidated = 0;
 
     const tableRows = applicableMatieres.map(mat => {
-      const noteObj = semNotes.find(n => n.matiere_id === mat.id);
+      const noteObj = semNotes.find(n => Number(n.matiere_id) === Number(mat.id));
       const cc = noteObj ? noteObj.note_cc : null;
       const exam = noteObj ? noteObj.note_examen : null;
-      const finale = noteObj ? noteObj.note_finale : null;
+      const finale = noteObj ? noteObj.note_finale : (cc !== null && exam !== null ? Math.round((cc * 0.4 + exam * 0.6) * 100) / 100 : null);
       const isValidated = finale !== null && finale >= 10;
 
       if (finale !== null) {
@@ -297,7 +312,7 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
   const annualMention = getMention(annualAverage);
 
   // Backward compatibility helpers for selectedSemestreId
-  const currentSelectedSemCalculation = semestresCalculations.find(sc => sc.semestre.id === selectedSemestreId) || semestresCalculations[0];
+  const currentSelectedSemCalculation = semestresCalculations.find(sc => Number(sc.semestre.id) === Number(selectedSemestreId)) || semestresCalculations[0];
   const semesterAverage = currentSelectedSemCalculation?.average ?? null;
   const creditsValidated = currentSelectedSemCalculation?.validatedCredits ?? 0;
   const totalCreditsSemester = currentSelectedSemCalculation?.totalCredits ?? 30;
@@ -305,7 +320,7 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
   const notesTableData = currentSelectedSemCalculation?.rows ?? [];
 
   // Gather student's inscriptions & training fees (Frais de formation) across all registered filières
-  const studentInscriptions = DB.getInscriptions().filter(i => i.etudiant_id === etudiant.id);
+  const studentInscriptions = DB.getInscriptions().filter(i => Number(i.etudiant_id) === Number(etudiant.id));
   const annees = DB.getAnneesAcademiques();
 
   const fraisFormationList = (() => {
@@ -313,13 +328,13 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
     const seenClasses = new Set<number>();
 
     studentInscriptions.forEach(insc => {
-      seenClasses.add(insc.classe_id);
-      const cls = classes.find(c => c.id === insc.classe_id);
-      const fil = filieres.find(f => f.id === cls?.filiere_id);
+      seenClasses.add(Number(insc.classe_id));
+      const cls = classes.find(c => Number(c.id) === Number(insc.classe_id));
+      const fil = filieres.find(f => Number(f.id) === Number(cls?.filiere_id));
       const code = fil?.code || cls?.code || 'IG1';
       const montant = insc.frais_inscription || (code === 'IG1' ? 550000 : code === 'IG2' ? 450000 : 500000);
       const reduction = 0;
-      const anneeObj = annees.find(a => a.id === insc.annee_academique_id);
+      const anneeObj = annees.find(a => Number(a.id) === Number(insc.annee_academique_id));
       list.push({
         filiereCode: code,
         montant,
@@ -329,7 +344,7 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
       });
     });
 
-    if (etudiant.classe_id && !seenClasses.has(etudiant.classe_id)) {
+    if (etudiant.classe_id && !seenClasses.has(Number(etudiant.classe_id))) {
       const cls = studentClass;
       const fil = studentFiliere;
       const code = fil?.code || cls?.code || 'IG1';
@@ -364,10 +379,10 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
   const paiementsFiliereList = paiements.map((p, idx) => {
     let filiereCode = p.filiere_code;
     if (!filiereCode) {
-      const matchingInsc = studentInscriptions.find(i => i.annee_academique_id === p.annee_academique_id);
+      const matchingInsc = studentInscriptions.find(i => Number(i.annee_academique_id) === Number(p.annee_academique_id));
       if (matchingInsc) {
-        const cls = classes.find(c => c.id === matchingInsc.classe_id);
-        const fil = filieres.find(f => f.id === cls?.filiere_id);
+        const cls = classes.find(c => Number(c.id) === Number(matchingInsc.classe_id));
+        const fil = filieres.find(f => Number(f.id) === Number(cls?.filiere_id));
         filiereCode = fil?.code || cls?.code;
       }
     }
@@ -375,7 +390,7 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
       filiereCode = idx === 0 ? 'IG1' : 'IG2';
     }
 
-    const anneeObj = annees.find(a => a.id === p.annee_academique_id);
+    const anneeObj = annees.find(a => Number(a.id) === Number(p.annee_academique_id));
     const anneeText = p.annee_libelle || (anneeObj ? anneeObj.code.replace('-', ' - ') : '2025 - 2026');
 
     return {
@@ -454,6 +469,36 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
+
+      {/* Student Identity & Quick Refresh Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-2xs">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#0066FF] font-bold shrink-0">
+            <GraduationCap className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="font-extrabold text-sm sm:text-base text-slate-900 leading-tight">
+              {etudiant.prenom} {etudiant.nom.toUpperCase()}
+            </h2>
+            <p className="text-[11px] text-slate-500 font-medium">
+              Matricule : <span className="font-mono font-bold text-slate-700">{etudiant.matricule}</span> • {studentFiliere?.nom || 'Filière'} ({studentClass?.code || 'Classe'})
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 ml-auto">
+          <button
+            type="button"
+            onClick={handleManualRefresh}
+            disabled={isRefreshing}
+            className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold flex items-center gap-2 transition-all active:scale-95 shadow-2xs disabled:opacity-60"
+            title="Recharger et synchroniser mes données avec le serveur"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-[#0066FF] ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span>{isRefreshing ? 'Actualisation...' : 'Actualiser'}</span>
+          </button>
+        </div>
+      </div>
 
       {/* TAB 1: MON BULLETIN (Format Admin Officiel direct) */}
       {currentTab === 'bulletins' && (
@@ -1088,7 +1133,7 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
           ) : (
             <div className="divide-y divide-gray-100">
               {absences.map(abs => {
-                const mat = matieres.find(m => m.id === abs.matiere_id);
+                const mat = matieres.find(m => Number(m.id) === Number(abs.matiere_id));
                 return (
                   <div key={abs.id} className="py-3 flex items-center justify-between text-xs">
                     <div>
