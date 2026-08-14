@@ -95,6 +95,15 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    if (currentUser) {
+      const roleLabel = currentUser.role === 'ADMIN' ? 'Administrateur' : 'Étudiant';
+      DB.logAccess(
+        'DECONNEXION',
+        `Déconnexion réussie : ${currentUser.prenom} ${currentUser.nom} (${roleLabel} - ${currentUser.email_or_matricule})`,
+        currentUser.role === 'ADMIN' ? currentUser.id : undefined,
+        currentUser.role === 'ETUDIANT' ? currentUser.id : undefined
+      );
+    }
     handleSetCurrentUser(null);
   };
 

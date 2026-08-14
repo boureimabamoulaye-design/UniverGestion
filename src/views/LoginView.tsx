@@ -59,7 +59,13 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
 
       if (data.success && data.user) {
         await DB.syncFromBackend();
-        DB.logAccess('CONNEXION', `Connexion ${role.toLowerCase()} réussie (${login})`, data.user.id);
+        const roleLabel = role === 'ADMIN' ? 'Administrateur' : 'Étudiant';
+        DB.logAccess(
+          'CONNEXION',
+          `Connexion réussie : ${data.user.prenom} ${data.user.nom} (${roleLabel} - ${login})`,
+          role === 'ADMIN' ? data.user.id : undefined,
+          role === 'ETUDIANT' ? data.user.id : undefined
+        );
         onLoginSuccess(data.user);
         return;
       }

@@ -8,6 +8,7 @@ import {
   RefreshCw,
   Activity,
   LogIn,
+  LogOut,
   Edit,
   PlusCircle,
   RotateCcw,
@@ -55,6 +56,13 @@ export const HistoriqueView: React.FC = () => {
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
             <LogIn className="w-3 h-3" />
             Connexion
+          </span>
+        );
+      case 'DECONNEXION':
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-300">
+            <LogOut className="w-3 h-3" />
+            Déconnexion
           </span>
         );
       case 'CREATION':
@@ -159,6 +167,7 @@ export const HistoriqueView: React.FC = () => {
           >
             <option value="ALL">Tous les types ({logs.length})</option>
             <option value="CONNEXION">Connexions</option>
+            <option value="DECONNEXION">Déconnexions</option>
             <option value="CREATION">Créations</option>
             <option value="MODIFICATION">Modifications</option>
             <option value="SUPPRESSION">Suppressions</option>

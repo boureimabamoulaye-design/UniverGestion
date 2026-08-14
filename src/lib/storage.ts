@@ -389,13 +389,14 @@ export class DB {
       list.push(result);
     }
     setItem(STORAGE_KEYS.SUPPORTS_COURS, list);
+    this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Dépôt'} support de cours "${result.titre}"`);
     toast.success(item.id ? "Support de cours modifié" : "Nouveau support de cours ajouté", result.titre);
     return result;
   }
 
   static deleteSupportCours(id: number): void {
     setItem(STORAGE_KEYS.SUPPORTS_COURS, this.getSupportsCours().filter(s => s.id !== id));
-    toast.delete("Support de cours supprimé de la base");
+    this.logAccess('SUPPRESSION', `Suppression support de cours ID #${id}`);
   }
 
   // Active Academic Year helper
@@ -426,6 +427,7 @@ export class DB {
       list.push(result);
     }
     setItem(STORAGE_KEYS.UNIVERSITES, list);
+    this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Création'} des paramètres de l'université "${result.nom}"`);
     toast.success("Université enregistrée", result.nom);
     return result;
   }
@@ -437,7 +439,6 @@ export class DB {
     const facultes = this.getFacultes().filter(f => f.universite_id === id);
     facultes.forEach(f => this.deleteFaculte(f.id));
     this.logAccess('SUPPRESSION', `Suppression université ID #${id} et ses facultés rattachées`);
-    toast.delete("Université supprimée de la base");
   }
 
   static saveFaculte(item: Omit<Faculte, 'id'> & { id?: number }): Faculte {
@@ -453,6 +454,7 @@ export class DB {
       list.push(result);
     }
     setItem(STORAGE_KEYS.FACULTES, list);
+    this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Création'} faculté "${result.nom}" (${result.code})`);
     toast.success(item.id ? "Faculté modifiée" : "Faculté ajoutée", `${result.code} - ${result.nom}`);
     return result;
   }
@@ -463,7 +465,6 @@ export class DB {
     const filieres = this.getFilieres().filter(f => f.faculte_id === id);
     filieres.forEach(f => this.deleteFiliere(f.id));
     this.logAccess('SUPPRESSION', `Suppression faculté ID #${id} et ses filières rattachées`);
-    toast.delete("Faculté supprimée de la base");
   }
 
   static saveFiliere(item: Omit<Filiere, 'id'> & { id?: number }): Filiere {
@@ -479,6 +480,7 @@ export class DB {
       list.push(result);
     }
     setItem(STORAGE_KEYS.FILIERES, list);
+    this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Création'} filière "${result.nom}" (${result.code})`);
     toast.success(item.id ? "Filière mise à jour" : "Nouvelle filière enregistrée", `${result.code} - ${result.nom}`);
     return result;
   }
@@ -491,7 +493,6 @@ export class DB {
     setItem(STORAGE_KEYS.MATIERES, this.getMatieres().filter(m => m.filiere_id !== id));
     setItem(STORAGE_KEYS.NIVEAUX, this.getNiveaux().filter(n => n.filiere_id !== id));
     this.logAccess('SUPPRESSION', `Suppression filière ID #${id} et ses classes/matières rattachées`);
-    toast.delete("Filière supprimée de la base");
   }
 
   static saveSemestre(item: Omit<Semestre, 'id'> & { id?: number }): Semestre {
@@ -507,6 +508,7 @@ export class DB {
       list.push(result);
     }
     setItem(STORAGE_KEYS.SEMESTRES, list);
+    this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Création'} semestre "${result.code} - ${result.libelle}"`);
     toast.success(item.id ? "Semestre mis à jour" : "Nouveau semestre créé", `${result.code} - ${result.libelle}`);
     return result;
   }
@@ -520,7 +522,6 @@ export class DB {
     setItem(STORAGE_KEYS.NOTES, this.getNotes().filter(n => n.semestre_id !== id));
     setItem(STORAGE_KEYS.BULLETINS, this.getBulletins().filter(b => b.semestre_id !== id));
     this.logAccess('SUPPRESSION', `Suppression semestre ID #${id} et ses notes/bulletins rattachés`);
-    toast.delete("Semestre supprimé");
   }
 
   static saveNiveau(item: Omit<Niveau, 'id'> & { id?: number }): Niveau {
@@ -536,13 +537,14 @@ export class DB {
       list.push(result);
     }
     setItem(STORAGE_KEYS.NIVEAUX, list);
+    this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Création'} niveau "${result.code} - ${result.nom}"`);
     toast.success("Niveau enregistré", `${result.code} - ${result.nom}`);
     return result;
   }
 
   static deleteNiveau(id: number): void {
     setItem(STORAGE_KEYS.NIVEAUX, this.getNiveaux().filter(n => n.id !== id));
-    toast.delete("Niveau supprimé");
+    this.logAccess('SUPPRESSION', `Suppression niveau ID #${id}`);
   }
 
   static saveClasse(item: Omit<Classe, 'id'> & { id?: number }): Classe {
@@ -558,6 +560,7 @@ export class DB {
       list.push(result);
     }
     setItem(STORAGE_KEYS.CLASSES, list);
+    this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Création'} classe "${result.code} - ${result.nom}"`);
     toast.success(item.id ? "Classe mise à jour" : "Nouvelle classe créée", `${result.code} - ${result.nom}`);
     return result;
   }
@@ -567,7 +570,6 @@ export class DB {
     setItem(STORAGE_KEYS.INSCRIPTIONS, this.getInscriptions().filter(i => i.classe_id !== id));
     setItem(STORAGE_KEYS.BULLETINS, this.getBulletins().filter(b => b.classe_id !== id));
     this.logAccess('SUPPRESSION', `Suppression classe ID #${id} et ses inscriptions/bulletins rattachés`);
-    toast.delete("Classe supprimée de la base");
   }
 
   static saveAnneeAcademique(item: Omit<AnneeAcademique, 'id'> & { id?: number }): AnneeAcademique {
@@ -586,6 +588,7 @@ export class DB {
       list.push(result);
     }
     setItem(STORAGE_KEYS.ANNEES, list);
+    this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Création'} année académique "${result.libelle}"`);
     toast.success(item.id ? "Année académique mise à jour" : "Nouvelle année académique enregistrée", result.libelle);
     return result;
   }
@@ -598,6 +601,7 @@ export class DB {
     setItem(STORAGE_KEYS.ANNEES, list);
     const active = list.find(a => a.id === id);
     if (active) {
+      this.logAccess('MODIFICATION', `Changement de l'année académique active : "${active.libelle}"`);
       toast.info("Année académique active modifiée", active.libelle);
     }
   }
@@ -618,7 +622,6 @@ export class DB {
     setItem(STORAGE_KEYS.BULLETINS, this.getBulletins().filter(b => b.annee_academique_id !== id));
     setItem(STORAGE_KEYS.PAIEMENTS, this.getPaiements().filter(p => p.annee_academique_id !== id));
     this.logAccess('SUPPRESSION', `Suppression année académique ID #${id} et ses données rattachées`);
-    toast.delete("Année académique supprimée de la base");
   }
 
   static saveEtudiant(item: Omit<Etudiant, 'id'> & { id?: number }): Etudiant {
@@ -667,6 +670,7 @@ export class DB {
       });
     }
     setItem(STORAGE_KEYS.ETUDIANTS, list);
+    this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Création'} dossier étudiant "${result.prenom} ${result.nom}" (${result.matricule})`, undefined, result.id);
     toast.success(item.id ? "Dossier étudiant mis à jour" : "Nouvel étudiant enregistré", `${result.prenom} ${result.nom} (${result.matricule})`);
     return result;
   }
@@ -679,7 +683,6 @@ export class DB {
     setItem(STORAGE_KEYS.PAIEMENTS, this.getPaiements().filter(p => p.etudiant_id !== id));
     setItem(STORAGE_KEYS.BULLETINS, this.getBulletins().filter(b => b.etudiant_id !== id));
     this.logAccess('SUPPRESSION', `Suppression définitive étudiant ID #${id}`);
-    toast.delete("Étudiant supprimé de la base");
   }
 
   static saveEnseignant(item: Omit<Enseignant, 'id'> & { id?: number }): Enseignant {
@@ -696,6 +699,7 @@ export class DB {
       list.push(result);
     }
     setItem(STORAGE_KEYS.ENSEIGNANTS, list);
+    this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Création'} enseignant "${result.titre} ${result.prenom} ${result.nom}" (${result.matricule})`);
     toast.success(item.id ? "Enseignant mis à jour" : "Nouvel enseignant enregistré", `${result.titre} ${result.prenom} ${result.nom}`);
     return result;
   }
@@ -706,7 +710,6 @@ export class DB {
     const matieres = this.getMatieres().map(m => m.enseignant_id === id ? { ...m, enseignant_id: undefined, enseignant_nom: undefined } : m);
     setItem(STORAGE_KEYS.MATIERES, matieres);
     this.logAccess('SUPPRESSION', `Suppression enseignant ID #${id}`);
-    toast.delete("Enseignant supprimé de la base");
   }
 
   static saveMatiere(item: Omit<Matiere, 'id'> & { id?: number }): Matiere {
@@ -731,6 +734,7 @@ export class DB {
       list.push(result);
     }
     setItem(STORAGE_KEYS.MATIERES, list);
+    this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Création'} matière "${result.code} - ${result.nom}"`);
     toast.success(item.id ? "Matière mise à jour" : "Nouvelle matière enregistrée", `${result.code} - ${result.nom}`);
     return result;
   }
@@ -753,7 +757,6 @@ export class DB {
     });
 
     this.logAccess('SUPPRESSION', `Suppression matière ID #${id} et ses notes/absences rattachées`);
-    toast.delete("Matière supprimée de la base");
   }
 
   // Global Student Lock
@@ -833,6 +836,7 @@ export class DB {
       list.push(result);
     }
     setItem(STORAGE_KEYS.INSCRIPTIONS, list);
+    this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Validation'} inscription étudiant (ID #${result.etudiant_id})`, undefined, result.etudiant_id);
     toast.success(item.id ? "Inscription mise à jour" : "Nouvelle inscription validée en base");
 
     // Auto-sync student active class & filiere so student gets instant access to all features
@@ -862,7 +866,7 @@ export class DB {
 
   static deleteInscription(id: number): void {
     setItem(STORAGE_KEYS.INSCRIPTIONS, this.getInscriptions().filter(i => i.id !== id));
-    toast.delete("Inscription supprimée de la base");
+    this.logAccess('SUPPRESSION', `Suppression inscription ID #${id}`);
   }
 
   static saveNote(item: Omit<Note, 'id'> & { id?: number }): Note {
@@ -898,6 +902,8 @@ export class DB {
       list.push(result);
     }
     setItem(STORAGE_KEYS.NOTES, list);
+    const matiere = this.getMatieres().find(m => m.id === result.matiere_id);
+    this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Saisie'} note : ${matiere?.nom || 'Matière'} - Note finale: ${note_finale}/20 (${appreciation})`, undefined, result.etudiant_id);
     toast.success("Note enregistrée en base", `Note Finale: ${note_finale}/20 (${appreciation})`);
 
     // Auto update/recalculate bulletin for student
@@ -928,7 +934,7 @@ export class DB {
     if (note) {
       this.recalculateBulletin(note.etudiant_id, note.semestre_id, note.annee_academique_id);
     }
-    toast.delete("Note supprimée de la base");
+    this.logAccess('SUPPRESSION', `Suppression note ID #${id}`);
   }
 
   static saveAbsence(item: Omit<Absence, 'id'> & { id?: number }): Absence {
@@ -944,6 +950,8 @@ export class DB {
       list.push(result);
     }
     setItem(STORAGE_KEYS.ABSENCES, list);
+    const subj = this.getMatieres().find(m => m.id === result.matiere_id);
+    this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Enregistrement'} absence : ${result.heures}h ${subj ? `en ${subj.nom}` : ''} le ${result.date_absence} (${result.justifiee ? 'Justifiée' : 'Non justifiée'})`, undefined, result.etudiant_id);
     toast.success(item.id ? "Absence modifiée" : "Absence consignée", `${result.heures}h le ${result.date_absence}`);
 
     // Notify student on absence record
@@ -967,7 +975,7 @@ export class DB {
 
   static deleteAbsence(id: number): void {
     setItem(STORAGE_KEYS.ABSENCES, this.getAbsences().filter(a => a.id !== id));
-    toast.delete("Absence supprimée de la base");
+    this.logAccess('SUPPRESSION', `Suppression absence ID #${id}`);
   }
 
   static recalculateBulletin(etudiantId: number, semestreId: number, anneeId: number): Bulletin | null {
@@ -1095,6 +1103,7 @@ export class DB {
       list.push(result);
     }
     setItem(STORAGE_KEYS.PAIEMENTS, list);
+    this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Enregistrement'} paiement : ${result.montant_paye.toLocaleString()} FCFA (${result.reference_recu} - ${result.mode_paiement})`, undefined, result.etudiant_id);
     toast.success(item.id ? "Paiement mis à jour" : "Paiement enregistré avec succès", `Reçu: ${result.reference_recu} (${result.montant_paye.toLocaleString()} FCFA)`);
 
     // Notify student
@@ -1115,7 +1124,7 @@ export class DB {
 
   static deletePaiement(id: number): void {
     setItem(STORAGE_KEYS.PAIEMENTS, this.getPaiements().filter(p => p.id !== id));
-    toast.delete("Paiement supprimé de la base");
+    this.logAccess('SUPPRESSION', `Suppression paiement ID #${id}`);
   }
 
   static saveAdministrateur(item: Omit<Administrateur, 'id'> & { id?: number }): Administrateur {
@@ -1132,6 +1141,7 @@ export class DB {
     }
     setItem(STORAGE_KEYS.UTILISATEURS, list);
     setItem(STORAGE_KEYS.ADMINISTRATEURS, list);
+    this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Création'} utilisateur "${result.prenom} ${result.nom}" (${result.email})`, result.id);
     toast.success(item.id ? "Utilisateur mis à jour" : "Nouvel utilisateur créé", `${result.prenom} ${result.nom} (${result.role})`);
     return result;
   }
@@ -1140,7 +1150,7 @@ export class DB {
     const updated = this.getUtilisateurs().filter(u => u.id !== id);
     setItem(STORAGE_KEYS.UTILISATEURS, updated);
     setItem(STORAGE_KEYS.ADMINISTRATEURS, updated);
-    toast.delete("Utilisateur supprimé");
+    this.logAccess('SUPPRESSION', `Suppression utilisateur ID #${id}`);
   }
 
   static saveUtilisateur(item: Omit<Utilisateur, 'id'> & { id?: number }): Utilisateur {
@@ -1164,6 +1174,7 @@ export class DB {
       list.push(result);
     }
     setItem(STORAGE_KEYS.BULLETINS, list);
+    this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `Génération bulletin étudiant ID #${result.etudiant_id} : Moyenne ${result.moyenne}/20 (${result.decision})`, undefined, result.etudiant_id);
     toast.success("Bulletin généré et enregistré en base", `Moyenne: ${result.moyenne}/20 (${result.decision})`);
     return result;
   }
@@ -1189,7 +1200,7 @@ export class DB {
       id: nextId,
       utilisateur_id: userId,
       etudiant_id: etudiantId,
-      ip_adresse: '197.230.12.44', // Simulated local Mali IP
+      ip_adresse: '***.***.***.***', // Adresse IP masquée pour la confidentialité
       event_type,
       description,
       created_at: new Date().toISOString().replace('T', ' ').substring(0, 16)
@@ -1231,7 +1242,6 @@ export class DB {
     setItem(STORAGE_KEYS.CORBEILLE, list);
 
     this.logAccess('SUPPRESSION', `Mise en corbeille : ${type_element} "${titre}" (ID #${element_id})`);
-    toast.warning("Élément placé dans la corbeille", titre);
   }
 
   static restoreFromCorbeille(corbeilleId: number): boolean {
@@ -1281,14 +1291,12 @@ export class DB {
     setItem(STORAGE_KEYS.CORBEILLE, list.filter(c => c.id !== corbeilleId));
     if (item) {
       this.logAccess('SUPPRESSION', `Suppression définitive : ${item.type_element} "${item.titre}"`);
-      toast.delete("Suppression définitive effectuée", item.titre);
     }
   }
 
   static clearCorbeille(): void {
     setItem(STORAGE_KEYS.CORBEILLE, []);
     this.logAccess('SUPPRESSION', 'Corbeille entièrement vidée');
-    toast.delete("Corbeille vidée", "Tous les éléments archivés ont été supprimés");
   }
 
   // Reset to default seed
