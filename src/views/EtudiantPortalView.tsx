@@ -14,6 +14,7 @@ import {
   Calendar,
   FileText,
   User,
+  UserCheck,
   ShieldCheck,
   Building2,
   DollarSign,
@@ -102,6 +103,10 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
   const studentFaculte = facultes.find(f => Number(f.id) === Number(studentFiliere?.faculte_id)) || facultes[0];
   const universite = DB.getUniversites()[0];
   const activeAnnee = DB.getActiveAnneeAcademique();
+  const annees = DB.getAnneesAcademiques();
+  const niveaux = DB.getNiveaux();
+  const studentNiveau = niveaux.find(n => Number(n.id) === Number(studentClass?.niveau_id) || Number(n.id) === Number(etudiant.niveau_id)) || niveaux[0];
+  const enseignants = DB.getEnseignants();
 
   const semestres = DB.getSemestres();
   const matieres = DB.getMatieres();
@@ -110,6 +115,9 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
   const notes = DB.getNotes().filter(n => Number(n.etudiant_id) === Number(etudiant.id));
   const paiements = DB.getPaiements().filter(p => Number(p.etudiant_id) === Number(etudiant.id));
   const absences = DB.getAbsences().filter(a => Number(a.etudiant_id) === Number(etudiant.id));
+  const studentInscriptions = DB.getInscriptions().filter(i => Number(i.etudiant_id) === Number(etudiant.id));
+  const supportsCours = DB.getSupportsCours().filter(s => !s.filiere_id || Number(s.filiere_id) === Number(studentFiliere?.id));
+  const studentBulletins = DB.getBulletins().filter(b => Number(b.etudiant_id) === Number(etudiant.id));
 
   // States
   const [selectedSemestreId, setSelectedSemestreId] = useState<number>(semestres[0]?.id || 1);
@@ -343,9 +351,6 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
   const notesTableData = currentSelectedSemCalculation?.rows ?? [];
 
   // Gather student's inscriptions & training fees (Frais de formation) across all registered filières
-  const studentInscriptions = DB.getInscriptions().filter(i => Number(i.etudiant_id) === Number(etudiant.id));
-  const annees = DB.getAnneesAcademiques();
-
   const fraisFormationList = (() => {
     const list: { filiereCode: string; montant: number; reduction: number; montantDu: number; annee: string }[] = [];
     const seenClasses = new Set<number>();
@@ -946,11 +951,11 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
           {/* Information Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
-            {/* Block 1: Identité */}
+            {/* Block 1: Identité & Tuteur */}
             <div className="p-5 bg-gray-50/70 rounded-[16px] border border-gray-200 space-y-3">
               <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-gray-200 pb-2 flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-[#0066FF]" />
-                <span>État Civil & Identité</span>
+                <span>État Civil & Tuteur Légal</span>
               </h4>
               <div className="space-y-2.5 text-xs">
                 <div className="flex justify-between">
@@ -958,63 +963,183 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
                   <span className="font-mono font-bold text-slate-900">{etudiant.matricule}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Nom :</span>
-                  <span className="font-bold text-slate-900">{etudiant.nom.toUpperCase()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Prénom :</span>
-                  <span className="font-bold text-slate-900">{etudiant.prenom}</span>
+                  <span className="text-gray-500">Nom & Prénom :</span>
+                  <span className="font-bold text-slate-900">{etudiant.nom.toUpperCase()} {etudiant.prenom}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Sexe / Genre :</span>
                   <span className="font-semibold text-slate-900">{etudiant.sexe === 'M' ? 'Masculin (M)' : 'Féminin (F)'}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Date de Naissance :</span>
-                  <span className="font-semibold text-slate-900">{etudiant.date_naissance || '12/05/2003'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Lieu de Naissance :</span>
-                  <span className="font-semibold text-slate-900">{etudiant.lieu_naissance || 'Bamako'}</span>
+                  <span className="text-gray-500">Date & Lieu de Naissance :</span>
+                  <span className="font-semibold text-slate-900">{etudiant.date_naissance || '12/05/2003'} à {etudiant.lieu_naissance || 'Bamako'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Nationalité :</span>
                   <span className="font-semibold text-slate-900">{etudiant.nationalite || 'Malienne'}</span>
                 </div>
+                <div className="flex justify-between pt-1 border-t border-gray-200/60">
+                  <span className="text-gray-500">Tuteur Légal / Urgence :</span>
+                  <span className="font-semibold text-slate-800">
+                    {etudiant.tuteur_nom ? `${etudiant.tuteur_prenom || ''} ${etudiant.tuteur_nom}` : 'Parent / Tuteur désigné'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Contact Tuteur :</span>
+                  <span className="font-mono font-medium text-slate-700">{etudiant.tuteur_telephone || '+223 70 00 00 00'}</span>
+                </div>
               </div>
             </div>
 
-            {/* Block 2: Parcours Académique */}
+            {/* Block 2: Parcours Académique & Faculté */}
             <div className="p-5 bg-gray-50/70 rounded-[16px] border border-gray-200 space-y-3">
               <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-gray-200 pb-2 flex items-center gap-1.5">
                 <GraduationCap className="w-4 h-4 text-[#0066FF]" />
-                <span>Inscription Académique</span>
+                <span>Affiliation & Faculté</span>
               </h4>
               <div className="space-y-2.5 text-xs">
                 <div className="flex justify-between">
                   <span className="text-gray-500">Université :</span>
-                  <span className="font-semibold text-slate-900 text-right">{universite?.nom || 'USTTB'}</span>
+                  <span className="font-semibold text-slate-900 text-right">{universite?.nom || 'USTTB'} ({universite?.sigle || 'USTTB'})</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Filière d'Études :</span>
-                  <span className="font-bold text-[#0066FF] text-right">{studentFiliere?.nom || 'Informatique'}</span>
+                  <span className="text-gray-500">Faculté / UFR :</span>
+                  <span className="font-semibold text-slate-900 text-right">{studentFaculte?.nom || 'Faculté des Sciences'}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Classe / Niveau :</span>
-                  <span className="font-bold text-slate-900 text-right">{studentClass?.nom || 'Licence 1'}</span>
+                  <span className="text-gray-500">Doyen Faculté :</span>
+                  <span className="font-medium text-slate-800 text-right">{studentFaculte?.doyen || 'Dr. Mamadou Diallo'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Filière / Domaine :</span>
+                  <span className="font-bold text-[#0066FF] text-right">{studentFiliere?.nom || 'Informatique'} ({studentFiliere?.domaine || 'Sciences'})</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Niveau & Diplôme Visé :</span>
+                  <span className="font-bold text-slate-900 text-right">{studentNiveau?.nom || 'Licence 1'} - {studentNiveau?.diplome_vise || 'Licence Pro'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Classe / Promotion :</span>
+                  <span className="font-bold text-slate-900 text-right">{studentClass?.nom || 'L1-IGL'} (Capacité: {studentClass?.capacite || 40})</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Année Académique :</span>
                   <span className="font-bold text-slate-900">{activeAnnee?.libelle || '2025-2026'}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Date d'Inscription :</span>
-                  <span className="font-semibold text-slate-900">{etudiant.date_inscription || '2025-10-01'}</span>
-                </div>
               </div>
             </div>
 
-            {/* Block 3: Coordonnées & Contacts */}
+            {/* Block 3: Table des Inscriptions Académiques */}
+            <div className="md:col-span-2 p-5 bg-white rounded-[16px] border border-gray-200 shadow-2xs space-y-3">
+              <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider border-b border-gray-100 pb-2 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <FileCheck2 className="w-4 h-4 text-[#0066FF]" />
+                  <span>Historique des Inscriptions Académiques ({studentInscriptions.length || 1})</span>
+                </span>
+                <span className="text-[10px] text-gray-500 font-mono">Dossier N° {etudiant.id}</span>
+              </h4>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse min-w-[550px]">
+                  <thead>
+                    <tr className="bg-gray-50 text-[11px] font-bold text-gray-600 border-b border-gray-100">
+                      <th className="px-3 py-2">Année Académique</th>
+                      <th className="px-3 py-2">Classe / Niveau</th>
+                      <th className="px-3 py-2">Date Inscription</th>
+                      <th className="px-3 py-2">Type</th>
+                      <th className="px-3 py-2 text-right">Frais Inscription</th>
+                      <th className="px-3 py-2 text-center">Validation</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {studentInscriptions.length === 0 ? (
+                      <tr>
+                        <td className="px-3 py-2.5 font-bold text-slate-900">{activeAnnee?.code || '2025-2026'}</td>
+                        <td className="px-3 py-2.5 font-semibold text-slate-800">{studentClass?.nom || 'Licence 1'}</td>
+                        <td className="px-3 py-2.5 text-gray-600">{etudiant.date_inscription || '2025-10-01'}</td>
+                        <td className="px-3 py-2.5 font-medium text-blue-600">Inscrire</td>
+                        <td className="px-3 py-2.5 text-right font-mono font-bold text-slate-900">150 000 FCFA</td>
+                        <td className="px-3 py-2.5 text-center">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">Validée</span>
+                        </td>
+                      </tr>
+                    ) : (
+                      studentInscriptions.map((insc) => {
+                        const anneeObj = annees.find(a => Number(a.id) === Number(insc.annee_academique_id));
+                        const clsObj = classes.find(c => Number(c.id) === Number(insc.classe_id));
+                        return (
+                          <tr key={insc.id} className="hover:bg-gray-50/60 transition-colors">
+                            <td className="px-3 py-2.5 font-bold text-slate-900">{anneeObj?.code || '2025-2026'}</td>
+                            <td className="px-3 py-2.5 font-semibold text-slate-800">{clsObj?.nom || studentClass?.nom || 'L1'}</td>
+                            <td className="px-3 py-2.5 text-gray-600">{insc.date_inscription || '2025-10-01'}</td>
+                            <td className="px-3 py-2.5 font-medium text-blue-600">{insc.type_inscription || 'Inscrire'}</td>
+                            <td className="px-3 py-2.5 text-right font-mono font-bold text-slate-900">
+                              {(insc.frais_inscription || 150000).toLocaleString()} FCFA
+                            </td>
+                            <td className="px-3 py-2.5 text-center">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                insc.statut_validation === 'Rejeté' ? 'bg-red-100 text-red-800' : 'bg-emerald-100 text-emerald-800'
+                              }`}>
+                                {insc.statut_validation || insc.statut || 'Validé'}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Block 4: Matières & Corps Professoral Assigné */}
+            <div className="md:col-span-2 p-5 bg-white rounded-[16px] border border-gray-200 shadow-2xs space-y-3">
+              <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider border-b border-gray-100 pb-2 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <UserCheck className="w-4 h-4 text-[#0066FF]" />
+                  <span>Modules d'Enseignement & Enseignants Référents</span>
+                </span>
+                <span className="text-[10px] text-gray-500">{studentFiliere?.nom || 'Filière'}</span>
+              </h4>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse min-w-[600px]">
+                  <thead>
+                    <tr className="bg-gray-50 text-[11px] font-bold text-gray-600 border-b border-gray-100">
+                      <th className="px-3 py-2">Code UE</th>
+                      <th className="px-3 py-2">Intitulé du Module</th>
+                      <th className="px-3 py-2 text-center">Semestre</th>
+                      <th className="px-3 py-2 text-center">Crédits</th>
+                      <th className="px-3 py-2">Enseignant Responsable</th>
+                      <th className="px-3 py-2">Spécialité & Contact</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {matieres
+                      .filter(m => !m.filiere_id || Number(m.filiere_id) === Number(studentFiliere?.id))
+                      .slice(0, 8)
+                      .map((mat) => {
+                        const semObj = semestres.find(s => Number(s.id) === Number(mat.semestre_id));
+                        const ensObj = enseignants.find(e => Number(e.id) === Number(mat.enseignant_id));
+                        return (
+                          <tr key={mat.id} className="hover:bg-gray-50/60 transition-colors">
+                            <td className="px-3 py-2 font-mono font-bold text-blue-600">{mat.code}</td>
+                            <td className="px-3 py-2 font-bold text-slate-900">{mat.nom}</td>
+                            <td className="px-3 py-2 text-center font-semibold text-slate-700">{semObj?.code || 'S1'}</td>
+                            <td className="px-3 py-2 text-center font-mono font-bold text-slate-800">{mat.credits || 3}</td>
+                            <td className="px-3 py-2 font-semibold text-slate-900">
+                              {ensObj ? `${ensObj.titre || 'Dr.'} ${ensObj.prenom} ${ensObj.nom}` : (mat.enseignant_nom || 'Dr. Mamadou Diallo')}
+                            </td>
+                            <td className="px-3 py-2 text-gray-600 text-[11px]">
+                              {ensObj ? `${ensObj.specialite} • ${ensObj.email}` : 'Génie Logiciel'}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Block 5: Coordonnées & Contacts */}
             <div className="md:col-span-2 p-5 bg-blue-50/40 rounded-[16px] border border-blue-100 space-y-3">
               <h4 className="text-xs font-bold text-blue-900 uppercase tracking-wider border-b border-blue-200/60 pb-2 flex items-center justify-between">
                 <span className="flex items-center gap-1.5">
