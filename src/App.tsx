@@ -35,22 +35,12 @@ const ParametresView = lazy(() => import('./views/ParametresView').then(m => ({ 
 const HistoriqueView = lazy(() => import('./views/HistoriqueView').then(m => ({ default: m.HistoriqueView })));
 
 export default function App() {
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => {
-    try {
-      const saved = localStorage.getItem('unigestion_active_user') || sessionStorage.getItem('unigestion_active_user');
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  });
+  // By default, the application always opens on the Login screen
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
 
   const isStaffOrAdmin = currentUser ? currentUser.role?.toUpperCase() !== 'ETUDIANT' : false;
 
   const getInitialTab = (): ActiveTab => {
-    try {
-      const saved = localStorage.getItem('unigestion_active_tab') as ActiveTab;
-      if (saved) return saved;
-    } catch {}
     return isStaffOrAdmin ? 'dashboard' : 'bulletins';
   };
 
