@@ -572,6 +572,92 @@ app.post("/api/mysql/authenticate", (req, res) => {
   }
 });
 
+// REST API FOR DIRECT TABLE INTERACTIONS (CRUD on every SQL Table)
+const TABLE_KEY_MAP: Record<string, string> = {
+  universites: "unigestion_universites",
+  facultes: "unigestion_facultes",
+  filieres: "unigestion_filieres",
+  niveaux: "unigestion_niveaux",
+  annees_academiques: "unigestion_annees",
+  classes: "unigestion_classes",
+  enseignants: "unigestion_enseignants",
+  semestres: "unigestion_semestres",
+  matieres: "unigestion_matieres",
+  etudiants: "unigestion_etudiants",
+  inscriptions: "unigestion_inscriptions",
+  notes: "unigestion_notes",
+  absences: "unigestion_absences",
+  bulletins: "unigestion_bulletins",
+  paiements: "unigestion_paiements",
+  utilisateurs: "unigestion_utilisateurs",
+  administrateurs: "unigestion_administrateurs",
+  notifications: "unigestion_notifications",
+  historique_acces: "unigestion_historique",
+  corbeille: "unigestion_corbeille",
+  supports_cours: "unigestion_supports_cours"
+};
+
+// GET /api/tables/:tableName - Retrieve all rows from a table
+app.get("/api/tables/:tableName", (req, res) => {
+  const { tableName } = req.params;
+  const storageKey = TABLE_KEY_MAP[tableName] || `unigestion_${tableName}`;
+  const db = readDatabase();
+  const rows = db[storageKey] || db[tableName] || [];
+  res.json({ success: true, table: tableName, count: rows.length, data: rows });
+});
+
+// POST /api/tables/:tableName - Insert a new row into a table
+app.post("/api/tables/:tableName", (req, res) => {
+  const { tableName } = req.params;
+  const storageKey = TABLE_KEY_MAP[tableName] || `unigestion_${tableName}`;
+  const db = readDatabase();
+  let rows = db[storageKey] || db[tableName] || [];
+  
+  const nextId = rows.length > 0 ? Math.max(...rows.map((r: any) => Number(r.id) || 0)) + 1 : 1;
+  const newRow = { id: nextId, ...req.body };
+  rows.push(newRow);
+  
+  db[storageKey] = rows;
+  db[tableName] = rows;
+  saveDatabase(db);
+  
+  res.json({ success: true, table: tableName, data: newRow });
+});
+
+// PUT /api/tables/:tableName/:id - Update a row by ID
+app.put("/api/tables/:tableName/:id", (req, res) => {
+  const { tableName, id } = req.params;
+  const storageKey = TABLE_KEY_MAP[tableName] || `unigestion_${tableName}`;
+  const db = readDatabase();
+  let rows = db[storageKey] || db[tableName] || [];
+  
+  const index = rows.findIndex((r: any) => Number(r.id) === Number(id));
+  if (index >= 0) {
+    rows[index] = { ...rows[index], ...req.body, id: Number(id) };
+    db[storageKey] = rows;
+    db[tableName] = rows;
+    saveDatabase(db);
+    return res.json({ success: true, table: tableName, data: rows[index] });
+  }
+  
+  res.status(404).json({ success: false, error: "NOT_FOUND", message: `Enregistrement ID #${id} introuvable dans la table ${tableName}.` });
+});
+
+// DELETE /api/tables/:tableName/:id - Delete a row by ID
+app.delete("/api/tables/:tableName/:id", (req, res) => {
+  const { tableName, id } = req.params;
+  const storageKey = TABLE_KEY_MAP[tableName] || `unigestion_${tableName}`;
+  const db = readDatabase();
+  let rows = db[storageKey] || db[tableName] || [];
+  
+  const filtered = rows.filter((r: any) => Number(r.id) !== Number(id));
+  db[storageKey] = filtered;
+  db[tableName] = filtered;
+  saveDatabase(db);
+  
+  res.json({ success: true, table: tableName, message: `Enregistrement ID #${id} supprimé avec succès de la table ${tableName}.` });
+});
+
 // GET ALL DATA FOR REALTIME FRONTEND SYNC
 app.get("/api/data/all", (req, res) => {
   const db = readDatabase();
