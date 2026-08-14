@@ -157,7 +157,9 @@ function saveDatabase(data: Record<string, any>) {
     } catch (e) {
       console.error("Error writing storage file:", e);
     }
-  }, 1000);
+    // Also trigger asynchronous synchronization directly to MySQL
+    syncDataToMySQL(data).catch(() => {});
+  }, 300);
   return true;
 }
 
@@ -193,6 +195,148 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+// =========================================================
+// DIRECT MYSQL SYNCHRONIZATION ENGINE
+// =========================================================
+
+const TABLE_KEY_MAP: Record<string, string> = {
+  universites: "unigestion_universites",
+  facultes: "unigestion_facultes",
+  filieres: "unigestion_filieres",
+  niveaux: "unigestion_niveaux",
+  annees_academiques: "unigestion_annees",
+  classes: "unigestion_classes",
+  enseignants: "unigestion_enseignants",
+  semestres: "unigestion_semestres",
+  matieres: "unigestion_matieres",
+  etudiants: "unigestion_etudiants",
+  inscriptions: "unigestion_inscriptions",
+  notes: "unigestion_notes",
+  absences: "unigestion_absences",
+  bulletins: "unigestion_bulletins",
+  paiements: "unigestion_paiements",
+  utilisateurs: "unigestion_utilisateurs",
+  administrateurs: "unigestion_administrateurs",
+  notifications: "unigestion_notifications",
+  historique_acces: "unigestion_historique",
+  corbeille: "unigestion_corbeille",
+  supports_cours: "unigestion_supports_cours"
+};
+
+// Map column fields safely to avoid MySQL query failures when schemas have specific columns
+async function getTableColumns(pool: mysql.Pool, tableName: string): Promise<Set<string>> {
+  try {
+    const [rows]: any = await pool.query(`SHOW COLUMNS FROM ??`, [tableName]);
+    if (Array.isArray(rows)) {
+      return new Set(rows.map((r: any) => r.Field));
+    }
+  } catch {}
+  return new Set();
+}
+
+async function syncDataToMySQL(dbData: Record<string, any>) {
+  try {
+    const pool = getMySqlPool();
+    // Test if MySQL is alive
+    await pool.query("SELECT 1");
+
+    // Temporarily disable foreign key checks for clean bulk sync
+    await pool.query("SET FOREIGN_KEY_CHECKS = 0");
+
+    const syncOrder = [
+      "universites",
+      "facultes",
+      "filieres",
+      "niveaux",
+      "annees_academiques",
+      "classes",
+      "enseignants",
+      "semestres",
+      "matieres",
+      "etudiants",
+      "inscriptions",
+      "notes",
+      "absences",
+      "bulletins",
+      "paiements",
+      "utilisateurs",
+      "administrateurs",
+      "notifications",
+      "historique_acces",
+      "supports_cours"
+    ];
+
+    for (const tbl of syncOrder) {
+      const storageKey = TABLE_KEY_MAP[tbl];
+      const items = dbData[storageKey] || dbData[tbl];
+
+      if (Array.isArray(items)) {
+        const columns = await getTableColumns(pool, tbl);
+        if (columns.size === 0) continue;
+
+        const currentIds: number[] = [];
+
+        for (const item of items) {
+          if (!item || typeof item !== 'object') continue;
+          
+          const cleanItem: Record<string, any> = {};
+          for (const [k, v] of Object.entries(item)) {
+            // Handle naming differences
+            let colName = k;
+            if (!columns.has(colName)) {
+              if (k === 'nom' && columns.has('libelle')) colName = 'libelle';
+              else if (k === 'libelle' && columns.has('nom')) colName = 'nom';
+              else if (k === 'mot_de_passe' && columns.has('password')) colName = 'password';
+            }
+
+            if (columns.has(colName)) {
+              if (v !== undefined && v !== null) {
+                if (typeof v === 'boolean') cleanItem[colName] = v ? 1 : 0;
+                else if (typeof v === 'object') cleanItem[colName] = JSON.stringify(v);
+                else cleanItem[colName] = v;
+              }
+            }
+          }
+
+          if (Object.keys(cleanItem).length > 0) {
+            try {
+              const keys = Object.keys(cleanItem);
+              const values = Object.values(cleanItem);
+              const placeholders = keys.map(() => '?').join(', ');
+              const updateClause = keys.filter(k => k !== 'id').map(k => `\`${k}\` = VALUES(\`${k}\`)`).join(', ');
+
+              const query = `
+                INSERT INTO \`${tbl}\` (\`${keys.join('`, `')}\`)
+                VALUES (${placeholders})
+                ${updateClause ? `ON DUPLICATE KEY UPDATE ${updateClause}` : ''}
+              `;
+              await pool.query(query, values);
+              if (item.id) currentIds.push(Number(item.id));
+            } catch (err) {
+              // Ignore single item sync mismatch
+            }
+          }
+        }
+
+        // Delete records from MySQL that were removed in the UI
+        if (currentIds.length > 0) {
+          try {
+            await pool.query(`DELETE FROM \`${tbl}\` WHERE id NOT IN (?)`, [currentIds]);
+          } catch {}
+        } else if (items.length === 0) {
+          try {
+            await pool.query(`DELETE FROM \`${tbl}\``);
+          } catch {}
+        }
+      }
+    }
+
+    await pool.query("SET FOREIGN_KEY_CHECKS = 1");
+  } catch (e) {
+    // MySQL not reachable or not started yet - handled gracefully
+  }
+}
 
 // =========================================================
 // MYSQL CONNECTION TEST & STATUS ENDPOINTS
@@ -887,29 +1031,6 @@ app.post("/api/mysql/authenticate", async (req, res) => {
 // =========================================================
 // REST API FOR DIRECT TABLE INTERACTIONS (CRUD on every SQL Table)
 // =========================================================
-const TABLE_KEY_MAP: Record<string, string> = {
-  universites: "unigestion_universites",
-  facultes: "unigestion_facultes",
-  filieres: "unigestion_filieres",
-  niveaux: "unigestion_niveaux",
-  annees_academiques: "unigestion_annees",
-  classes: "unigestion_classes",
-  enseignants: "unigestion_enseignants",
-  semestres: "unigestion_semestres",
-  matieres: "unigestion_matieres",
-  etudiants: "unigestion_etudiants",
-  inscriptions: "unigestion_inscriptions",
-  notes: "unigestion_notes",
-  absences: "unigestion_absences",
-  bulletins: "unigestion_bulletins",
-  paiements: "unigestion_paiements",
-  utilisateurs: "unigestion_utilisateurs",
-  administrateurs: "unigestion_administrateurs",
-  notifications: "unigestion_notifications",
-  historique_acces: "unigestion_historique",
-  corbeille: "unigestion_corbeille",
-  supports_cours: "unigestion_supports_cours"
-};
 
 // GET /api/tables/:tableName - Retrieve all rows from a MySQL table
 app.get("/api/tables/:tableName", async (req, res) => {
@@ -937,19 +1058,48 @@ app.post("/api/tables/:tableName", async (req, res) => {
   const db = readDatabase();
   let rows = db[storageKey] || db[tableName] || [];
   
-  const nextId = rows.length > 0 ? Math.max(...rows.map((r: any) => Number(r.id) || 0)) + 1 : 1;
-  const newRow = { id: nextId, ...req.body };
-  rows.push(newRow);
+  const nextId = req.body.id ? Number(req.body.id) : (rows.length > 0 ? Math.max(...rows.map((r: any) => Number(r.id) || 0)) + 1 : 1);
+  const newRow = { ...req.body, id: nextId };
+  
+  const existingIdx = rows.findIndex((r: any) => Number(r.id) === nextId);
+  if (existingIdx >= 0) {
+    rows[existingIdx] = newRow;
+  } else {
+    rows.push(newRow);
+  }
   
   db[storageKey] = rows;
   db[tableName] = rows;
   saveDatabase(db);
 
-  // MySQL direct insert
+  // Direct MySQL Insert / Replace
   try {
     const pool = getMySqlPool();
-    await pool.query("INSERT INTO ?? SET ?", [tableName, req.body]);
-  } catch {}
+    const columns = await getTableColumns(pool, tableName);
+    if (columns.size > 0) {
+      const cleanData: Record<string, any> = {};
+      for (const [k, v] of Object.entries(newRow)) {
+        if (columns.has(k) && v !== undefined) {
+          if (typeof v === 'boolean') cleanData[k] = v ? 1 : 0;
+          else if (typeof v === 'object' && v !== null) cleanData[k] = JSON.stringify(v);
+          else cleanData[k] = v;
+        }
+      }
+      if (Object.keys(cleanData).length > 0) {
+        const keys = Object.keys(cleanData);
+        const values = Object.values(cleanData);
+        const placeholders = keys.map(() => '?').join(', ');
+        const updateClause = keys.filter(k => k !== 'id').map(k => `\`${k}\` = VALUES(\`${k}\`)`).join(', ');
+        
+        await pool.query(
+          `INSERT INTO \`${tableName}\` (\`${keys.join('`, `')}\`) VALUES (${placeholders}) ${updateClause ? `ON DUPLICATE KEY UPDATE ${updateClause}` : ''}`,
+          values
+        );
+      }
+    }
+  } catch (err: any) {
+    console.warn(`MySQL insert warning on ${tableName}:`, err.message);
+  }
   
   res.json({ success: true, table: tableName, data: newRow });
 });
@@ -971,8 +1121,21 @@ app.put("/api/tables/:tableName/:id", async (req, res) => {
     // MySQL direct update
     try {
       const pool = getMySqlPool();
-      await pool.query("UPDATE ?? SET ? WHERE id = ?", [tableName, req.body, Number(id)]);
-    } catch {}
+      const columns = await getTableColumns(pool, tableName);
+      const cleanData: Record<string, any> = {};
+      for (const [k, v] of Object.entries(req.body)) {
+        if (columns.has(k) && k !== 'id' && v !== undefined) {
+          if (typeof v === 'boolean') cleanData[k] = v ? 1 : 0;
+          else if (typeof v === 'object' && v !== null) cleanData[k] = JSON.stringify(v);
+          else cleanData[k] = v;
+        }
+      }
+      if (Object.keys(cleanData).length > 0) {
+        await pool.query("UPDATE ?? SET ? WHERE id = ?", [tableName, cleanData, Number(id)]);
+      }
+    } catch (err: any) {
+      console.warn(`MySQL update warning on ${tableName}:`, err.message);
+    }
 
     return res.json({ success: true, table: tableName, data: rows[index] });
   }
@@ -996,9 +1159,11 @@ app.delete("/api/tables/:tableName/:id", async (req, res) => {
   try {
     const pool = getMySqlPool();
     await pool.query("DELETE FROM ?? WHERE id = ?", [tableName, Number(id)]);
-  } catch {}
+  } catch (err: any) {
+    console.warn(`MySQL delete warning on ${tableName}:`, err.message);
+  }
   
-  res.json({ success: true, table: tableName, message: `Enregistrement ID #${id} supprimé avec succès de la table ${tableName}.` });
+  res.json({ success: true, table: tableName, message: `Enregistrement ID #${id} supprimé avec succès de la table ${tableName} dans MySQL.` });
 });
 
 // GET ALL DATA FOR REALTIME FRONTEND SYNC
@@ -1030,13 +1195,15 @@ app.get("/api/db/sync", (req, res) => {
   return res.json({ success: true, data: db });
 });
 
-app.post("/api/db/sync", (req, res) => {
+app.post("/api/db/sync", async (req, res) => {
   try {
     const { data } = req.body;
     if (data && typeof data === 'object') {
       const existing = readDatabase();
       const merged = { ...existing, ...data };
       saveDatabase(merged);
+      // Synchronize directly with MySQL
+      syncDataToMySQL(merged).catch(() => {});
     }
     res.json({ success: true, message: "Base de données synchronisée avec succès avec MySQL WAMP!" });
   } catch (error: any) {

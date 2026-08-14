@@ -166,46 +166,34 @@ export class DB {
       } catch {}
     });
 
-    // 2. Load backend database snapshot if available
+    // 2. Hydrate from backend MySQL database snapshot
     try {
-      const res = await fetch('/api/db/sync');
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success && json.data && typeof json.data === 'object') {
-          Object.entries(json.data).forEach(([key, val]) => {
-            if (val !== undefined && val !== null && !localStorage.getItem(key)) {
-              const str = typeof val === 'string' ? val : JSON.stringify(val);
-              inMemoryStore[key] = str;
-              try { localStorage.setItem(key, str); } catch {}
-            }
-          });
-        }
-      }
+      await this.syncFromBackend();
     } catch (e) {
       console.warn("Failed to sync from backend:", e);
     }
 
     // 3. Ensure defaults are populated if nothing was stored yet
-    if (!localStorage.getItem(STORAGE_KEYS.UNIVERSITES)) setItemWithoutSync(STORAGE_KEYS.UNIVERSITES, INITIAL_UNIVERSITES);
-    if (!localStorage.getItem(STORAGE_KEYS.FACULTES)) setItemWithoutSync(STORAGE_KEYS.FACULTES, INITIAL_FACULTES);
-    if (!localStorage.getItem(STORAGE_KEYS.FILIERES)) setItemWithoutSync(STORAGE_KEYS.FILIERES, INITIAL_FILIERES);
-    if (!localStorage.getItem(STORAGE_KEYS.NIVEAUX)) setItemWithoutSync(STORAGE_KEYS.NIVEAUX, INITIAL_NIVEAUX);
-    if (!localStorage.getItem(STORAGE_KEYS.ANNEES)) setItemWithoutSync(STORAGE_KEYS.ANNEES, INITIAL_ANNEES_ACADEMIQUES);
-    if (!localStorage.getItem(STORAGE_KEYS.CLASSES)) setItemWithoutSync(STORAGE_KEYS.CLASSES, INITIAL_CLASSES);
-    if (!localStorage.getItem(STORAGE_KEYS.ENSEIGNANTS)) setItemWithoutSync(STORAGE_KEYS.ENSEIGNANTS, INITIAL_ENSEIGNANTS);
-    if (!localStorage.getItem(STORAGE_KEYS.SEMESTRES)) setItemWithoutSync(STORAGE_KEYS.SEMESTRES, INITIAL_SEMESTRES);
-    if (!localStorage.getItem(STORAGE_KEYS.MATIERES)) setItemWithoutSync(STORAGE_KEYS.MATIERES, INITIAL_MATIERES);
-    if (!localStorage.getItem(STORAGE_KEYS.ETUDIANTS)) setItemWithoutSync(STORAGE_KEYS.ETUDIANTS, INITIAL_ETUDIANTS);
-    if (!localStorage.getItem(STORAGE_KEYS.INSCRIPTIONS)) setItemWithoutSync(STORAGE_KEYS.INSCRIPTIONS, INITIAL_INSCRIPTIONS);
-    if (!localStorage.getItem(STORAGE_KEYS.NOTES)) setItemWithoutSync(STORAGE_KEYS.NOTES, INITIAL_NOTES);
-    if (!localStorage.getItem(STORAGE_KEYS.ABSENCES)) setItemWithoutSync(STORAGE_KEYS.ABSENCES, INITIAL_ABSENCES);
-    if (!localStorage.getItem(STORAGE_KEYS.BULLETINS)) setItemWithoutSync(STORAGE_KEYS.BULLETINS, INITIAL_BULLETINS);
-    if (!localStorage.getItem(STORAGE_KEYS.PAIEMENTS)) setItemWithoutSync(STORAGE_KEYS.PAIEMENTS, INITIAL_PAIEMENTS);
-    if (!localStorage.getItem(STORAGE_KEYS.UTILISATEURS)) setItemWithoutSync(STORAGE_KEYS.UTILISATEURS, INITIAL_UTILISATEURS);
-    if (!localStorage.getItem(STORAGE_KEYS.ADMINISTRATEURS)) setItemWithoutSync(STORAGE_KEYS.ADMINISTRATEURS, INITIAL_ADMINISTRATEURS);
-    if (!localStorage.getItem(STORAGE_KEYS.NOTIFICATIONS)) setItemWithoutSync(STORAGE_KEYS.NOTIFICATIONS, INITIAL_NOTIFICATIONS);
-    if (!localStorage.getItem(STORAGE_KEYS.HISTORIQUE)) setItemWithoutSync(STORAGE_KEYS.HISTORIQUE, INITIAL_HISTORIQUE);
-    if (!localStorage.getItem(STORAGE_KEYS.SUPPORTS_COURS)) setItemWithoutSync(STORAGE_KEYS.SUPPORTS_COURS, INITIAL_SUPPORTS_COURS);
+    if (!inMemoryStore[STORAGE_KEYS.UNIVERSITES]) setItemWithoutSync(STORAGE_KEYS.UNIVERSITES, INITIAL_UNIVERSITES);
+    if (!inMemoryStore[STORAGE_KEYS.FACULTES]) setItemWithoutSync(STORAGE_KEYS.FACULTES, INITIAL_FACULTES);
+    if (!inMemoryStore[STORAGE_KEYS.FILIERES]) setItemWithoutSync(STORAGE_KEYS.FILIERES, INITIAL_FILIERES);
+    if (!inMemoryStore[STORAGE_KEYS.NIVEAUX]) setItemWithoutSync(STORAGE_KEYS.NIVEAUX, INITIAL_NIVEAUX);
+    if (!inMemoryStore[STORAGE_KEYS.ANNEES]) setItemWithoutSync(STORAGE_KEYS.ANNEES, INITIAL_ANNEES_ACADEMIQUES);
+    if (!inMemoryStore[STORAGE_KEYS.CLASSES]) setItemWithoutSync(STORAGE_KEYS.CLASSES, INITIAL_CLASSES);
+    if (!inMemoryStore[STORAGE_KEYS.ENSEIGNANTS]) setItemWithoutSync(STORAGE_KEYS.ENSEIGNANTS, INITIAL_ENSEIGNANTS);
+    if (!inMemoryStore[STORAGE_KEYS.SEMESTRES]) setItemWithoutSync(STORAGE_KEYS.SEMESTRES, INITIAL_SEMESTRES);
+    if (!inMemoryStore[STORAGE_KEYS.MATIERES]) setItemWithoutSync(STORAGE_KEYS.MATIERES, INITIAL_MATIERES);
+    if (!inMemoryStore[STORAGE_KEYS.ETUDIANTS]) setItemWithoutSync(STORAGE_KEYS.ETUDIANTS, INITIAL_ETUDIANTS);
+    if (!inMemoryStore[STORAGE_KEYS.INSCRIPTIONS]) setItemWithoutSync(STORAGE_KEYS.INSCRIPTIONS, INITIAL_INSCRIPTIONS);
+    if (!inMemoryStore[STORAGE_KEYS.NOTES]) setItemWithoutSync(STORAGE_KEYS.NOTES, INITIAL_NOTES);
+    if (!inMemoryStore[STORAGE_KEYS.ABSENCES]) setItemWithoutSync(STORAGE_KEYS.ABSENCES, INITIAL_ABSENCES);
+    if (!inMemoryStore[STORAGE_KEYS.BULLETINS]) setItemWithoutSync(STORAGE_KEYS.BULLETINS, INITIAL_BULLETINS);
+    if (!inMemoryStore[STORAGE_KEYS.PAIEMENTS]) setItemWithoutSync(STORAGE_KEYS.PAIEMENTS, INITIAL_PAIEMENTS);
+    if (!inMemoryStore[STORAGE_KEYS.UTILISATEURS]) setItemWithoutSync(STORAGE_KEYS.UTILISATEURS, INITIAL_UTILISATEURS);
+    if (!inMemoryStore[STORAGE_KEYS.ADMINISTRATEURS]) setItemWithoutSync(STORAGE_KEYS.ADMINISTRATEURS, INITIAL_ADMINISTRATEURS);
+    if (!inMemoryStore[STORAGE_KEYS.NOTIFICATIONS]) setItemWithoutSync(STORAGE_KEYS.NOTIFICATIONS, INITIAL_NOTIFICATIONS);
+    if (!inMemoryStore[STORAGE_KEYS.HISTORIQUE]) setItemWithoutSync(STORAGE_KEYS.HISTORIQUE, INITIAL_HISTORIQUE);
+    if (!inMemoryStore[STORAGE_KEYS.SUPPORTS_COURS]) setItemWithoutSync(STORAGE_KEYS.SUPPORTS_COURS, INITIAL_SUPPORTS_COURS);
   }
   // Getters
   static getUniversites(): Universite[] {
