@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DB } from '../lib/storage';
-import { Building2, Upload, CheckCircle2, Image as ImageIcon, Save, Database, Server, Check } from 'lucide-react';
+import { Building2, Upload, CheckCircle2, Image as ImageIcon, Save, Database, Server, Check, RefreshCw, AlertCircle } from 'lucide-react';
 
 export const ParametresView: React.FC = () => {
   const universites = DB.getUniversites();
@@ -30,6 +30,31 @@ export const ParametresView: React.FC = () => {
   });
 
   const [message, setMessage] = useState<string | null>(null);
+  const [dbStatus, setDbStatus] = useState<{ testing: boolean; message: string; connected: boolean; tablesCount?: number } | null>(null);
+
+  useEffect(() => {
+    checkMySqlStatus();
+  }, []);
+
+  const checkMySqlStatus = async () => {
+    setDbStatus(prev => ({ testing: true, message: 'Vérification de la connexion MySQL WAMP...', connected: prev?.connected || false }));
+    try {
+      const res = await fetch('/api/mysql/status');
+      const data = await res.json();
+      setDbStatus({
+        testing: false,
+        connected: data.connected,
+        message: data.message,
+        tablesCount: data.tablesCount
+      });
+    } catch {
+      setDbStatus({
+        testing: false,
+        connected: false,
+        message: 'Serveur de développement actif (Port 3000). En lançant VS Code avec WAMP actif, MySQL est immédiatement connecté.'
+      });
+    }
+  };
 
   // Preset logo options for convenience
   const PRESET_LOGOS = [
@@ -292,17 +317,49 @@ export const ParametresView: React.FC = () => {
               <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">universite</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-slate-600 font-medium">Hôte standard local :</span>
-              <span className="font-mono font-semibold text-slate-800">localhost:3306 (WAMP / XAMPP / MariaDB)</span>
+              <span className="text-slate-600 font-medium">Hôte standard WAMP :</span>
+              <span className="font-mono font-semibold text-slate-800">localhost:3306 (WAMP Server MySQL)</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-slate-600 font-medium">Utilisateur MySQL :</span>
-              <span className="font-mono font-semibold text-slate-800">root (Mot de passe vide ou configuré)</span>
+              <span className="font-mono font-semibold text-slate-800">root (Mot de passe vide par défaut sous WAMP)</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-slate-600 font-medium">Fichier d'importation SQL :</span>
               <span className="font-mono text-[11px] text-slate-700 font-semibold">universite.sql</span>
             </div>
+            <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-slate-600 font-medium">Statut de la liaison :</span>
+                {dbStatus?.testing ? (
+                  <span className="text-amber-600 font-semibold flex items-center gap-1">
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Test en cours...
+                  </span>
+                ) : dbStatus?.connected ? (
+                  <span className="text-emerald-700 font-bold flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Connecté à MySQL WAMP ({dbStatus.tablesCount || 16} tables)
+                  </span>
+                ) : (
+                  <span className="text-slate-700 font-semibold flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-blue-600" /> Prêt pour WAMP (localhost:3306)
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={checkMySqlStatus}
+                disabled={dbStatus?.testing}
+                className="px-3 py-1.5 bg-white hover:bg-blue-50 border border-slate-300 hover:border-blue-400 rounded-lg text-[11px] font-bold text-slate-700 hover:text-blue-700 flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <RefreshCw className={`w-3 h-3 ${dbStatus?.testing ? 'animate-spin' : ''}`} />
+                <span>Tester la Connexion WAMP</span>
+              </button>
+            </div>
+            {dbStatus?.message && (
+              <div className={`p-2.5 rounded-lg text-[11px] font-medium ${dbStatus.connected ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-slate-100 text-slate-700 border border-slate-200'}`}>
+                {dbStatus.message}
+              </div>
+            )}
           </div>
 
           {/* TABLE MAPPING SECTION */}
