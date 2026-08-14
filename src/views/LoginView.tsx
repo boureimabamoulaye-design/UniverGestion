@@ -353,50 +353,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                   )}
                 </button>
 
-                {/* Quick Credentials Helper */}
-                <div className="pt-2">
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-[11px] text-slate-600">
-                    <p className="font-bold text-slate-800 text-[11px] mb-1.5 flex items-center justify-between">
-                      <span>💡 Identifiants disponibles :</span>
-                      <span className="text-[10px] text-blue-600 font-semibold">(cliquer pour remplir)</span>
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {role === 'ADMIN' ? (
-                        DB.getUtilisateurs().map(u => (
-                          <button
-                            key={u.id}
-                            type="button"
-                            onClick={() => {
-                              setLogin(u.email || u.nom);
-                              setPassword(u.mot_de_passe || 'admin123');
-                              setError('');
-                            }}
-                            className="px-2 py-1 bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-300 rounded-lg text-[10px] font-semibold text-slate-800 transition-colors cursor-pointer text-left"
-                          >
-                            <span className="font-bold text-blue-700">{u.prenom} {u.nom}</span> : {u.email} <span className="text-slate-400">({u.mot_de_passe || 'admin123'})</span>
-                          </button>
-                        ))
-                      ) : (
-                        DB.getEtudiants().slice(0, 3).map(e => (
-                          <button
-                            key={e.id}
-                            type="button"
-                            onClick={() => {
-                              setLogin(e.matricule);
-                              setPassword(e.mot_de_passe || 'etudiant123');
-                              setSelectedFiliereId(e.filiere_id || 1);
-                              setError('');
-                            }}
-                            className="px-2 py-1 bg-white hover:bg-sky-50 border border-slate-200 hover:border-sky-300 rounded-lg text-[10px] font-semibold text-slate-800 transition-colors cursor-pointer text-left"
-                          >
-                            <span className="font-bold text-sky-700">{e.prenom} {e.nom}</span> : {e.matricule} <span className="text-slate-400">({e.mot_de_passe || 'etudiant123'})</span>
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                </div>
-
                 {/* Return Button at the Very Bottom */}
                 <div className="pt-2 border-t border-slate-200 text-center">
                   <button
