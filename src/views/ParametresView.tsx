@@ -273,35 +273,84 @@ export const ParametresView: React.FC = () => {
           </div>
         </div>
 
-        {/* SYSTEM DATABASE STORAGE CARD */}
-        <div className="bg-white p-6 rounded-[20px] border border-[#E5E7EB] shadow-xs space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+        {/* SYSTEM DATABASE STORAGE CARD & RUBRIC TO TABLE MAPPING */}
+        <div className="bg-white p-6 rounded-[20px] border border-[#E5E7EB] shadow-xs space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-gray-100 gap-2">
             <div className="flex items-center gap-2">
               <Database className="w-5 h-5 text-blue-600" />
               <h3 className="font-bold text-base text-[#1A1A1A]">Base de Données Principale : <span className="text-blue-600 font-mono">universite</span></h3>
             </div>
-            <div className="px-3 py-1 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-bold flex items-center gap-1.5">
+            <div className="px-3 py-1 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-bold flex items-center gap-1.5 self-start sm:self-auto">
               <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Base Unique Active</span>
+              <span>Base Unique Active & Connectée</span>
             </div>
           </div>
 
           <div className="bg-[#F8FAFC] p-4 rounded-[16px] border border-[#E2E8F0] space-y-3 text-xs">
             <div className="flex items-center justify-between">
-              <span className="text-slate-600 font-medium">Nom de la base de données :</span>
+              <span className="text-slate-600 font-medium">Nom du Schéma MySQL :</span>
               <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">universite</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-slate-600 font-medium">Hôte standard local :</span>
-              <span className="font-mono font-semibold text-slate-800">localhost:3306</span>
+              <span className="font-mono font-semibold text-slate-800">localhost:3306 (WAMP / XAMPP / MariaDB)</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-slate-600 font-medium">Utilisateur par défaut :</span>
-              <span className="font-mono font-semibold text-slate-800">root</span>
+              <span className="text-slate-600 font-medium">Utilisateur MySQL :</span>
+              <span className="font-mono font-semibold text-slate-800">root (Mot de passe vide ou configuré)</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-slate-600 font-medium">Structure SQL :</span>
-              <span className="font-mono text-[11px] text-slate-700">universite.sql / config/schema.sql</span>
+              <span className="text-slate-600 font-medium">Fichier d'importation SQL :</span>
+              <span className="font-mono text-[11px] text-slate-700 font-semibold">universite.sql</span>
+            </div>
+          </div>
+
+          {/* TABLE MAPPING SECTION */}
+          <div className="space-y-3 pt-2">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-gray-600 flex items-center gap-1.5">
+                <Server className="w-4 h-4 text-blue-600" />
+                <span>Correspondance des Rubriques & Tables de la Base</span>
+              </h4>
+              <span className="text-[10px] font-semibold bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full border border-blue-200">
+                16 Tables Opérationnelles
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+              {[
+                { rubrique: 'Filières', table: 'filieres', desc: 'Gestion des filières LMD et domaines', count: DB.getFilieres().length },
+                { rubrique: 'Classes', table: 'classes', desc: 'Salles, effectifs et rattachement', count: DB.getClasses().length },
+                { rubrique: 'Étudiants', table: 'etudiants', desc: 'Dossiers étudiants, matricules, tuteurs', count: DB.getEtudiants().length },
+                { rubrique: 'Enseignants', table: 'enseignants', desc: 'Corps professoral et spécialités', count: DB.getEnseignants().length },
+                { rubrique: 'Matières (UE)', table: 'matieres', desc: 'Unités d\'enseignement et crédits', count: DB.getMatieres().length },
+                { rubrique: 'Semestres', table: 'semestres', desc: 'Semestres académiques (S1, S2, S3...)', count: DB.getSemestres().length },
+                { rubrique: 'Inscriptions', table: 'inscriptions', desc: 'Validations annuelles et réinscriptions', count: DB.getInscriptions().length },
+                { rubrique: 'Saisie des Notes', table: 'notes', desc: 'Contrôles continus, examens et moyennes', count: DB.getNotes().length },
+                { rubrique: 'Absences & Alertes', table: 'absences', desc: 'Pointage des heures et justificatifs', count: DB.getAbsences().length },
+                { rubrique: 'Bulletins de Notes', table: 'bulletins', desc: 'Moyennes semestrielles, rangs et décisions', count: DB.getBulletins().length },
+                { rubrique: 'Paiements & Reçus', table: 'paiements', desc: 'Frais de scolarité, reçus et comptabilité', count: DB.getPaiements().length },
+                { rubrique: 'Années Académiques', table: 'annees_academiques', desc: 'Années en cours et archives', count: DB.getAnneesAcademiques().length },
+                { rubrique: 'Supports de Cours', table: 'supports_cours', desc: 'Documents et polycopiés téléchargeables', count: DB.getSupportsCours().length },
+                { rubrique: 'Utilisateurs & Accès', table: 'utilisateurs / administrateurs', desc: 'Comptes personnels et habilitations', count: DB.getUtilisateurs().length },
+                { rubrique: 'Corbeille', table: 'corbeille', desc: 'Éléments archivés avec restauration', count: DB.getCorbeille().length },
+                { rubrique: 'Historique des Accès', table: 'historique_acces', desc: 'Traçabilité des connexions et actions', count: DB.getHistorique().length }
+              ].map((mapping, idx) => (
+                <div key={idx} className="p-3 bg-slate-50 hover:bg-blue-50/40 border border-slate-200 rounded-[14px] flex items-center justify-between transition-colors">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-slate-800 text-xs">{mapping.rubrique}</span>
+                      <span className="font-mono text-[10px] font-bold text-blue-700 bg-blue-100/60 px-1.5 py-0.2 rounded">
+                        {mapping.table}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-gray-500">{mapping.desc}</p>
+                  </div>
+                  <span className="text-[11px] font-bold px-2 py-0.5 bg-white border border-slate-200 rounded-lg text-slate-700 shrink-0">
+                    {mapping.count}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -309,7 +358,7 @@ export const ParametresView: React.FC = () => {
           <div className="p-3.5 rounded-[14px] border border-emerald-200 bg-emerald-50 text-xs font-semibold flex items-center justify-between gap-3 text-emerald-800">
             <div className="flex items-center gap-2.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>Base de données unique <strong className="font-mono">universite</strong> synchronisée en temps réel.</span>
+              <span>Chaque rubrique de l'application est strictement synchronisée avec sa table dédiée dans <strong className="font-mono">universite</strong>.</span>
             </div>
           </div>
         </div>
