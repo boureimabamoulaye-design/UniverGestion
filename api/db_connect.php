@@ -104,3 +104,7 @@ function getPDOConnection(): PDO {
     }
     return $pdo;
 }
+
+function getStrictPDO(): PDO {
+    return getPDOConnection();
+}

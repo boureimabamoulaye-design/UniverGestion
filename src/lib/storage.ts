@@ -90,6 +90,30 @@ function getItem<T>(key: string, defaultValue: T): T {
   }
 }
 
+export async function saveToBackendTable(table: string, data: any): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/tables/${table}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+export async function deleteFromBackendTable(table: string, id: number): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/tables/${table}/${id}`, {
+      method: 'DELETE'
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 let syncTimer: any = null;
 
 export async function syncNowWithServer() {
@@ -124,9 +148,7 @@ export async function syncNowWithServer() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ data: fullSnapshot })
     });
-  } catch (e) {
-    console.warn("Server DB sync error:", e);
-  }
+  } catch {}
 }
 
 function triggerServerSync() {
@@ -375,6 +397,7 @@ export class DB {
       list.push(result);
     }
     setItem(STORAGE_KEYS.SUPPORTS_COURS, list);
+    saveToBackendTable('supports_cours', result);
     this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Dépôt'} support de cours "${result.titre}"`);
     toast.success(item.id ? "Support de cours modifié" : "Nouveau support de cours ajouté", result.titre);
     return result;
@@ -382,6 +405,7 @@ export class DB {
 
   static deleteSupportCours(id: number): void {
     setItem(STORAGE_KEYS.SUPPORTS_COURS, this.getSupportsCours().filter(s => s.id !== id));
+    deleteFromBackendTable('supports_cours', id);
     this.logAccess('SUPPRESSION', `Suppression support de cours ID #${id}`);
   }
 
@@ -413,6 +437,7 @@ export class DB {
       list.push(result);
     }
     setItem(STORAGE_KEYS.UNIVERSITES, list);
+    saveToBackendTable('universites', result);
     this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Création'} des paramètres de l'université "${result.nom}"`);
     toast.success("Université enregistrée", result.nom);
     return result;
@@ -421,6 +446,7 @@ export class DB {
   static deleteUniversite(id: number): void {
     const list = this.getUniversites().filter(u => u.id !== id);
     setItem(STORAGE_KEYS.UNIVERSITES, list);
+    deleteFromBackendTable('universites', id);
     // Cascade delete facultes belonging to this university
     const facultes = this.getFacultes().filter(f => f.universite_id === id);
     facultes.forEach(f => this.deleteFaculte(f.id));
@@ -440,6 +466,7 @@ export class DB {
       list.push(result);
     }
     setItem(STORAGE_KEYS.FACULTES, list);
+    saveToBackendTable('facultes', result);
     this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Création'} faculté "${result.nom}" (${result.code})`);
     toast.success(item.id ? "Faculté modifiée" : "Faculté ajoutée", `${result.code} - ${result.nom}`);
     return result;
@@ -447,6 +474,7 @@ export class DB {
 
   static deleteFaculte(id: number): void {
     setItem(STORAGE_KEYS.FACULTES, this.getFacultes().filter(f => f.id !== id));
+    deleteFromBackendTable('facultes', id);
     // Cascade delete filieres belonging to this faculte
     const filieres = this.getFilieres().filter(f => f.faculte_id === id);
     filieres.forEach(f => this.deleteFiliere(f.id));
@@ -466,6 +494,7 @@ export class DB {
       list.push(result);
     }
     setItem(STORAGE_KEYS.FILIERES, list);
+    saveToBackendTable('filieres', result);
     this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Création'} filière "${result.nom}" (${result.code})`);
     toast.success(item.id ? "Filière mise à jour" : "Nouvelle filière enregistrée", `${result.code} - ${result.nom}`);
     return result;
@@ -473,6 +502,7 @@ export class DB {
 
   static deleteFiliere(id: number): void {
     setItem(STORAGE_KEYS.FILIERES, this.getFilieres().filter(f => f.id !== id));
+    deleteFromBackendTable('filieres', id);
     // Cascade delete classes, matieres, niveaux
     const classes = this.getClasses().filter(c => c.filiere_id === id);
     classes.forEach(c => this.deleteClasse(c.id));
@@ -494,6 +524,7 @@ export class DB {
       list.push(result);
     }
     setItem(STORAGE_KEYS.SEMESTRES, list);
+    saveToBackendTable('semestres', result);
     this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Création'} semestre "${result.code} - ${result.libelle}"`);
     toast.success(item.id ? "Semestre mis à jour" : "Nouveau semestre créé", `${result.code} - ${result.libelle}`);
     return result;
@@ -505,6 +536,7 @@ export class DB {
       this.moveToCorbeille('SEMESTRE', sem.id, `${sem.code} - ${sem.libelle}`, `Semestre ${sem.libelle}`, sem);
     }
     setItem(STORAGE_KEYS.SEMESTRES, this.getSemestres().filter(s => s.id !== id));
+    deleteFromBackendTable('semestres', id);
     setItem(STORAGE_KEYS.NOTES, this.getNotes().filter(n => n.semestre_id !== id));
     setItem(STORAGE_KEYS.BULLETINS, this.getBulletins().filter(b => b.semestre_id !== id));
     this.logAccess('SUPPRESSION', `Suppression semestre ID #${id} et ses notes/bulletins rattachés`);
@@ -523,6 +555,7 @@ export class DB {
       list.push(result);
     }
     setItem(STORAGE_KEYS.NIVEAUX, list);
+    saveToBackendTable('niveaux', result);
     this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Création'} niveau "${result.code} - ${result.nom}"`);
     toast.success("Niveau enregistré", `${result.code} - ${result.nom}`);
     return result;
@@ -530,6 +563,7 @@ export class DB {
 
   static deleteNiveau(id: number): void {
     setItem(STORAGE_KEYS.NIVEAUX, this.getNiveaux().filter(n => n.id !== id));
+    deleteFromBackendTable('niveaux', id);
     this.logAccess('SUPPRESSION', `Suppression niveau ID #${id}`);
   }
 
@@ -546,6 +580,7 @@ export class DB {
       list.push(result);
     }
     setItem(STORAGE_KEYS.CLASSES, list);
+    saveToBackendTable('classes', result);
     this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Création'} classe "${result.code} - ${result.nom}"`);
     toast.success(item.id ? "Classe mise à jour" : "Nouvelle classe créée", `${result.code} - ${result.nom}`);
     return result;
@@ -553,6 +588,7 @@ export class DB {
 
   static deleteClasse(id: number): void {
     setItem(STORAGE_KEYS.CLASSES, this.getClasses().filter(c => c.id !== id));
+    deleteFromBackendTable('classes', id);
     setItem(STORAGE_KEYS.INSCRIPTIONS, this.getInscriptions().filter(i => i.classe_id !== id));
     setItem(STORAGE_KEYS.BULLETINS, this.getBulletins().filter(b => b.classe_id !== id));
     this.logAccess('SUPPRESSION', `Suppression classe ID #${id} et ses inscriptions/bulletins rattachés`);
@@ -574,6 +610,7 @@ export class DB {
       list.push(result);
     }
     setItem(STORAGE_KEYS.ANNEES, list);
+    saveToBackendTable('annees_academiques', result);
     this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Création'} année académique "${result.libelle}"`);
     toast.success(item.id ? "Année académique mise à jour" : "Nouvelle année académique enregistrée", result.libelle);
     return result;
@@ -587,6 +624,7 @@ export class DB {
     setItem(STORAGE_KEYS.ANNEES, list);
     const active = list.find(a => a.id === id);
     if (active) {
+      saveToBackendTable('annees_academiques', active);
       this.logAccess('MODIFICATION', `Changement de l'année académique active : "${active.libelle}"`);
       toast.info("Année académique active modifiée", active.libelle);
     }
@@ -603,6 +641,7 @@ export class DB {
     } else {
       setItem(STORAGE_KEYS.ANNEES, this.getAnneesAcademiques().filter(a => a.id !== id));
     }
+    deleteFromBackendTable('annees_academiques', id);
     setItem(STORAGE_KEYS.INSCRIPTIONS, this.getInscriptions().filter(i => i.annee_academique_id !== id));
     setItem(STORAGE_KEYS.NOTES, this.getNotes().filter(n => n.annee_academique_id !== id));
     setItem(STORAGE_KEYS.BULLETINS, this.getBulletins().filter(b => b.annee_academique_id !== id));
@@ -656,6 +695,7 @@ export class DB {
       });
     }
     setItem(STORAGE_KEYS.ETUDIANTS, list);
+    saveToBackendTable('etudiants', result);
     this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Création'} dossier étudiant "${result.prenom} ${result.nom}" (${result.matricule})`, undefined, result.id);
     toast.success(item.id ? "Dossier étudiant mis à jour" : "Nouvel étudiant enregistré", `${result.prenom} ${result.nom} (${result.matricule})`);
     return result;
@@ -663,6 +703,7 @@ export class DB {
 
   static deleteEtudiant(id: number): void {
     setItem(STORAGE_KEYS.ETUDIANTS, this.getEtudiants().filter(e => e.id !== id));
+    deleteFromBackendTable('etudiants', id);
     setItem(STORAGE_KEYS.INSCRIPTIONS, this.getInscriptions().filter(i => i.etudiant_id !== id));
     setItem(STORAGE_KEYS.NOTES, this.getNotes().filter(n => n.etudiant_id !== id));
     setItem(STORAGE_KEYS.ABSENCES, this.getAbsences().filter(a => a.etudiant_id !== id));
@@ -685,6 +726,7 @@ export class DB {
       list.push(result);
     }
     setItem(STORAGE_KEYS.ENSEIGNANTS, list);
+    saveToBackendTable('enseignants', result);
     this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Création'} enseignant "${result.titre} ${result.prenom} ${result.nom}" (${result.matricule})`);
     toast.success(item.id ? "Enseignant mis à jour" : "Nouvel enseignant enregistré", `${result.titre} ${result.prenom} ${result.nom}`);
     return result;
@@ -692,6 +734,7 @@ export class DB {
 
   static deleteEnseignant(id: number): void {
     setItem(STORAGE_KEYS.ENSEIGNANTS, this.getEnseignants().filter(e => e.id !== id));
+    deleteFromBackendTable('enseignants', id);
     // Clear enseignant_id from matieres
     const matieres = this.getMatieres().map(m => m.enseignant_id === id ? { ...m, enseignant_id: undefined, enseignant_nom: undefined } : m);
     setItem(STORAGE_KEYS.MATIERES, matieres);
@@ -720,6 +763,7 @@ export class DB {
       list.push(result);
     }
     setItem(STORAGE_KEYS.MATIERES, list);
+    saveToBackendTable('matieres', result);
     this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Création'} matière "${result.code} - ${result.nom}"`);
     toast.success(item.id ? "Matière mise à jour" : "Nouvelle matière enregistrée", `${result.code} - ${result.nom}`);
     return result;
@@ -728,6 +772,7 @@ export class DB {
   static deleteMatiere(id: number): void {
     const affectedNotes = this.getNotes().filter(n => n.matiere_id === id);
     setItem(STORAGE_KEYS.MATIERES, this.getMatieres().filter(m => m.id !== id));
+    deleteFromBackendTable('matieres', id);
     setItem(STORAGE_KEYS.NOTES, this.getNotes().filter(n => n.matiere_id !== id));
     setItem(STORAGE_KEYS.ABSENCES, this.getAbsences().filter(a => a.matiere_id !== id));
     setItem(STORAGE_KEYS.SUPPORTS_COURS, this.getSupportsCours().filter(s => s.matiere_id !== id));
@@ -822,6 +867,7 @@ export class DB {
       list.push(result);
     }
     setItem(STORAGE_KEYS.INSCRIPTIONS, list);
+    saveToBackendTable('inscriptions', result);
     this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Validation'} inscription étudiant (ID #${result.etudiant_id})`, undefined, result.etudiant_id);
     toast.success(item.id ? "Inscription mise à jour" : "Nouvelle inscription validée en base");
 
@@ -844,6 +890,7 @@ export class DB {
           est_bloque: false
         };
         setItem(STORAGE_KEYS.ETUDIANTS, etudiants);
+        saveToBackendTable('etudiants', etudiants[etudIdx]);
       }
     }
 
@@ -852,6 +899,7 @@ export class DB {
 
   static deleteInscription(id: number): void {
     setItem(STORAGE_KEYS.INSCRIPTIONS, this.getInscriptions().filter(i => i.id !== id));
+    deleteFromBackendTable('inscriptions', id);
     this.logAccess('SUPPRESSION', `Suppression inscription ID #${id}`);
   }
 
@@ -888,6 +936,7 @@ export class DB {
       list.push(result);
     }
     setItem(STORAGE_KEYS.NOTES, list);
+    saveToBackendTable('notes', result);
     const matiere = this.getMatieres().find(m => m.id === result.matiere_id);
     this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Saisie'} note : ${matiere?.nom || 'Matière'} - Note finale: ${note_finale}/20 (${appreciation})`, undefined, result.etudiant_id);
     toast.success("Note enregistrée en base", `Note Finale: ${note_finale}/20 (${appreciation})`);
@@ -917,6 +966,7 @@ export class DB {
     const list = this.getNotes();
     const note = list.find(n => n.id === id);
     setItem(STORAGE_KEYS.NOTES, list.filter(n => n.id !== id));
+    deleteFromBackendTable('notes', id);
     if (note) {
       this.recalculateBulletin(note.etudiant_id, note.semestre_id, note.annee_academique_id);
     }
@@ -936,6 +986,7 @@ export class DB {
       list.push(result);
     }
     setItem(STORAGE_KEYS.ABSENCES, list);
+    saveToBackendTable('absences', result);
     const subj = this.getMatieres().find(m => m.id === result.matiere_id);
     this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Enregistrement'} absence : ${result.heures}h ${subj ? `en ${subj.nom}` : ''} le ${result.date_absence} (${result.justifiee ? 'Justifiée' : 'Non justifiée'})`, undefined, result.etudiant_id);
     toast.success(item.id ? "Absence modifiée" : "Absence consignée", `${result.heures}h le ${result.date_absence}`);
@@ -961,6 +1012,7 @@ export class DB {
 
   static deleteAbsence(id: number): void {
     setItem(STORAGE_KEYS.ABSENCES, this.getAbsences().filter(a => a.id !== id));
+    deleteFromBackendTable('absences', id);
     this.logAccess('SUPPRESSION', `Suppression absence ID #${id}`);
   }
 
@@ -1038,6 +1090,7 @@ export class DB {
     });
 
     setItem(STORAGE_KEYS.BULLETINS, bulletins);
+    saveToBackendTable('bulletins', result);
     return result;
   }
 
@@ -1089,6 +1142,7 @@ export class DB {
       list.push(result);
     }
     setItem(STORAGE_KEYS.PAIEMENTS, list);
+    saveToBackendTable('paiements', result);
     this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Enregistrement'} paiement : ${result.montant_paye.toLocaleString()} FCFA (${result.reference_recu} - ${result.mode_paiement})`, undefined, result.etudiant_id);
     toast.success(item.id ? "Paiement mis à jour" : "Paiement enregistré avec succès", `Reçu: ${result.reference_recu} (${result.montant_paye.toLocaleString()} FCFA)`);
 
@@ -1110,6 +1164,7 @@ export class DB {
 
   static deletePaiement(id: number): void {
     setItem(STORAGE_KEYS.PAIEMENTS, this.getPaiements().filter(p => p.id !== id));
+    deleteFromBackendTable('paiements', id);
     this.logAccess('SUPPRESSION', `Suppression paiement ID #${id}`);
   }
 
@@ -1127,6 +1182,7 @@ export class DB {
     }
     setItem(STORAGE_KEYS.UTILISATEURS, list);
     setItem(STORAGE_KEYS.ADMINISTRATEURS, list);
+    saveToBackendTable('utilisateurs', result);
     this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Création'} utilisateur "${result.prenom} ${result.nom}" (${result.email})`, result.id);
     toast.success(item.id ? "Utilisateur mis à jour" : "Nouvel utilisateur créé", `${result.prenom} ${result.nom} (${result.role})`);
     return result;
@@ -1136,6 +1192,7 @@ export class DB {
     const updated = this.getUtilisateurs().filter(u => u.id !== id);
     setItem(STORAGE_KEYS.UTILISATEURS, updated);
     setItem(STORAGE_KEYS.ADMINISTRATEURS, updated);
+    deleteFromBackendTable('utilisateurs', id);
     this.logAccess('SUPPRESSION', `Suppression utilisateur ID #${id}`);
   }
 
@@ -1160,6 +1217,7 @@ export class DB {
       list.push(result);
     }
     setItem(STORAGE_KEYS.BULLETINS, list);
+    saveToBackendTable('bulletins', result);
     this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `Génération bulletin étudiant ID #${result.etudiant_id} : Moyenne ${result.moyenne}/20 (${result.decision})`, undefined, result.etudiant_id);
     toast.success("Bulletin généré et enregistré en base", `Moyenne: ${result.moyenne}/20 (${result.decision})`);
     return result;
