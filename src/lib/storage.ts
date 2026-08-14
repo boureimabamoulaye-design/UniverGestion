@@ -206,8 +206,6 @@ export class DB {
     if (!localStorage.getItem(STORAGE_KEYS.NOTIFICATIONS)) setItemWithoutSync(STORAGE_KEYS.NOTIFICATIONS, INITIAL_NOTIFICATIONS);
     if (!localStorage.getItem(STORAGE_KEYS.HISTORIQUE)) setItemWithoutSync(STORAGE_KEYS.HISTORIQUE, INITIAL_HISTORIQUE);
     if (!localStorage.getItem(STORAGE_KEYS.SUPPORTS_COURS)) setItemWithoutSync(STORAGE_KEYS.SUPPORTS_COURS, INITIAL_SUPPORTS_COURS);
-
-    triggerServerSync();
   }
   // Getters
   static getUniversites(): Universite[] {
@@ -1193,13 +1191,37 @@ export class DB {
     setItem(STORAGE_KEYS.NOTIFICATIONS, list);
   }
 
-  static logAccess(event_type: HistoriqueAcces['event_type'], description: string, userId?: number, etudiantId?: number): void {
+  static getActiveUser(): { id?: number; nom?: string; prenom?: string; role?: string; email_or_matricule?: string } | null {
+    try {
+      const saved = localStorage.getItem('unigestion_active_user') || sessionStorage.getItem('unigestion_active_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  static logAccess(
+    event_type: HistoriqueAcces['event_type'],
+    description: string,
+    userId?: number,
+    etudiantId?: number,
+    customAuteur?: string
+  ): void {
     const list = this.getHistorique();
     const nextId = Math.max(0, ...list.map(h => h.id)) + 1;
+    const active = this.getActiveUser();
+    
+    const resolvedAuteur = customAuteur || (
+      active ? `${active.prenom} ${active.nom}` : (userId ? `Utilisateur #${userId}` : (etudiantId ? `Étudiant #${etudiantId}` : 'Système'))
+    );
+    const resolvedRole = active?.role || (userId ? 'ADMIN' : (etudiantId ? 'ETUDIANT' : 'SYSTÈME'));
+
     const entry: HistoriqueAcces = {
       id: nextId,
-      utilisateur_id: userId,
-      etudiant_id: etudiantId,
+      utilisateur_id: userId || (active && active.role !== 'ETUDIANT' ? active.id : undefined),
+      etudiant_id: etudiantId || (active && active.role === 'ETUDIANT' ? active.id : undefined),
+      auteur: resolvedAuteur,
+      auteur_role: resolvedRole,
       ip_adresse: '***.***.***.***', // Adresse IP masquée pour la confidentialité
       event_type,
       description,
@@ -1224,10 +1246,13 @@ export class DB {
     titre: string,
     details: string,
     donnees: any,
-    supprime_par: string = 'Administrateur'
+    supprime_par?: string
   ): void {
     const list = this.getCorbeille();
     const nextId = Math.max(0, ...list.map(c => c.id)) + 1;
+    const active = this.getActiveUser();
+    const resolvedAuthor = supprime_par || (active ? `${active.prenom} ${active.nom}` : 'Administrateur');
+
     const item: CorbeilleItem = {
       id: nextId,
       type_element,
@@ -1235,13 +1260,13 @@ export class DB {
       titre,
       details,
       donnees_json: JSON.stringify(donnees),
-      supprime_par,
+      supprime_par: resolvedAuthor,
       supprime_le: new Date().toISOString().replace('T', ' ').substring(0, 16)
     };
     list.unshift(item);
     setItem(STORAGE_KEYS.CORBEILLE, list);
 
-    this.logAccess('SUPPRESSION', `Mise en corbeille : ${type_element} "${titre}" (ID #${element_id})`);
+    this.logAccess('SUPPRESSION', `Mise en corbeille : ${type_element} "${titre}" (ID #${element_id})`, undefined, undefined, resolvedAuthor);
   }
 
   static restoreFromCorbeille(corbeilleId: number): boolean {

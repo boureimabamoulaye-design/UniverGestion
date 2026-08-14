@@ -36,7 +36,9 @@ export const HistoriqueView: React.FC = () => {
   const filteredLogs = logs.filter(log => {
     const matchesSearch =
       log.description.toLowerCase().includes(search.toLowerCase()) ||
-      log.event_type.toLowerCase().includes(search.toLowerCase());
+      log.event_type.toLowerCase().includes(search.toLowerCase()) ||
+      (log.auteur && log.auteur.toLowerCase().includes(search.toLowerCase())) ||
+      (log.auteur_role && log.auteur_role.toLowerCase().includes(search.toLowerCase()));
 
     const matchesType = selectedType === 'ALL' || log.event_type === selectedType;
 
@@ -185,6 +187,7 @@ export const HistoriqueView: React.FC = () => {
               <tr className="border-b border-[#E5E7EB] bg-[#F9FAFB] text-gray-500 font-semibold uppercase text-[10px] tracking-wider">
                 <th className="px-6 py-4">Date & Heure</th>
                 <th className="px-6 py-4">Type d'Événement</th>
+                <th className="px-6 py-4">Auteur / Opérateur</th>
                 <th className="px-6 py-4">Description de l'Action</th>
               </tr>
             </thead>
@@ -198,6 +201,18 @@ export const HistoriqueView: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       {getTypeBadge(item.event_type)}
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-slate-800 text-xs">
+                          {item.auteur || 'Administrateur'}
+                        </span>
+                        {item.auteur_role && (
+                          <span className="text-[10px] font-semibold text-gray-500">
+                            {item.auteur_role}
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-6 py-4">
                       <div className="text-slate-900 font-semibold text-xs leading-relaxed">
                         {item.description}
@@ -207,7 +222,7 @@ export const HistoriqueView: React.FC = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={3} className="px-6 py-12 text-center text-gray-400">
+                  <td colSpan={4} className="px-6 py-12 text-center text-gray-400">
                     <History className="w-10 h-10 mx-auto mb-2 text-gray-300" />
                     <p className="font-medium">Aucune donnée trouvée dans l'historique.</p>
                   </td>

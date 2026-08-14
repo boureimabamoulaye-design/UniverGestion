@@ -86,12 +86,19 @@ function getInitialDatabase() {
   };
 }
 
+let memoryDatabase: Record<string, any> | null = null;
+let saveDebounceTimer: NodeJS.Timeout | null = null;
+
 function readDatabase() {
+  if (memoryDatabase) {
+    return memoryDatabase;
+  }
   if (fs.existsSync(DATA_FILE)) {
     try {
       const content = fs.readFileSync(DATA_FILE, "utf-8");
       const parsed = JSON.parse(content);
       if (parsed && typeof parsed === "object") {
+        memoryDatabase = parsed;
         return parsed;
       }
     } catch (e) {
@@ -99,18 +106,26 @@ function readDatabase() {
     }
   }
   const initDb = getInitialDatabase();
-  fs.writeFileSync(DATA_FILE, JSON.stringify(initDb, null, 2), "utf-8");
+  memoryDatabase = initDb;
+  try {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(initDb, null, 2), "utf-8");
+  } catch {}
   return initDb;
 }
 
 function saveDatabase(data: Record<string, any>) {
-  try {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), "utf-8");
-    return true;
-  } catch (e) {
-    console.error("Error saving db_storage.json:", e);
-    return false;
+  memoryDatabase = data;
+  if (saveDebounceTimer) {
+    clearTimeout(saveDebounceTimer);
   }
+  saveDebounceTimer = setTimeout(() => {
+    try {
+      fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), "utf-8");
+    } catch (e) {
+      console.error("Error saving db_storage.json:", e);
+    }
+  }, 1000);
+  return true;
 }
 
 // In-Memory Rate Limiter for login protection
@@ -600,7 +615,12 @@ app.use((err: any, req: any, res: any, next: any) => {
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        watch: {
+          ignored: ['**/data/**', '**/dist/**', '**/*.json'],
+        },
+      },
       appType: "spa",
     });
     app.use(vite.middlewares);

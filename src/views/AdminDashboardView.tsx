@@ -314,6 +314,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ setActiv
                 <tr className="bg-[#F9FAFB] border-b border-gray-100 text-gray-500 font-semibold uppercase tracking-wider text-[10px]">
                   <th className="py-3 px-4">Date & Heure</th>
                   <th className="py-3 px-4">Type</th>
+                  <th className="py-3 px-4">Auteur</th>
                   <th className="py-3 px-4">Description de l'action</th>
                 </tr>
               </thead>
@@ -325,6 +326,11 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ setActiv
                     </td>
                     <td className="py-3 px-4 whitespace-nowrap">
                       {getTypeBadge(log.event_type)}
+                    </td>
+                    <td className="py-3 px-4 whitespace-nowrap">
+                      <span className="font-semibold text-slate-800">
+                        {log.auteur || 'Administrateur'}
+                      </span>
                     </td>
                     <td className="py-3 px-4 font-medium text-slate-800">
                       {log.description}

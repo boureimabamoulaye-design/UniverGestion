@@ -236,6 +236,8 @@ export interface HistoriqueAcces {
   administrateur_id?: number;
   utilisateur_id?: number;
   etudiant_id?: number;
+  auteur?: string;
+  auteur_role?: string;
   ip_adresse: string;
   event_type: 'CONNEXION' | 'DECONNEXION' | 'MODIFICATION_NOTE' | 'INSCRIPTION' | 'PAIEMENT' | 'EXPORT' | 'VISITE_PAGE' | 'SUPPRESSION' | 'RESTAURATION' | string;
   description: string;
