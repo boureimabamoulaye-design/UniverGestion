@@ -221,10 +221,22 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
     return 'Ajourné';
   };
 
-  // Filter semestres assigned to student's level & filière (e.g. S1 & S2)
+  // Filter semestres assigned to student's level & filière (e.g. S1 & S2) or where student has grades
   const studentNiveauId = studentClass?.niveau_id || etudiant.niveau_id || 1;
-  const assignedSemestres = semestres.filter(s => s.niveau_id === studentNiveauId);
-  const activeSemestres = assignedSemestres.length > 0 ? assignedSemestres : semestres.slice(0, 2);
+  const assignedSemestres = semestres.filter(s => Number(s.niveau_id) === Number(studentNiveauId));
+  const semesterIdsWithNotes = new Set(notes.map(n => Number(n.semestre_id)));
+  const semestresWithNotes = semestres.filter(s => semesterIdsWithNotes.has(Number(s.id)));
+  
+  const combinedSemestres = [...assignedSemestres];
+  semestresWithNotes.forEach(sn => {
+    if (!combinedSemestres.some(cs => Number(cs.id) === Number(sn.id))) {
+      combinedSemestres.push(sn);
+    }
+  });
+
+  const activeSemestres = combinedSemestres.length > 0 
+    ? combinedSemestres.sort((a, b) => (a.ordre || a.id) - (b.ordre || b.id))
+    : semestres.slice(0, 2);
 
   // Tab mode for Examen tab: 0 = Bilan Annuel (S1 + S2), or semester ID (1 for S1, 2 for S2)
   const [examenViewFilter, setExamenViewFilter] = useState<number>(0);
@@ -236,8 +248,17 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
       Number(m.semestre_id) === Number(sem.id) && 
       (!m.filiere_id || Number(m.filiere_id) === Number(studentFiliere?.id) || Number(m.filiere_id) === Number(etudiant.filiere_id))
     );
-    const applicableMatieres = semMatieres.length > 0 ? semMatieres : matieres.filter(m => Number(m.semestre_id) === Number(sem.id));
     const semNotes = notes.filter(n => Number(n.semestre_id) === Number(sem.id));
+    const noteMatiereIds = new Set(semNotes.map(n => Number(n.matiere_id)));
+    const extraMatieresWithNotes = matieres.filter(m => noteMatiereIds.has(Number(m.id)) && !semMatieres.some(sm => Number(sm.id) === Number(m.id)));
+
+    let applicableMatieres = [...semMatieres, ...extraMatieresWithNotes];
+    if (applicableMatieres.length === 0) {
+      applicableMatieres = matieres.filter(m => Number(m.semestre_id) === Number(sem.id));
+    }
+    if (applicableMatieres.length === 0 && matieres.length > 0) {
+      applicableMatieres = matieres.filter(m => !m.filiere_id || Number(m.filiere_id) === Number(studentFiliere?.id) || Number(m.filiere_id) === Number(etudiant.filiere_id));
+    }
 
     let semTotalPoints = 0;
     let semTotalCredits = 0;
@@ -245,9 +266,11 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
 
     const tableRows = applicableMatieres.map(mat => {
       const noteObj = semNotes.find(n => Number(n.matiere_id) === Number(mat.id));
-      const cc = noteObj ? noteObj.note_cc : null;
-      const exam = noteObj ? noteObj.note_examen : null;
-      const finale = noteObj ? noteObj.note_finale : (cc !== null && exam !== null ? Math.round((cc * 0.4 + exam * 0.6) * 100) / 100 : null);
+      const cc = noteObj && noteObj.note_cc !== undefined && noteObj.note_cc !== null ? Number(noteObj.note_cc) : null;
+      const exam = noteObj && noteObj.note_examen !== undefined && noteObj.note_examen !== null ? Number(noteObj.note_examen) : null;
+      const finale = noteObj && noteObj.note_finale !== undefined && noteObj.note_finale !== null 
+        ? Number(noteObj.note_finale) 
+        : (cc !== null && exam !== null ? Math.round((cc * 0.4 + exam * 0.6) * 100) / 100 : null);
       const isValidated = finale !== null && finale >= 10;
 
       if (finale !== null) {

@@ -113,15 +113,15 @@ export const NotesView: React.FC = () => {
   const filiereStudents = useMemo(() => {
     const niveaus = DB.getNiveaux();
     const filiereNiveauIds = niveaus
-      .filter(n => n.filiere_id === Number(selectedFiliere))
+      .filter(n => Number(n.filiere_id) === Number(selectedFiliere))
       .map(n => n.id);
 
     const filiereClassIds = classes
-      .filter(c => filiereNiveauIds.includes(c.niveau_id))
+      .filter(c => Number(c.filiere_id) === Number(selectedFiliere) || filiereNiveauIds.includes(c.niveau_id))
       .map(c => c.id);
 
     if (filiereClassIds.length === 0) {
-      return etudiants;
+      return etudiants.filter(e => (e as any).filiere_id === Number(selectedFiliere) || !e.classe_id);
     }
 
     return etudiants.filter(e => 
