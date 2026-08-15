@@ -567,7 +567,7 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
           {/* Bulletin Admin Direct */}
           <ExcelBulletinView
             etudiant={etudiant}
-            semestre={semestres.find(s => s.id === selectedSemestreId) || semestres[0]}
+            semestre={semestres.find(s => Number(s.id) === Number(selectedSemestreId)) || semestres[0]}
             notes={notes}
             matieres={matieres}
             classe={studentClass}

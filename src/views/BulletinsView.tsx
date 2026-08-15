@@ -52,9 +52,22 @@ export const BulletinsView: React.FC = () => {
   const filteredEtudiants = selectedFiliereId === 'ALL'
     ? etudiants
     : etudiants.filter(e => {
-        const cls = classes.find(c => c.id === e.classe_id);
-        return cls?.filiere_id === selectedFiliereId;
+        const cls = classes.find(c => Number(c.id) === Number(e.classe_id));
+        return Number(cls?.filiere_id) === Number(selectedFiliereId);
       });
+
+  const handleFiliereChange = (filiereId: number | 'ALL') => {
+    setSelectedFiliereId(filiereId);
+    const newFiltered = filiereId === 'ALL'
+      ? etudiants
+      : etudiants.filter(e => {
+          const cls = classes.find(c => Number(c.id) === Number(e.classe_id));
+          return Number(cls?.filiere_id) === Number(filiereId);
+        });
+    if (newFiltered.length > 0 && !newFiltered.some(e => Number(e.id) === Number(selectedStudentId))) {
+      setSelectedStudentId(newFiltered[0].id);
+    }
+  };
 
   // Generate or recalculate Bulletin for selected student and semester
   const handleGenerateBulletin = () => {
@@ -284,7 +297,7 @@ export const BulletinsView: React.FC = () => {
           <label className="block text-xs font-bold text-slate-800 mb-1.5">Filière d'Études</label>
           <select
             value={selectedFiliereId}
-            onChange={(e) => setSelectedFiliereId(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value))}
+            onChange={(e) => handleFiliereChange(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value))}
             className="w-full h-[38px] bg-white border border-gray-300 rounded-[6px] px-3 text-xs font-semibold focus:outline-none focus:border-slate-800"
           >
             <option value="ALL">Toutes les filières</option>
@@ -607,8 +620,8 @@ export const BulletinsView: React.FC = () => {
             <ExcelBulletinView
               etudiant={st}
               semestre={sem}
-              notes={notes}
-              matieres={matieres}
+              notes={DB.getNotes()}
+              matieres={DB.getMatieres()}
               classe={cls}
               filiere={fil}
               faculte={fac}

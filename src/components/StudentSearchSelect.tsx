@@ -17,7 +17,7 @@ export const StudentSearchSelect: React.FC<StudentSearchSelectProps> = ({
   placeholder = "Saisir le nom, prénom ou matricule pour rechercher...",
   label = "Étudiant"
 }) => {
-  const selectedStudent = etudiants.find(e => e.id === selectedStudentId);
+  const selectedStudent = etudiants.find(e => Number(e.id) === Number(selectedStudentId));
   const [query, setQuery] = useState(
     selectedStudent ? `${selectedStudent.matricule} - ${selectedStudent.prenom} ${selectedStudent.nom}` : ''
   );
@@ -25,10 +25,11 @@ export const StudentSearchSelect: React.FC<StudentSearchSelectProps> = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (selectedStudent) {
-      setQuery(`${selectedStudent.matricule} - ${selectedStudent.prenom} ${selectedStudent.nom}`);
+    const matched = etudiants.find(e => Number(e.id) === Number(selectedStudentId));
+    if (matched) {
+      setQuery(`${matched.matricule} - ${matched.prenom} ${matched.nom}`);
     }
-  }, [selectedStudentId]);
+  }, [selectedStudentId, etudiants]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
