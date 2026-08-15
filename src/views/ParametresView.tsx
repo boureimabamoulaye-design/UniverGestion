@@ -76,7 +76,8 @@ export const ParametresView: React.FC = () => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 2 * 1024 * 1024) {
-        alert("La taille de l'image ne doit pas dépasser 2 Mo.");
+        setMessage("La taille du logo ne doit pas dépasser 2 Mo.");
+        setTimeout(() => setMessage(null), 4000);
         return;
       }
       const reader = new FileReader();

@@ -99,11 +99,11 @@ export const EtudiantsView: React.FC = () => {
         telephone: item.telephone || '',
         email: item.email,
         classe_id: item.classe_id,
-        statut: item.statut,
+        statut: item.statut as any,
         tuteur_nom: item.tuteur_nom || '',
         tuteur_prenom: item.tuteur_prenom || '',
         tuteur_telephone: item.tuteur_telephone || '',
-        statut_compte: item.statut_compte || (item.est_bloque ? 'Bloqué' : 'Actif'),
+        statut_compte: (item.statut_compte || (item.est_bloque ? 'Bloqué' : 'Actif')) as any,
         est_bloque: item.est_bloque || item.statut_compte === 'Bloqué',
         mot_de_passe: item.mot_de_passe || 'etudiant123'
       });
@@ -188,24 +188,26 @@ export const EtudiantsView: React.FC = () => {
     const headers = ["ID", "Matricule", "Nom", "Prénom", "Sexe", "Email", "Téléphone", "Tuteur Nom", "Tuteur Téléphone", "Statut Compte"];
     const rows = filtered.map(e => [
       e.id,
-      e.matricule,
-      e.nom,
-      e.prenom,
-      e.sexe,
-      e.email,
-      e.telephone,
-      e.tuteur_nom || '',
-      e.tuteur_telephone || '',
-      e.statut_compte || (e.est_bloque ? 'Bloqué' : 'Actif')
+      `"${e.matricule}"`,
+      `"${(e.nom || '').replace(/"/g, '""')}"`,
+      `"${(e.prenom || '').replace(/"/g, '""')}"`,
+      `"${e.sexe || 'M'}"`,
+      `"${(e.email || '').replace(/"/g, '""')}"`,
+      `"${(e.telephone || '').replace(/"/g, '""')}"`,
+      `"${(e.tuteur_nom || '').replace(/"/g, '""')}"`,
+      `"${(e.tuteur_telephone || '').replace(/"/g, '""')}"`,
+      `"${(e.statut_compte || (e.est_bloque ? 'Bloqué' : 'Actif')).replace(/"/g, '""')}"`
     ]);
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
-    const encodedUri = encodeURI(csvContent);
+    const csvContent = '\uFEFF' + [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
+    link.setAttribute("href", url);
     link.setAttribute("download", `liste_etudiants_mali_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handlePrint = () => {

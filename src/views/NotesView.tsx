@@ -55,7 +55,7 @@ export const NotesView: React.FC = () => {
   const activeAnnee = DB.getActiveAnneeAcademique();
 
   // ONLY 3 MANDATORY FILTERS as requested
-  const [selectedAnnee, setSelectedAnnee] = useState<number>(activeAnnee.id);
+  const [selectedAnnee, setSelectedAnnee] = useState<number>(activeAnnee?.id || 1);
   const [selectedFiliere, setSelectedFiliere] = useState<number>(filieres[0]?.id || 1);
   const [selectedSemestre, setSelectedSemestre] = useState<number>(semestres[0]?.id || 1);
 
@@ -82,6 +82,8 @@ export const NotesView: React.FC = () => {
   const [isPrintModalOpen, setIsPrintModalOpen] = useState<boolean>(false);
   const [rawCsvText, setRawCsvText] = useState<string>('');
   const [importStatus, setImportStatus] = useState<string | null>(null);
+  const [errorBanner, setErrorBanner] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   useEffect(() => {
     DB.logAccess('VISITE_PAGE', 'Consultation du Registre de Saisie des Notes');
@@ -354,9 +356,6 @@ export const NotesView: React.FC = () => {
     };
   }, [filiereStudents, semesterMatieres, draftGrades, notesList, selectedSemestre, selectedAnnee]);
 
-  const [errorBanner, setErrorBanner] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
   // Save all grades
   const handleSaveAllGrades = async () => {
     setErrorBanner(null);
@@ -372,7 +371,7 @@ export const NotesView: React.FC = () => {
     });
 
     if (hasError) {
-      alert("Certaines notes sont hors de l'intervalle [0, 20]. Veuillez corriger les erreurs.");
+      setErrorBanner("Certaines notes saisies sont hors de l'intervalle légal [0, 20]. Veuillez corriger les cellules surlignées en rouge.");
       return;
     }
 
@@ -500,7 +499,7 @@ export const NotesView: React.FC = () => {
       csv += row;
     });
 
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -508,6 +507,7 @@ export const NotesView: React.FC = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   // Import Excel/CSV parser

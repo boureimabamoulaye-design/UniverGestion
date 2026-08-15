@@ -41,6 +41,8 @@ export const ExcelBulletinView: React.FC<ExcelBulletinViewProps> = ({
   anneeAcademique,
   onPrint
 }) => {
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+
   // Safe student fallback
   const safeEtudiant = etudiant || {
     id: 1,
@@ -357,8 +359,6 @@ export const ExcelBulletinView: React.FC<ExcelBulletinViewProps> = ({
     annualDecision = 'AJOURNÉ (REDOUBLEMENT)';
     annualDecisionDetail = 'Crédits ECTS insuffisants (< 30 ECTS) - Redoublement requis';
   }
-
-  const [isExportingPdf, setIsExportingPdf] = useState(false);
 
   // Function to export bulletin directly as Excel (.xlsx)
   const handleExportExcel = () => {

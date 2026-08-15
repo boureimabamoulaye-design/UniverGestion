@@ -1,38 +1,34 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthUser, NotificationAlerte } from './types/database';
 import { DB } from './lib/storage';
 import { Header } from './components/Header';
 import { Sidebar, ActiveTab } from './components/Sidebar';
 import { PHPCodeExporterModal } from './components/PHPCodeExporterModal';
 import { ToastContainer } from './components/ToastContainer';
-import { EtudiantsSkeleton } from './components/skeletons/EtudiantsSkeleton';
-import { NotesSkeleton } from './components/skeletons/NotesSkeleton';
-import { TableSkeleton } from './components/skeletons/TableSkeleton';
-import { DashboardSkeleton } from './components/skeletons/DashboardSkeleton';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
-// Views - Lazy Loaded for instant tab responsiveness
+// Views - Direct imports for high performance and zero chunk loading failures
 import { LoginView } from './views/LoginView';
-
-const AdminDashboardView = lazy(() => import('./views/AdminDashboardView').then(m => ({ default: m.AdminDashboardView })));
-const FilieresView = lazy(() => import('./views/FilieresView').then(m => ({ default: m.FilieresView })));
-const ClassesView = lazy(() => import('./views/ClassesView').then(m => ({ default: m.ClassesView })));
-const EtudiantsView = lazy(() => import('./views/EtudiantsView').then(m => ({ default: m.EtudiantsView })));
-const EnseignantsView = lazy(() => import('./views/EnseignantsView').then(m => ({ default: m.EnseignantsView })));
-const MatieresView = lazy(() => import('./views/MatieresView').then(m => ({ default: m.MatieresView })));
-const SemestresView = lazy(() => import('./views/SemestresView').then(m => ({ default: m.SemestresView })));
-const InscriptionsView = lazy(() => import('./views/InscriptionsView').then(m => ({ default: m.InscriptionsView })));
-const NotesView = lazy(() => import('./views/NotesView').then(m => ({ default: m.NotesView })));
-const AbsencesView = lazy(() => import('./views/AbsencesView').then(m => ({ default: m.AbsencesView })));
-const BulletinsView = lazy(() => import('./views/BulletinsView').then(m => ({ default: m.BulletinsView })));
-const PaiementsView = lazy(() => import('./views/PaiementsView').then(m => ({ default: m.PaiementsView })));
-const AnneesAcademiquesView = lazy(() => import('./views/AnneesAcademiquesView').then(m => ({ default: m.AnneesAcademiquesView })));
-const UtilisateursView = lazy(() => import('./views/UtilisateursView').then(m => ({ default: m.UtilisateursView })));
-const EtudiantPortalView = lazy(() => import('./views/EtudiantPortalView').then(m => ({ default: m.EtudiantPortalView })));
-const CorbeilleView = lazy(() => import('./views/CorbeilleView').then(m => ({ default: m.CorbeilleView })));
-const SupportsCoursView = lazy(() => import('./views/SupportsCoursView').then(m => ({ default: m.SupportsCoursView })));
-const ProfilAdminView = lazy(() => import('./views/ProfilAdminView').then(m => ({ default: m.ProfilAdminView })));
-const ParametresView = lazy(() => import('./views/ParametresView').then(m => ({ default: m.ParametresView })));
-const HistoriqueView = lazy(() => import('./views/HistoriqueView').then(m => ({ default: m.HistoriqueView })));
+import { AdminDashboardView } from './views/AdminDashboardView';
+import { FilieresView } from './views/FilieresView';
+import { ClassesView } from './views/ClassesView';
+import { EtudiantsView } from './views/EtudiantsView';
+import { EnseignantsView } from './views/EnseignantsView';
+import { MatieresView } from './views/MatieresView';
+import { SemestresView } from './views/SemestresView';
+import { InscriptionsView } from './views/InscriptionsView';
+import { NotesView } from './views/NotesView';
+import { AbsencesView } from './views/AbsencesView';
+import { BulletinsView } from './views/BulletinsView';
+import { PaiementsView } from './views/PaiementsView';
+import { AnneesAcademiquesView } from './views/AnneesAcademiquesView';
+import { UtilisateursView } from './views/UtilisateursView';
+import { EtudiantPortalView } from './views/EtudiantPortalView';
+import { CorbeilleView } from './views/CorbeilleView';
+import { SupportsCoursView } from './views/SupportsCoursView';
+import { ProfilAdminView } from './views/ProfilAdminView';
+import { ParametresView } from './views/ParametresView';
+import { HistoriqueView } from './views/HistoriqueView';
 
 export default function App() {
   // By default, the application always opens on the Login screen
@@ -147,114 +143,44 @@ export default function App() {
 
           {/* Tab Views Router */}
           <main className="flex-1 p-3.5 sm:p-6 lg:p-10 max-w-7xl w-full mx-auto transition-all duration-200">
-            {activeTab === 'dashboard' && isStaffOrAdmin && (
-              <Suspense fallback={<DashboardSkeleton />}>
+            <ErrorBoundary>
+              {activeTab === 'dashboard' && isStaffOrAdmin && (
                 <AdminDashboardView setActiveTab={handleTabChange} />
-              </Suspense>
-            )}
+              )}
 
-            {activeTab === 'profil_admin' && isStaffOrAdmin && (
-              <Suspense fallback={<TableSkeleton title="Profil" />}>
+              {activeTab === 'profil_admin' && isStaffOrAdmin && (
                 <ProfilAdminView currentUser={currentUser} />
-              </Suspense>
-            )}
+              )}
 
-            {activeTab === 'supports_cours' && (
-              <Suspense fallback={<TableSkeleton title="Supports de cours" />}>
+              {activeTab === 'supports_cours' && (
                 <SupportsCoursView currentUser={currentUser} />
-              </Suspense>
-            )}
+              )}
 
-            {!isStaffOrAdmin && activeTab !== 'supports_cours' && (
-              <Suspense fallback={<DashboardSkeleton />}>
+              {!isStaffOrAdmin && activeTab !== 'supports_cours' && (
                 <EtudiantPortalView user={currentUser} activeTab={activeTab} setActiveTab={handleTabChange} />
-              </Suspense>
-            )}
+              )}
 
-            {isStaffOrAdmin && (
-              <>
-                {activeTab === 'filieres' && (
-                  <Suspense fallback={<TableSkeleton title="Filières" />}>
-                    <FilieresView />
-                  </Suspense>
-                )}
-                {activeTab === 'classes' && (
-                  <Suspense fallback={<TableSkeleton title="Classes" />}>
-                    <ClassesView />
-                  </Suspense>
-                )}
-                {activeTab === 'etudiants' && (
-                  <Suspense fallback={<EtudiantsSkeleton />}>
-                    <EtudiantsView />
-                  </Suspense>
-                )}
-                {activeTab === 'enseignants' && (
-                  <Suspense fallback={<TableSkeleton title="Enseignants" />}>
-                    <EnseignantsView />
-                  </Suspense>
-                )}
-                {activeTab === 'matieres' && (
-                  <Suspense fallback={<TableSkeleton title="Matières" />}>
-                    <MatieresView />
-                  </Suspense>
-                )}
-                {activeTab === 'semestres' && (
-                  <Suspense fallback={<TableSkeleton title="Semestres" />}>
-                    <SemestresView />
-                  </Suspense>
-                )}
-                {activeTab === 'inscriptions' && (
-                  <Suspense fallback={<TableSkeleton title="Inscriptions" />}>
-                    <InscriptionsView />
-                  </Suspense>
-                )}
-                {activeTab === 'notes' && (
-                  <Suspense fallback={<NotesSkeleton />}>
-                    <NotesView />
-                  </Suspense>
-                )}
-                {activeTab === 'absences' && (
-                  <Suspense fallback={<TableSkeleton title="Absences" />}>
-                    <AbsencesView />
-                  </Suspense>
-                )}
-                {activeTab === 'bulletins' && (
-                  <Suspense fallback={<TableSkeleton title="Bulletins" />}>
-                    <BulletinsView />
-                  </Suspense>
-                )}
-                {activeTab === 'paiements' && (
-                  <Suspense fallback={<TableSkeleton title="Paiements" />}>
-                    <PaiementsView />
-                  </Suspense>
-                )}
-                {activeTab === 'annees' && (
-                  <Suspense fallback={<TableSkeleton title="Années Académiques" />}>
-                    <AnneesAcademiquesView />
-                  </Suspense>
-                )}
-                {(activeTab === 'administrateurs' || activeTab === 'utilisateurs') && (
-                  <Suspense fallback={<TableSkeleton title="Utilisateurs" />}>
-                    <UtilisateursView />
-                  </Suspense>
-                )}
-                {activeTab === 'corbeille' && (
-                  <Suspense fallback={<TableSkeleton title="Corbeille" />}>
-                    <CorbeilleView />
-                  </Suspense>
-                )}
-                {activeTab === 'historique' && (
-                  <Suspense fallback={<TableSkeleton title="Historique" />}>
-                    <HistoriqueView />
-                  </Suspense>
-                )}
-                {activeTab === 'parametres' && (
-                  <Suspense fallback={<TableSkeleton title="Paramètres" />}>
-                    <ParametresView />
-                  </Suspense>
-                )}
-              </>
-            )}
+              {isStaffOrAdmin && (
+                <>
+                  {activeTab === 'filieres' && <FilieresView />}
+                  {activeTab === 'classes' && <ClassesView />}
+                  {activeTab === 'etudiants' && <EtudiantsView />}
+                  {activeTab === 'enseignants' && <EnseignantsView />}
+                  {activeTab === 'matieres' && <MatieresView />}
+                  {activeTab === 'semestres' && <SemestresView />}
+                  {activeTab === 'inscriptions' && <InscriptionsView />}
+                  {activeTab === 'notes' && <NotesView />}
+                  {activeTab === 'absences' && <AbsencesView />}
+                  {activeTab === 'bulletins' && <BulletinsView />}
+                  {activeTab === 'paiements' && <PaiementsView />}
+                  {activeTab === 'annees' && <AnneesAcademiquesView />}
+                  {(activeTab === 'administrateurs' || activeTab === 'utilisateurs') && <UtilisateursView />}
+                  {activeTab === 'corbeille' && <CorbeilleView />}
+                  {activeTab === 'historique' && <HistoriqueView />}
+                  {activeTab === 'parametres' && <ParametresView />}
+                </>
+              )}
+            </ErrorBoundary>
           </main>
         </div>
 

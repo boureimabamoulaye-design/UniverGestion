@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { AuthUser, Paiement } from '../types/database';
+import { AuthUser, Paiement, Etudiant } from '../types/database';
 import { DB } from '../lib/storage';
 import {
   GraduationCap,
@@ -64,35 +64,41 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
 
   // Fetch updated student detail directly from DB
   const etudiants = DB.getEtudiants();
-  const targetId = user.etudiantDetail?.id || (user.role?.toUpperCase() === 'ETUDIANT' ? user.id : undefined);
+  const anyUser = user as any;
+  const targetId = anyUser.etudiantDetail?.id || (anyUser.role?.toUpperCase() === 'ETUDIANT' ? anyUser.id : undefined);
   const matchedEtudiant = etudiants.find(e => 
     (targetId && Number(e.id) === Number(targetId)) || 
-    (user.matricule && e.matricule?.trim().toLowerCase() === user.matricule.trim().toLowerCase()) ||
-    (user.email_or_matricule && (
-      e.matricule?.trim().toLowerCase() === user.email_or_matricule.trim().toLowerCase() || 
-      e.email?.trim().toLowerCase() === user.email_or_matricule.trim().toLowerCase()
+    (anyUser.matricule && e.matricule?.trim().toLowerCase() === anyUser.matricule.trim().toLowerCase()) ||
+    (anyUser.email_or_matricule && (
+      e.matricule?.trim().toLowerCase() === anyUser.email_or_matricule.trim().toLowerCase() || 
+      e.email?.trim().toLowerCase() === anyUser.email_or_matricule.trim().toLowerCase()
     )) || 
-    (user.email && e.email?.trim().toLowerCase() === user.email.trim().toLowerCase())
+    (anyUser.email && e.email?.trim().toLowerCase() === anyUser.email.trim().toLowerCase())
   );
 
-  const etudiant = matchedEtudiant || user.etudiantDetail || etudiants[0] || {
+  const etudiant: Etudiant = matchedEtudiant || user.etudiantDetail || etudiants[0] || {
     id: 1,
-    matricule: user.matricule || user.email_or_matricule || '2024-USTTB-001',
+    matricule: anyUser.matricule || anyUser.email_or_matricule || '2024-USTTB-001',
     nom: user.nom || 'Traoré',
     prenom: user.prenom || 'Mamadou',
-    email: user.email || 'm.traore@usttb.edu.ml',
+    email: anyUser.email || 'm.traore@usttb.edu.ml',
     telephone: '+223 76 00 11 22',
     adresse: 'Hamdallaye ACI 2000, Bamako',
     date_naissance: '2003-05-12',
     lieu_naissance: 'Bamako',
-    genre: 'M' as const,
     sexe: 'M' as const,
-    statut: 'Actif' as const,
+    statut: 'Inscrit' as const,
     nationalite: 'Malienne',
     filiere_id: 1,
     niveau_id: 1,
     classe_id: 1,
-    date_inscription: '2025-10-01'
+    date_inscription: '2025-10-01',
+    mot_de_passe: 'etudiant123',
+    tuteur_nom: 'Traoré',
+    tuteur_prenom: 'Ousmane',
+    tuteur_telephone: '+223 70 00 00 00',
+    statut_compte: 'Actif',
+    est_bloque: false
   };
 
   const classes = DB.getClasses();

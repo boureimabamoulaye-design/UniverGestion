@@ -81,15 +81,15 @@ export interface Etudiant {
   filiere_id?: number;
   niveau_id?: number;
   date_inscription: string;
-  statut: 'Régulier' | 'Inscrit' | 'Suspendu' | 'Diplômé';
-  mot_de_passe: string;
+  statut: 'Régulier' | 'Inscrit' | 'Suspendu' | 'Diplômé' | 'Actif' | string;
+  mot_de_passe?: string;
   photo_url?: string;
   // Tuteur Information
   tuteur_nom?: string;
   tuteur_prenom?: string;
   tuteur_telephone?: string;
   // Compte & Accès
-  statut_compte?: 'Actif' | 'Inactif' | 'Bloqué';
+  statut_compte?: 'Actif' | 'Inactif' | 'Bloqué' | string;
   est_bloque?: boolean;
 }
 
@@ -193,7 +193,7 @@ export interface Paiement {
   classe_id?: number;
   classe_nom?: string;
   annee_libelle?: string;
-  type_frais: 'Inscription' | 'Scolarité' | 'Examen' | 'Autre';
+  type_frais: 'Inscription' | 'Scolarité' | 'Examen' | 'Rattrapage' | 'Diplôme' | 'Autre' | string;
   montant: number;
   montant_paye: number;
   reste_a_payer: number;

@@ -32,6 +32,8 @@ export const PaiementsView: React.FC = () => {
 
   // Delete confirmation modal state
   const [deletingPaiement, setDeletingPaiement] = useState<Paiement | null>(null);
+  const [errorBanner, setErrorBanner] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     etudiant_id: 0 as number,
@@ -40,7 +42,7 @@ export const PaiementsView: React.FC = () => {
     filiere_code: filieres[0]?.code || 'IGL',
     annee_academique_id: activeAnnee?.id || 1,
     montant_paye: 100000,
-    mode_paiement: 'Orange Money' as 'Espèces' | 'Chèque' | 'Virement' | 'Orange Money' | 'Wave',
+    mode_paiement: 'Orange Money' as 'Espèces' | 'Chèque' | 'Virement' | 'Orange Money' | 'Moov Money' | 'Wave',
     date_paiement: new Date().toISOString().split('T')[0],
     statut: 'Partiel' as 'Complet' | 'Partiel' | 'En retard' | 'En attente',
     remarque: ''
@@ -86,7 +88,7 @@ export const PaiementsView: React.FC = () => {
     const matchedFiliere = filieres.find(f => f.code === item.filiere_code) || filieres[0];
     setFormData({
       etudiant_id: item.etudiant_id,
-      type_frais: item.type_frais,
+      type_frais: item.type_frais as any,
       filiere_id: item.filiere_id || matchedFiliere?.id || 1,
       filiere_code: item.filiere_code || matchedFiliere?.code || 'IGL',
       annee_academique_id: item.annee_academique_id || activeAnnee?.id || 1,
@@ -99,15 +101,12 @@ export const PaiementsView: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const [errorBanner, setErrorBanner] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorBanner(null);
 
     if (!formData.etudiant_id) {
-      alert("Veuillez sélectionner un étudiant.");
+      setErrorBanner("Veuillez sélectionner un étudiant.");
       return;
     }
 
@@ -157,7 +156,7 @@ export const PaiementsView: React.FC = () => {
         montant_paye: montantPaye,
         reste_a_payer: resteAPayer,
         mode_paiement: formData.mode_paiement,
-        reference_recu: data.reference_recu || randomRef,
+        reference_recu: data?.reference_recu || randomRef,
         date_paiement: formData.date_paiement,
         statut: calculatedStatut,
         remarque: formData.remarque

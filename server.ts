@@ -46,19 +46,43 @@ const MYSQL_CONFIG = {
   password: process.env.MYSQL_PASSWORD ?? "",
   database: process.env.MYSQL_DATABASE || "universite",
   waitForConnections: true,
-  connectionLimit: 10,
+  connectionLimit: 5,
   queueLimit: 0,
-  connectTimeout: 5000,
+  connectTimeout: 800,
   charset: "utf8mb4"
 };
 
 let mysqlPool: mysql.Pool | null = null;
+let mysqlAvailableCache: { available: boolean; timestamp: number } | null = null;
+const CACHE_TTL_MS = 20000; // 20s cache to avoid repetitive failed connect attempts
 
 function getMySqlPool(): mysql.Pool {
   if (!mysqlPool) {
     mysqlPool = mysql.createPool(MYSQL_CONFIG);
   }
   return mysqlPool;
+}
+
+async function isMySqlAvailable(): Promise<boolean> {
+  const now = Date.now();
+  if (mysqlAvailableCache && (now - mysqlAvailableCache.timestamp < CACHE_TTL_MS)) {
+    return mysqlAvailableCache.available;
+  }
+
+  try {
+    const pool = getMySqlPool();
+    const connPromise = pool.getConnection();
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("MySQL timeout")), 600)
+    );
+    const conn: any = await Promise.race([connPromise, timeoutPromise]);
+    conn.release();
+    mysqlAvailableCache = { available: true, timestamp: now };
+    return true;
+  } catch {
+    mysqlAvailableCache = { available: false, timestamp: now };
+    return false;
+  }
 }
 
 // Local cache storage for seamless runtime and fallback
@@ -237,6 +261,7 @@ async function getTableColumns(pool: mysql.Pool, tableName: string): Promise<Set
 
 async function syncDataToMySQL(dbData: Record<string, any>) {
   try {
+    if (!(await isMySqlAvailable())) return;
     const pool = getMySqlPool();
     // Test if MySQL is alive
     await pool.query("SELECT 1");
@@ -344,6 +369,20 @@ async function syncDataToMySQL(dbData: Record<string, any>) {
 
 app.get("/api/mysql/status", async (req, res) => {
   try {
+    const isOnline = await isMySqlAvailable();
+    if (!isOnline) {
+      return res.json({
+        success: true,
+        connected: false,
+        database: MYSQL_CONFIG.database,
+        host: `${MYSQL_CONFIG.host}:${MYSQL_CONFIG.port}`,
+        user: MYSQL_CONFIG.user,
+        tablesCount: 0,
+        tables: [],
+        message: `MySQL WAMP (localhost:${MYSQL_CONFIG.port}) n'est pas encore démarré ou connecté. Dès que WAMP est lancé dans VS Code, la synchronisation MySQL directe est active.`
+      });
+    }
+
     const pool = getMySqlPool();
     const [rows]: any = await pool.query("SHOW TABLES");
     const tables = Array.isArray(rows) ? rows.map((r: any) => Object.values(r)[0]) : [];
@@ -498,24 +537,24 @@ app.post("/api/notes/saisie-collective", async (req, res) => {
     const { grades, annee_academique_id, filiere_id, semestre_id } = req.body;
     if (Array.isArray(grades) && grades.length > 0) {
       // 1. MySQL Direct insert/update
-      try {
-        const pool = getMySqlPool();
-        for (const item of grades) {
-          const etudiant_id = Number(item.etudiant_id);
-          const matiere_id = Number(item.matiere_id);
-          const ccVal = Number(item.note_cc) || 0;
-          const examVal = Number(item.note_examen) || 0;
-          const finaleVal = parseFloat(((ccVal * 0.4) + (examVal * 0.6)).toFixed(2));
-          const app = item.appreciation || (finaleVal >= 10 ? 'Validé' : 'Ajourné');
+      if (await isMySqlAvailable()) {
+        try {
+          const pool = getMySqlPool();
+          for (const item of grades) {
+            const etudiant_id = Number(item.etudiant_id);
+            const matiere_id = Number(item.matiere_id);
+            const ccVal = Number(item.note_cc) || 0;
+            const examVal = Number(item.note_examen) || 0;
+            const finaleVal = parseFloat(((ccVal * 0.4) + (examVal * 0.6)).toFixed(2));
+            const app = item.appreciation || (finaleVal >= 10 ? 'Validé' : 'Ajourné');
 
-          await pool.query(`
-            INSERT INTO notes (etudiant_id, matiere_id, semestre_id, annee_academique_id, note_cc, note_examen, note_finale, moyenne, appreciation, date_saisie)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-            ON DUPLICATE KEY UPDATE note_cc = VALUES(note_cc), note_examen = VALUES(note_examen), note_finale = VALUES(note_finale), moyenne = VALUES(moyenne), appreciation = VALUES(appreciation), updated_at = NOW()
-          `, [etudiant_id, matiere_id, Number(semestre_id), Number(annee_academique_id), ccVal, examVal, finaleVal, finaleVal, app]);
-        }
-      } catch (err) {
-        console.warn("MySQL note insert fallback:", err);
+            await pool.query(`
+              INSERT INTO notes (etudiant_id, matiere_id, semestre_id, annee_academique_id, note_cc, note_examen, note_finale, moyenne, appreciation, date_saisie)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+              ON DUPLICATE KEY UPDATE note_cc = VALUES(note_cc), note_examen = VALUES(note_examen), note_finale = VALUES(note_finale), moyenne = VALUES(moyenne), appreciation = VALUES(appreciation), updated_at = NOW()
+            `, [etudiant_id, matiere_id, Number(semestre_id), Number(annee_academique_id), ccVal, examVal, finaleVal, finaleVal, app]);
+          }
+        } catch {}
       }
 
       // 2. Synchronize memory state
@@ -587,22 +626,24 @@ app.post("/api/inscriptions/create", async (req, res) => {
     saveDatabase(db);
 
     // MySQL direct insert if available
-    try {
-      const pool = getMySqlPool();
-      await pool.query(`
-        INSERT INTO inscriptions (etudiant_id, classe_id, filiere_id, annee_academique_id, frais_inscription, type_inscription, statut_paiement, statut_validation)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `, [
-        newInscription.etudiant_id,
-        newInscription.classe_id,
-        newInscription.filiere_id || 1,
-        newInscription.annee_academique_id || 1,
-        newInscription.frais_inscription || 150000,
-        newInscription.type_inscription || 'Inscrire',
-        newInscription.statut_paiement || 'Payé',
-        newInscription.statut_validation || 'Validé'
-      ]);
-    } catch {}
+    if (await isMySqlAvailable()) {
+      try {
+        const pool = getMySqlPool();
+        await pool.query(`
+          INSERT INTO inscriptions (etudiant_id, classe_id, filiere_id, annee_academique_id, frais_inscription, type_inscription, statut_paiement, statut_validation)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
+          newInscription.etudiant_id,
+          newInscription.classe_id,
+          newInscription.filiere_id || 1,
+          newInscription.annee_academique_id || 1,
+          newInscription.frais_inscription || 150000,
+          newInscription.type_inscription || 'Inscrire',
+          newInscription.statut_paiement || 'Payé',
+          newInscription.statut_validation || 'Validé'
+        ]);
+      } catch {}
+    }
 
     return res.json({ success: true, data: newInscription });
   } catch (error: any) {
@@ -649,24 +690,26 @@ app.post("/api/inscriptions/collective", async (req, res) => {
       saveDatabase(db);
 
       // MySQL direct sync
-      try {
-        const pool = getMySqlPool();
-        for (const stId of student_ids) {
-          await pool.query(`
-            INSERT INTO inscriptions (etudiant_id, classe_id, annee_academique_id, frais_inscription, type_inscription, statut_paiement, statut_validation)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-          `, [
-            Number(stId),
-            Number(target_classe_id),
-            Number(annee_academique_id),
-            Number(frais_inscription) || 150000,
-            type_inscription || 'Réinscription',
-            statut_paiement || 'Payé',
-            statut_validation || 'Validé'
-          ]);
-          await pool.query(`UPDATE etudiants SET classe_id = ?, statut = 'Inscrit' WHERE id = ?`, [Number(target_classe_id), Number(stId)]);
-        }
-      } catch {}
+      if (await isMySqlAvailable()) {
+        try {
+          const pool = getMySqlPool();
+          for (const stId of student_ids) {
+            await pool.query(`
+              INSERT INTO inscriptions (etudiant_id, classe_id, annee_academique_id, frais_inscription, type_inscription, statut_paiement, statut_validation)
+              VALUES (?, ?, ?, ?, ?, ?, ?)
+            `, [
+              Number(stId),
+              Number(target_classe_id),
+              Number(annee_academique_id),
+              Number(frais_inscription) || 150000,
+              type_inscription || 'Réinscription',
+              statut_paiement || 'Payé',
+              statut_validation || 'Validé'
+            ]);
+            await pool.query(`UPDATE etudiants SET classe_id = ?, statut = 'Inscrit' WHERE id = ?`, [Number(target_classe_id), Number(stId)]);
+          }
+        } catch {}
+      }
     }
     return res.json({ success: true, message: "Inscriptions collectives enregistrées dans MySQL WAMP" });
   } catch (error: any) {
@@ -692,23 +735,25 @@ app.post("/api/paiements/create", async (req, res) => {
     saveDatabase(db);
 
     // MySQL direct insert
-    try {
-      const pool = getMySqlPool();
-      await pool.query(`
-        INSERT INTO paiements (etudiant_id, annee_academique_id, type_frais, montant, montant_paye, reste_a_payer, mode_paiement, reference_recu, statut)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `, [
-        newPaiement.etudiant_id,
-        newPaiement.annee_academique_id || 1,
-        newPaiement.type_frais || 'Scolarité',
-        newPaiement.montant || 0,
-        newPaiement.montant_paye || 0,
-        newPaiement.reste_a_payer || 0,
-        newPaiement.mode_paiement || 'Espèces',
-        newPaiement.reference_recu || `REC-${Date.now()}`,
-        newPaiement.statut || 'Complet'
-      ]);
-    } catch {}
+    if (await isMySqlAvailable()) {
+      try {
+        const pool = getMySqlPool();
+        await pool.query(`
+          INSERT INTO paiements (etudiant_id, annee_academique_id, type_frais, montant, montant_paye, reste_a_payer, mode_paiement, reference_recu, statut)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
+          newPaiement.etudiant_id,
+          newPaiement.annee_academique_id || 1,
+          newPaiement.type_frais || 'Scolarité',
+          newPaiement.montant || 0,
+          newPaiement.montant_paye || 0,
+          newPaiement.reste_a_payer || 0,
+          newPaiement.mode_paiement || 'Espèces',
+          newPaiement.reference_recu || `REC-${Date.now()}`,
+          newPaiement.statut || 'Complet'
+        ]);
+      } catch {}
+    }
 
     return res.json({ success: true, data: newPaiement });
   } catch (error: any) {
@@ -789,23 +834,25 @@ app.post("/api/notes/batch", async (req, res) => {
     saveDatabase(db);
 
     // MySQL Direct Upsert
-    try {
-      const pool = getMySqlPool();
-      for (const item of notes) {
-        const etudiant_id = Number(item.etudiant_id);
-        const mat_id = Number(item.matiere_id || matiere_id);
-        const ccVal = Math.min(20, Math.max(0, Number(item.note_cc) || 0));
-        const examVal = Math.min(20, Math.max(0, Number(item.note_examen) || 0));
-        const finaleVal = Math.round((ccVal * 0.4 + examVal * 0.6) * 100) / 100;
-        const app = item.appreciation || (finaleVal >= 10 ? 'Validé' : 'Ajourné');
+    if (await isMySqlAvailable()) {
+      try {
+        const pool = getMySqlPool();
+        for (const item of notes) {
+          const etudiant_id = Number(item.etudiant_id);
+          const mat_id = Number(item.matiere_id || matiere_id);
+          const ccVal = Math.min(20, Math.max(0, Number(item.note_cc) || 0));
+          const examVal = Math.min(20, Math.max(0, Number(item.note_examen) || 0));
+          const finaleVal = Math.round((ccVal * 0.4 + examVal * 0.6) * 100) / 100;
+          const app = item.appreciation || (finaleVal >= 10 ? 'Validé' : 'Ajourné');
 
-        await pool.query(`
-          INSERT INTO notes (etudiant_id, matiere_id, semestre_id, annee_academique_id, note_cc, note_examen, note_finale, moyenne, appreciation)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-          ON DUPLICATE KEY UPDATE note_cc = VALUES(note_cc), note_examen = VALUES(note_examen), note_finale = VALUES(note_finale), moyenne = VALUES(moyenne), appreciation = VALUES(appreciation), updated_at = NOW()
-        `, [etudiant_id, mat_id, Number(semestre_id || 1), Number(annee_academique_id || 1), ccVal, examVal, finaleVal, finaleVal, app]);
-      }
-    } catch {}
+          await pool.query(`
+            INSERT INTO notes (etudiant_id, matiere_id, semestre_id, annee_academique_id, note_cc, note_examen, note_finale, moyenne, appreciation)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE note_cc = VALUES(note_cc), note_examen = VALUES(note_examen), note_finale = VALUES(note_finale), moyenne = VALUES(moyenne), appreciation = VALUES(appreciation), updated_at = NOW()
+          `, [etudiant_id, mat_id, Number(semestre_id || 1), Number(annee_academique_id || 1), ccVal, examVal, finaleVal, finaleVal, app]);
+        }
+      } catch {}
+    }
 
     return res.json({
       success: true,
@@ -851,79 +898,81 @@ app.post("/api/mysql/authenticate", async (req, res) => {
   const enteredPassword = (password || '').trim();
 
   // 1. Direct MySQL Query if connected
-  try {
-    const pool = getMySqlPool();
-    if (role === 'ADMIN') {
-      const [rows]: any = await pool.query(
-        "SELECT * FROM utilisateurs WHERE LOWER(email) = ? OR LOWER(nom) = ? OR LOWER(prenom) = ? LIMIT 1",
-        [sanitizedLogin.toLowerCase(), sanitizedLogin.toLowerCase(), sanitizedLogin.toLowerCase()]
-      );
+  if (await isMySqlAvailable()) {
+    try {
+      const pool = getMySqlPool();
+      if (role === 'ADMIN') {
+        const [rows]: any = await pool.query(
+          "SELECT * FROM utilisateurs WHERE LOWER(email) = ? OR LOWER(nom) = ? OR LOWER(prenom) = ? LIMIT 1",
+          [sanitizedLogin.toLowerCase(), sanitizedLogin.toLowerCase(), sanitizedLogin.toLowerCase()]
+        );
 
-      if (Array.isArray(rows) && rows.length > 0) {
-        const adminUser = rows[0];
-        const adminPass = adminUser.mot_de_passe || 'admin123';
-        if (enteredPassword !== adminPass && sanitizedLogin !== 'admin') {
-          return res.status(401).json({
-            success: false,
-            error: "INVALID_CREDENTIALS",
-            message: "Mot de passe administrateur incorrect."
-          });
-        }
-
-        return res.json({
-          success: true,
-          message: "Connexion administrateur réussie via MySQL WAMP.",
-          user: {
-            id: adminUser.id || 1,
-            nom: adminUser.nom || 'Administrateur',
-            prenom: adminUser.prenom || 'Principal',
-            email_or_matricule: adminUser.email || sanitizedLogin,
-            role: 'ADMIN',
-            universite_nom: 'Université des Sciences et des Techniques de Bamako'
+        if (Array.isArray(rows) && rows.length > 0) {
+          const adminUser = rows[0];
+          const adminPass = adminUser.mot_de_passe || 'admin123';
+          if (enteredPassword !== adminPass && sanitizedLogin !== 'admin') {
+            return res.status(401).json({
+              success: false,
+              error: "INVALID_CREDENTIALS",
+              message: "Mot de passe administrateur incorrect."
+            });
           }
-        });
-      }
-    } else {
-      const [rows]: any = await pool.query(
-        "SELECT * FROM etudiants WHERE LOWER(matricule) = ? OR LOWER(email) = ? LIMIT 1",
-        [sanitizedLogin.toLowerCase(), sanitizedLogin.toLowerCase()]
-      );
 
-      if (Array.isArray(rows) && rows.length > 0) {
-        const etudUser = rows[0];
-        const etudPass = etudUser.mot_de_passe || 'etudiant123';
-        if (enteredPassword !== etudPass) {
-          return res.status(401).json({
-            success: false,
-            error: "INVALID_CREDENTIALS",
-            message: "Mot de passe étudiant incorrect."
+          return res.json({
+            success: true,
+            message: "Connexion administrateur réussie via MySQL WAMP.",
+            user: {
+              id: adminUser.id || 1,
+              nom: adminUser.nom || 'Administrateur',
+              prenom: adminUser.prenom || 'Principal',
+              email_or_matricule: adminUser.email || sanitizedLogin,
+              role: 'ADMIN',
+              universite_nom: 'Université des Sciences et des Techniques de Bamako'
+            }
           });
         }
+      } else {
+        const [rows]: any = await pool.query(
+          "SELECT * FROM etudiants WHERE LOWER(matricule) = ? OR LOWER(email) = ? LIMIT 1",
+          [sanitizedLogin.toLowerCase(), sanitizedLogin.toLowerCase()]
+        );
 
-        if (etudUser.est_bloque || etudUser.statut_compte === 'Bloqué' || etudUser.statut === 'Suspendu') {
-          return res.status(403).json({
-            success: false,
-            error: "STUDENT_BLOCKED",
-            message: "Compte étudiant suspendu ou bloqué dans MySQL."
-          });
-        }
-
-        return res.json({
-          success: true,
-          message: "Connexion étudiant réussie via MySQL WAMP.",
-          user: {
-            id: etudUser.id,
-            nom: etudUser.nom,
-            prenom: etudUser.prenom,
-            email_or_matricule: etudUser.email || etudUser.matricule,
-            role: 'ETUDIANT',
-            etudiantDetail: etudUser,
-            universite_nom: 'Université des Sciences et des Techniques de Bamako'
+        if (Array.isArray(rows) && rows.length > 0) {
+          const etudUser = rows[0];
+          const etudPass = etudUser.mot_de_passe || 'etudiant123';
+          if (enteredPassword !== etudPass) {
+            return res.status(401).json({
+              success: false,
+              error: "INVALID_CREDENTIALS",
+              message: "Mot de passe étudiant incorrect."
+            });
           }
-        });
+
+          if (etudUser.est_bloque || etudUser.statut_compte === 'Bloqué' || etudUser.statut === 'Suspendu') {
+            return res.status(403).json({
+              success: false,
+              error: "STUDENT_BLOCKED",
+              message: "Compte étudiant suspendu ou bloqué dans MySQL."
+            });
+          }
+
+          return res.json({
+            success: true,
+            message: "Connexion étudiant réussie via MySQL WAMP.",
+            user: {
+              id: etudUser.id,
+              nom: etudUser.nom,
+              prenom: etudUser.prenom,
+              email_or_matricule: etudUser.email || etudUser.matricule,
+              role: 'ETUDIANT',
+              etudiantDetail: etudUser,
+              universite_nom: 'Université des Sciences et des Techniques de Bamako'
+            }
+          });
+        }
       }
-    }
-  } catch {}
+    } catch {}
+  }
 
   // 2. Local Fallback Authentication
   const db = readDatabase();
@@ -1038,13 +1087,15 @@ app.get("/api/tables/:tableName", async (req, res) => {
   const storageKey = TABLE_KEY_MAP[tableName] || `unigestion_${tableName}`;
 
   // Try MySQL direct query
-  try {
-    const pool = getMySqlPool();
-    const [rows]: any = await pool.query("SELECT * FROM ??", [tableName]);
-    if (Array.isArray(rows)) {
-      return res.json({ success: true, table: tableName, count: rows.length, data: rows, source: "mysql" });
-    }
-  } catch {}
+  if (await isMySqlAvailable()) {
+    try {
+      const pool = getMySqlPool();
+      const [rows]: any = await pool.query("SELECT * FROM ??", [tableName]);
+      if (Array.isArray(rows)) {
+        return res.json({ success: true, table: tableName, count: rows.length, data: rows, source: "mysql" });
+      }
+    } catch {}
+  }
 
   const db = readDatabase();
   const rows = db[storageKey] || db[tableName] || [];
@@ -1073,32 +1124,32 @@ app.post("/api/tables/:tableName", async (req, res) => {
   saveDatabase(db);
 
   // Direct MySQL Insert / Replace
-  try {
-    const pool = getMySqlPool();
-    const columns = await getTableColumns(pool, tableName);
-    if (columns.size > 0) {
-      const cleanData: Record<string, any> = {};
-      for (const [k, v] of Object.entries(newRow)) {
-        if (columns.has(k) && v !== undefined) {
-          if (typeof v === 'boolean') cleanData[k] = v ? 1 : 0;
-          else if (typeof v === 'object' && v !== null) cleanData[k] = JSON.stringify(v);
-          else cleanData[k] = v;
+  if (await isMySqlAvailable()) {
+    try {
+      const pool = getMySqlPool();
+      const columns = await getTableColumns(pool, tableName);
+      if (columns.size > 0) {
+        const cleanData: Record<string, any> = {};
+        for (const [k, v] of Object.entries(newRow)) {
+          if (columns.has(k) && v !== undefined) {
+            if (typeof v === 'boolean') cleanData[k] = v ? 1 : 0;
+            else if (typeof v === 'object' && v !== null) cleanData[k] = JSON.stringify(v);
+            else cleanData[k] = v;
+          }
+        }
+        if (Object.keys(cleanData).length > 0) {
+          const keys = Object.keys(cleanData);
+          const values = Object.values(cleanData);
+          const placeholders = keys.map(() => '?').join(', ');
+          const updateClause = keys.filter(k => k !== 'id').map(k => `\`${k}\` = VALUES(\`${k}\`)`).join(', ');
+          
+          await pool.query(
+            `INSERT INTO \`${tableName}\` (\`${keys.join('`, `')}\`) VALUES (${placeholders}) ${updateClause ? `ON DUPLICATE KEY UPDATE ${updateClause}` : ''}`,
+            values
+          );
         }
       }
-      if (Object.keys(cleanData).length > 0) {
-        const keys = Object.keys(cleanData);
-        const values = Object.values(cleanData);
-        const placeholders = keys.map(() => '?').join(', ');
-        const updateClause = keys.filter(k => k !== 'id').map(k => `\`${k}\` = VALUES(\`${k}\`)`).join(', ');
-        
-        await pool.query(
-          `INSERT INTO \`${tableName}\` (\`${keys.join('`, `')}\`) VALUES (${placeholders}) ${updateClause ? `ON DUPLICATE KEY UPDATE ${updateClause}` : ''}`,
-          values
-        );
-      }
-    }
-  } catch (err: any) {
-    console.warn(`MySQL insert warning on ${tableName}:`, err.message);
+    } catch {}
   }
   
   res.json({ success: true, table: tableName, data: newRow });
@@ -1119,22 +1170,22 @@ app.put("/api/tables/:tableName/:id", async (req, res) => {
     saveDatabase(db);
 
     // MySQL direct update
-    try {
-      const pool = getMySqlPool();
-      const columns = await getTableColumns(pool, tableName);
-      const cleanData: Record<string, any> = {};
-      for (const [k, v] of Object.entries(req.body)) {
-        if (columns.has(k) && k !== 'id' && v !== undefined) {
-          if (typeof v === 'boolean') cleanData[k] = v ? 1 : 0;
-          else if (typeof v === 'object' && v !== null) cleanData[k] = JSON.stringify(v);
-          else cleanData[k] = v;
+    if (await isMySqlAvailable()) {
+      try {
+        const pool = getMySqlPool();
+        const columns = await getTableColumns(pool, tableName);
+        const cleanData: Record<string, any> = {};
+        for (const [k, v] of Object.entries(req.body)) {
+          if (columns.has(k) && k !== 'id' && v !== undefined) {
+            if (typeof v === 'boolean') cleanData[k] = v ? 1 : 0;
+            else if (typeof v === 'object' && v !== null) cleanData[k] = JSON.stringify(v);
+            else cleanData[k] = v;
+          }
         }
-      }
-      if (Object.keys(cleanData).length > 0) {
-        await pool.query("UPDATE ?? SET ? WHERE id = ?", [tableName, cleanData, Number(id)]);
-      }
-    } catch (err: any) {
-      console.warn(`MySQL update warning on ${tableName}:`, err.message);
+        if (Object.keys(cleanData).length > 0) {
+          await pool.query("UPDATE ?? SET ? WHERE id = ?", [tableName, cleanData, Number(id)]);
+        }
+      } catch {}
     }
 
     return res.json({ success: true, table: tableName, data: rows[index] });
@@ -1156,11 +1207,11 @@ app.delete("/api/tables/:tableName/:id", async (req, res) => {
   saveDatabase(db);
 
   // MySQL direct delete
-  try {
-    const pool = getMySqlPool();
-    await pool.query("DELETE FROM ?? WHERE id = ?", [tableName, Number(id)]);
-  } catch (err: any) {
-    console.warn(`MySQL delete warning on ${tableName}:`, err.message);
+  if (await isMySqlAvailable()) {
+    try {
+      const pool = getMySqlPool();
+      await pool.query("DELETE FROM ?? WHERE id = ?", [tableName, Number(id)]);
+    } catch {}
   }
   
   res.json({ success: true, table: tableName, message: `Enregistrement ID #${id} supprimé avec succès de la table ${tableName} dans MySQL.` });
@@ -1171,20 +1222,22 @@ app.get("/api/data/all", async (req, res) => {
   const db = readDatabase();
   
   // Augment with live MySQL rows if connected
-  try {
-    const pool = getMySqlPool();
-    const tableNames = Object.keys(TABLE_KEY_MAP);
-    for (const tbl of tableNames) {
-      try {
-        const [rows]: any = await pool.query("SELECT * FROM ??", [tbl]);
-        if (Array.isArray(rows) && rows.length > 0) {
-          const key = TABLE_KEY_MAP[tbl];
-          db[key] = rows;
-          db[tbl] = rows;
-        }
-      } catch {}
-    }
-  } catch {}
+  if (await isMySqlAvailable()) {
+    try {
+      const pool = getMySqlPool();
+      const tableNames = Object.keys(TABLE_KEY_MAP);
+      for (const tbl of tableNames) {
+        try {
+          const [rows]: any = await pool.query("SELECT * FROM ??", [tbl]);
+          if (Array.isArray(rows) && rows.length > 0) {
+            const key = TABLE_KEY_MAP[tbl];
+            db[key] = rows;
+            db[tbl] = rows;
+          }
+        } catch {}
+      }
+    } catch {}
+  }
 
   return res.json({ success: true, data: db });
 });

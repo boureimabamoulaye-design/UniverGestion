@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { DB } from '../lib/storage';
 import { HistoriqueAcces } from '../types/database';
+import { ConfirmModal } from '../components/ConfirmModal';
 import {
   History,
   Search,
@@ -20,6 +21,7 @@ export const HistoriqueView: React.FC = () => {
   const [search, setSearch] = useState('');
   const [selectedType, setSelectedType] = useState<string>('ALL');
   const [currentPage, setCurrentPage] = useState(1);
+  const [isConfirmClearOpen, setIsConfirmClearOpen] = useState(false);
   const itemsPerPage = 15;
 
   const refreshLogs = () => {
@@ -27,10 +29,13 @@ export const HistoriqueView: React.FC = () => {
   };
 
   const handleClear = () => {
-    if (window.confirm("Êtes-vous sûr de vouloir vider l'historique de navigation et d'accès ?")) {
-      DB.clearHistorique();
-      setLogs([]);
-    }
+    setIsConfirmClearOpen(true);
+  };
+
+  const executeClear = () => {
+    DB.clearHistorique();
+    setLogs([]);
+    setIsConfirmClearOpen(false);
   };
 
   const filteredLogs = logs.filter(log => {
@@ -260,6 +265,16 @@ export const HistoriqueView: React.FC = () => {
           </div>
         )}
       </div>
+      {/* Modal Confirmation Vider Historique */}
+      <ConfirmModal
+        isOpen={isConfirmClearOpen}
+        onClose={() => setIsConfirmClearOpen(false)}
+        onConfirm={executeClear}
+        title="Vider l'historique d'accès"
+        message="Êtes-vous sûr de vouloir effacer l'intégralité du journal d'activité et d'accès ? Cette action est irréversible."
+        confirmLabel="Vider l'historique"
+        variant="danger"
+      />
     </div>
   );
 };

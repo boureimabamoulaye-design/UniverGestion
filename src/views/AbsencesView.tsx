@@ -62,7 +62,8 @@ export const AbsencesView: React.FC = () => {
 
   // Check students with > 3 non-justified absences
   const unjustifiedByStudent = list.reduce((acc, a) => {
-    if (!a.justifie) {
+    const isJustified = a.justifiee || (a as any).justifie;
+    if (!isJustified) {
       acc[a.etudiant_id] = (acc[a.etudiant_id] || 0) + 1;
     }
     return acc;
@@ -133,12 +134,12 @@ export const AbsencesView: React.FC = () => {
                       <button type="button"
                         onClick={() => handleToggleJustify(item)}
                         className={`px-3 py-1 rounded-full text-[10px] font-bold transition-colors ${
-                          item.justifie
+                          item.justifiee
                             ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
                             : 'bg-red-50 text-red-600 hover:bg-red-100'
                         }`}
                       >
-                        {item.justifie ? 'Justifié' : 'Non Justifié (Valider)'}
+                        {item.justifiee ? 'Justifié' : 'Non Justifié (Valider)'}
                       </button>
                       <button type="button"
                         onClick={() => handleDelete(item.id)}

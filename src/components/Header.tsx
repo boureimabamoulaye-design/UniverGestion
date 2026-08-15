@@ -63,7 +63,7 @@ export const Header: React.FC<HeaderProps> = ({
           </h1>
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-0.5">
             <span className="px-2.5 py-0.5 bg-gray-100 text-[#6B7280] rounded-full text-[10px] sm:text-xs font-semibold whitespace-nowrap">
-              {activeAnnee.libelle || 'Année Académique 2024-2025'}
+              {activeAnnee?.libelle || 'Année Académique 2025-2026'}
             </span>
             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-[#0066FF] rounded-full text-[10px] sm:text-xs font-medium whitespace-nowrap">
               <span className="w-1.5 h-1.5 rounded-full bg-[#0066FF]"></span>

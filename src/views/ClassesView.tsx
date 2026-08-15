@@ -62,7 +62,7 @@ export const ClassesView: React.FC = () => {
       ...formData,
       filiere_id: Number(formData.filiere_id),
       niveau_id: 1,
-      annee_academique_id: activeAnnee.id,
+      annee_academique_id: activeAnnee?.id || 1,
       capacite: Number(formData.capacite)
     });
 
@@ -100,7 +100,7 @@ export const ClassesView: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-[#1A1A1A]">Gestion des Classes & Promotions</h2>
-          <p className="text-xs text-gray-500 mt-1">Groupes d'étudiants rattachés aux filières ({activeAnnee.code}).</p>
+          <p className="text-xs text-gray-500 mt-1">Groupes d'étudiants rattachés aux filières ({activeAnnee?.code || '2025-2026'}).</p>
         </div>
         <button
           type="button"

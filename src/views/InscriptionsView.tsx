@@ -36,7 +36,7 @@ export const InscriptionsView: React.FC = () => {
   const [indivForm, setIndivForm] = useState({
     etudiant_id: null as number | null,
     classe_id: classes[0]?.id || 1,
-    annee_academique_id: activeAnnee.id,
+    annee_academique_id: activeAnnee?.id || 1,
     type_inscription: 'Inscrire' as 'Inscrire' | 'Réinscrire' | 'Passage',
     statut_paiement: 'Payé' as 'Non payé' | 'Partiel' | 'Payé',
     statut_validation: 'Validé' as 'En attente' | 'Validé' | 'Rejeté',
@@ -47,7 +47,7 @@ export const InscriptionsView: React.FC = () => {
     setIndivForm({
       etudiant_id: null,
       classe_id: classes[0]?.id || 1,
-      annee_academique_id: activeAnnee.id,
+      annee_academique_id: activeAnnee?.id || 1,
       type_inscription: 'Inscrire',
       statut_paiement: 'Payé',
       statut_validation: 'Validé',
@@ -60,7 +60,7 @@ export const InscriptionsView: React.FC = () => {
   const [collectiveForm, setCollectiveForm] = useState({
     source_classe_id: classes[0]?.id || 1,
     target_classe_id: classes[1]?.id || classes[0]?.id || 1,
-    annee_academique_id: activeAnnee.id,
+    annee_academique_id: activeAnnee?.id || 1,
     type_inscription: 'Réinscrire' as 'Inscrire' | 'Réinscrire' | 'Passage',
     statut_paiement: 'Payé' as 'Non payé' | 'Partiel' | 'Payé',
     statut_validation: 'Validé' as 'En attente' | 'Validé' | 'Rejeté',
@@ -106,7 +106,7 @@ export const InscriptionsView: React.FC = () => {
     setSuccessBanner(null);
 
     if (!indivForm.etudiant_id) {
-      alert("Veuillez sélectionner un étudiant.");
+      setErrorBanner("Veuillez sélectionner un étudiant.");
       return;
     }
     const etudiant = etudiants.find(e => e.id === Number(indivForm.etudiant_id));
@@ -178,12 +178,12 @@ export const InscriptionsView: React.FC = () => {
     setSuccessBanner(null);
 
     if (Number(collectiveForm.source_classe_id) === Number(collectiveForm.target_classe_id)) {
-      alert("La classe source et la classe de destination ne peuvent pas être identiquement la même.");
+      setErrorBanner("La classe source et la classe de destination ne peuvent pas être identiques.");
       return;
     }
 
     if (selectedStudentIds.length === 0) {
-      alert("Veuillez sélectionner au moins un étudiant pour effectuer le passage collectif.");
+      setErrorBanner("Veuillez sélectionner au moins un étudiant pour effectuer le passage collectif.");
       return;
     }
 
@@ -548,7 +548,7 @@ export const InscriptionsView: React.FC = () => {
             <Users className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
             <div>
               <span className="font-bold block mb-0.5">Procédure de Passage Collectif de Niveau</span>
-              Seuls les étudiants cochés ci-dessous seront réinscrits et transférés de la classe de départ vers la classe de destination pour l'année académique active ({activeAnnee.code}).
+              Seuls les étudiants cochés ci-dessous seront réinscrits et transférés de la classe de départ vers la classe de destination pour l'année académique active ({activeAnnee?.code || '2025-2026'}).
             </div>
           </div>
 

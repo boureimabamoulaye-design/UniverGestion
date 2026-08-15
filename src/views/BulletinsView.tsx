@@ -140,7 +140,7 @@ export const BulletinsView: React.FC = () => {
       etudiant_id: student.id,
       classe_id: student.classe_id,
       semestre_id: Number(selectedSemestreId),
-      annee_academique_id: activeAnnee.id,
+      annee_academique_id: activeAnnee?.id || 1,
       moyenne: moyenneGenerale,
       moyenne_generale: moyenneGenerale,
       total_credits: totalCreditsValides > 0 ? totalCreditsValides : 30,
