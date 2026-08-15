@@ -11,25 +11,26 @@ interface StudentSearchSelectProps {
 }
 
 export const StudentSearchSelect: React.FC<StudentSearchSelectProps> = ({
-  etudiants,
+  etudiants = [],
   selectedStudentId,
   onSelectStudent,
   placeholder = "Saisir le nom, prénom ou matricule pour rechercher...",
   label = "Étudiant"
 }) => {
-  const selectedStudent = etudiants.find(e => Number(e.id) === Number(selectedStudentId));
+  const safeList = Array.isArray(etudiants) ? etudiants : [];
+  const selectedStudent = safeList.find(e => Number(e?.id) === Number(selectedStudentId));
   const [query, setQuery] = useState(
-    selectedStudent ? `${selectedStudent.matricule} - ${selectedStudent.prenom} ${selectedStudent.nom}` : ''
+    selectedStudent ? `${selectedStudent.matricule || ''} - ${selectedStudent.prenom || ''} ${selectedStudent.nom || ''}`.trim() : ''
   );
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const matched = etudiants.find(e => Number(e.id) === Number(selectedStudentId));
+    const matched = safeList.find(e => Number(e?.id) === Number(selectedStudentId));
     if (matched) {
-      setQuery(`${matched.matricule} - ${matched.prenom} ${matched.nom}`);
+      setQuery(`${matched.matricule || ''} - ${matched.prenom || ''} ${matched.nom || ''}`.trim());
     }
-  }, [selectedStudentId, etudiants]);
+  }, [selectedStudentId, safeList]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -41,15 +42,15 @@ export const StudentSearchSelect: React.FC<StudentSearchSelectProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const filteredEtudiants = etudiants.filter(e => {
-    const q = query.toLowerCase().trim();
+  const filteredEtudiants = safeList.filter(e => {
+    if (!e) return false;
+    const q = (query || '').toLowerCase().trim();
     if (!q) return true;
-    return (
-      e.nom.toLowerCase().includes(q) ||
-      e.prenom.toLowerCase().includes(q) ||
-      e.matricule.toLowerCase().includes(q) ||
-      `${e.prenom} ${e.nom}`.toLowerCase().includes(q)
-    );
+    const nom = (e.nom || '').toLowerCase();
+    const prenom = (e.prenom || '').toLowerCase();
+    const matricule = (e.matricule || '').toLowerCase();
+    const fullName = `${prenom} ${nom}`;
+    return nom.includes(q) || prenom.includes(q) || matricule.includes(q) || fullName.includes(q);
   });
 
   return (
@@ -85,13 +86,13 @@ export const StudentSearchSelect: React.FC<StudentSearchSelectProps> = ({
             </div>
           ) : (
             filteredEtudiants.map(e => {
-              const isSelected = e.id === selectedStudentId;
+              const isSelected = Number(e.id) === Number(selectedStudentId);
               return (
                 <div
                   key={e.id}
                   onClick={() => {
                     onSelectStudent(e.id);
-                    setQuery(`${e.matricule} - ${e.prenom} ${e.nom}`);
+                    setQuery(`${e.matricule || ''} - ${e.prenom || ''} ${e.nom || ''}`.trim());
                     setIsOpen(false);
                   }}
                   className={`px-3 py-2.5 hover:bg-slate-100 cursor-pointer flex items-center justify-between text-xs transition-colors ${
@@ -101,8 +102,8 @@ export const StudentSearchSelect: React.FC<StudentSearchSelectProps> = ({
                   <div className="flex items-center gap-2">
                     <UserCheck className="w-3.5 h-3.5 text-slate-500" />
                     <div>
-                      <span className="font-mono font-bold text-slate-900 mr-2">{e.matricule}</span>
-                      <span className="font-semibold">{e.prenom} {e.nom}</span>
+                      <span className="font-mono font-bold text-slate-900 mr-2">{e.matricule || 'N/A'}</span>
+                      <span className="font-semibold">{e.prenom || ''} {e.nom || ''}</span>
                     </div>
                   </div>
                   {isSelected && <Check className="w-3.5 h-3.5 text-emerald-700" />}

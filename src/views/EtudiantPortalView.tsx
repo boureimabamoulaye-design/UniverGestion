@@ -627,9 +627,9 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
             >
               <FileText className="w-4 h-4" />
               <span>Bilan Annuel Global (S1 + S2)</span>
-              {annualAverage !== null && (
+              {annualAverage !== null && !isNaN(Number(annualAverage)) && (
                 <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-700 text-[10px] font-mono">
-                  {annualAverage.toFixed(2)}/20
+                  {Number(annualAverage).toFixed(2)}/20
                 </span>
               )}
             </button>
@@ -645,9 +645,9 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
                 }`}
               >
                 <span>{sc.semestre.libelle}</span>
-                {sc.average !== null && (
+                {sc.average !== null && !isNaN(Number(sc.average)) && (
                   <span className="px-2 py-0.5 rounded-md bg-slate-200/80 text-slate-800 text-[10px] font-mono">
-                    {sc.average.toFixed(2)}/20
+                    {Number(sc.average).toFixed(2)}/20
                   </span>
                 )}
               </button>
@@ -760,21 +760,21 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
                 <div className="flex flex-col justify-between bg-white px-4 py-3.5 rounded-xl border border-blue-200/80 shadow-2xs">
                   <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Moyenne S1</span>
                   <span className="text-lg font-black font-mono text-slate-900">
-                    {semestresCalculations[0]?.average !== null ? semestresCalculations[0].average.toFixed(2) : '--'} <span className="text-xs font-normal text-slate-400">/ 20</span>
+                    {semestresCalculations[0]?.average !== null && !isNaN(Number(semestresCalculations[0]?.average)) ? Number(semestresCalculations[0].average).toFixed(2) : '--'} <span className="text-xs font-normal text-slate-400">/ 20</span>
                   </span>
                 </div>
 
                 <div className="flex flex-col justify-between bg-white px-4 py-3.5 rounded-xl border border-blue-200/80 shadow-2xs">
                   <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Moyenne S2</span>
                   <span className="text-lg font-black font-mono text-slate-900">
-                    {semestresCalculations[1]?.average !== null ? semestresCalculations[1].average.toFixed(2) : '--'} <span className="text-xs font-normal text-slate-400">/ 20</span>
+                    {semestresCalculations[1]?.average !== null && !isNaN(Number(semestresCalculations[1]?.average)) ? Number(semestresCalculations[1].average).toFixed(2) : '--'} <span className="text-xs font-normal text-slate-400">/ 20</span>
                   </span>
                 </div>
 
                 <div className="flex flex-col justify-between bg-blue-600 text-white px-4 py-3.5 rounded-xl border border-blue-700 shadow-xs">
                   <span className="text-[11px] font-extrabold uppercase tracking-wider text-blue-100 block mb-1">Moyenne Annuelle</span>
                   <span className="text-xl font-black font-mono text-white">
-                    {annualAverage !== null ? annualAverage.toFixed(2) : '--'} <span className="text-xs font-semibold text-blue-200">/ 20</span>
+                    {annualAverage !== null && !isNaN(Number(annualAverage)) ? Number(annualAverage).toFixed(2) : '--'} <span className="text-xs font-semibold text-blue-200">/ 20</span>
                   </span>
                 </div>
               </div>

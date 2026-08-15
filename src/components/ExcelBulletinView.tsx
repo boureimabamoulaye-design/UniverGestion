@@ -641,15 +641,19 @@ export const ExcelBulletinView: React.FC<ExcelBulletinViewProps> = ({
                   <React.Fragment key={catIdx}>
                     {/* Subject Rows */}
                     {cat.items.map((item, itemIdx) => {
-                      const noteCCFormatted = item.note_cc !== null ? (Number.isInteger(item.note_cc) ? item.note_cc : item.note_cc.toFixed(1)) : '—';
-                      const noteEXFormatted = item.note_examen !== null ? (Number.isInteger(item.note_examen) ? item.note_examen : item.note_examen.toFixed(1)) : '—';
-                      const moyenneFormatted = item.moyenne_finale !== null ? (Number.isInteger(item.moyenne_finale) ? item.moyenne_finale : item.moyenne_finale.toFixed(1)) : '—';
+                      const ccVal = item.note_cc !== null && item.note_cc !== undefined ? Number(item.note_cc) : null;
+                      const exVal = item.note_examen !== null && item.note_examen !== undefined ? Number(item.note_examen) : null;
+                      const finVal = item.moyenne_finale !== null && item.moyenne_finale !== undefined ? Number(item.moyenne_finale) : null;
+
+                      const noteCCFormatted = ccVal !== null && !isNaN(ccVal) ? (Number.isInteger(ccVal) ? ccVal : ccVal.toFixed(1)) : '—';
+                      const noteEXFormatted = exVal !== null && !isNaN(exVal) ? (Number.isInteger(exVal) ? exVal : exVal.toFixed(1)) : '—';
+                      const moyenneFormatted = finVal !== null && !isNaN(finVal) ? (Number.isInteger(finVal) ? finVal : finVal.toFixed(1)) : '—';
 
                       return (
                         <tr key={itemIdx} className="hover:bg-slate-50 border-b border-slate-300 text-xs sm:text-[12px]">
                           {/* EC / Subject Name */}
                           <td className="p-2 text-left align-middle font-bold text-slate-900 border-r border-slate-300 leading-snug">
-                            <span className="font-extrabold text-slate-950">{item.matiere.code}</span> : {item.matiere.nom}
+                            <span className="font-extrabold text-slate-950">{item.matiere?.code || 'UE'}</span> : {item.matiere?.nom || 'Matière'}
                           </td>
                           {/* CC */}
                           <td className="p-1.5 text-center align-middle font-mono border-r border-slate-300 whitespace-nowrap">
