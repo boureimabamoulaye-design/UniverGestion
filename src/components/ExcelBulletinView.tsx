@@ -27,6 +27,7 @@ interface ExcelBulletinViewProps {
   universite?: Universite;
   anneeAcademique?: AnneeAcademique;
   onPrint?: () => void;
+  hideActionBar?: boolean;
 }
 
 export const ExcelBulletinView: React.FC<ExcelBulletinViewProps> = ({
@@ -39,7 +40,8 @@ export const ExcelBulletinView: React.FC<ExcelBulletinViewProps> = ({
   faculte,
   universite,
   anneeAcademique,
-  onPrint
+  onPrint,
+  hideActionBar = false
 }) => {
   const [isExportingPdf, setIsExportingPdf] = useState(false);
 
@@ -460,45 +462,47 @@ export const ExcelBulletinView: React.FC<ExcelBulletinViewProps> = ({
   return (
     <div className="space-y-4">
       {/* Action Bar Screen Only */}
-      <div className="mb-2 flex flex-col sm:flex-row sm:items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200 print:hidden gap-3">
-        <div className="flex items-center gap-2 text-xs text-slate-700 font-medium">
-          <GraduationCap className="w-4.5 h-4.5 text-blue-600 shrink-0" />
-          <span className="font-bold">Bulletin Officiel de Notes - Système LMD Universitaire</span>
-        </div>
-        <div className="flex items-center gap-2 shrink-0 flex-wrap">
-          <button
-            type="button"
-            onClick={handleExportExcel}
-            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
-            title="Télécharger le fichier Excel (.xlsx)"
-          >
-            <FileSpreadsheet className="w-4 h-4" />
-            <span>Exporter Excel</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleExportPDF}
-            disabled={isExportingPdf}
-            className="px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs disabled:opacity-50 cursor-pointer"
-            title="Télécharger en document PDF"
-          >
-            <Download className="w-4 h-4" />
-            <span>{isExportingPdf ? 'Génération PDF...' : 'Exporter en PDF'}</span>
-          </button>
-
-          {onPrint && (
+      {!hideActionBar && (
+        <div className="mb-2 flex flex-col sm:flex-row sm:items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200 print:hidden gap-3">
+          <div className="flex items-center gap-2 text-xs text-slate-700 font-medium">
+            <GraduationCap className="w-4.5 h-4.5 text-blue-600 shrink-0" />
+            <span className="font-bold">Bulletin Officiel de Notes - Système LMD Universitaire</span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
             <button
               type="button"
-              onClick={onPrint}
-              className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
+              onClick={handleExportExcel}
+              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
+              title="Télécharger le fichier Excel (.xlsx)"
             >
-              <Printer className="w-4 h-4" />
-              <span>Imprimer</span>
+              <FileSpreadsheet className="w-4 h-4" />
+              <span>Exporter Excel</span>
             </button>
-          )}
+
+            <button
+              type="button"
+              onClick={handleExportPDF}
+              disabled={isExportingPdf}
+              className="px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs disabled:opacity-50 cursor-pointer"
+              title="Télécharger en document PDF"
+            >
+              <Download className="w-4 h-4" />
+              <span>{isExportingPdf ? 'Génération PDF...' : 'Exporter en PDF'}</span>
+            </button>
+
+            {onPrint && (
+              <button
+                type="button"
+                onClick={onPrint}
+                className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Imprimer</span>
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Main Official Printable Document Container */}
       <div id="bulletin-document-content" className="bg-white text-slate-900 font-sans p-3.5 sm:p-6 md:p-8 border border-slate-300 rounded-sm shadow-xs max-w-4xl mx-auto print:border-none print:p-0">
