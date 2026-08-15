@@ -1227,10 +1227,19 @@ export class DB {
   static saveBulletin(item: Omit<Bulletin, 'id'> & { id?: number }): Bulletin {
     const list = this.getBulletins();
     let result: Bulletin;
-    if (item.id) {
-      const idx = list.findIndex(b => b.id === item.id);
-      if (idx !== -1) list[idx] = { ...list[idx], ...item };
-      result = list[idx];
+    
+    // Find existing bulletin by id OR by (etudiant_id, semestre_id, annee_academique_id)
+    const existingIdx = item.id 
+      ? list.findIndex(b => Number(b.id) === Number(item.id))
+      : list.findIndex(b => 
+          Number(b.etudiant_id) === Number(item.etudiant_id) && 
+          Number(b.semestre_id) === Number(item.semestre_id) && 
+          Number(b.annee_academique_id) === Number(item.annee_academique_id)
+        );
+
+    if (existingIdx !== -1) {
+      list[existingIdx] = { ...list[existingIdx], ...item, id: list[existingIdx].id };
+      result = list[existingIdx];
     } else {
       const nextId = Math.max(0, ...list.map(b => b.id)) + 1;
       result = { ...item, id: nextId } as Bulletin;

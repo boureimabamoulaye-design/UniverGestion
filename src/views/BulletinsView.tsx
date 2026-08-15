@@ -58,24 +58,24 @@ export const BulletinsView: React.FC = () => {
 
   // Generate or recalculate Bulletin for selected student and semester
   const handleGenerateBulletin = () => {
-    const student = etudiants.find(e => e.id === Number(selectedStudentId));
+    const student = etudiants.find(e => Number(e.id) === Number(selectedStudentId));
     if (!student) return;
 
     // Retrieve student's class and corresponding filiere from database relations
-    const studentClass = classes.find(c => c.id === student.classe_id);
+    const studentClass = classes.find(c => Number(c.id) === Number(student.classe_id));
     const studentFiliereId = (student as any)?.filiere_id || studentClass?.filiere_id || 1;
 
     // Filter subjects strictly belonging to the student's filiere and semester
     const applicableMatieres = matieres.filter(
-      m => m.semestre_id === Number(selectedSemestreId) && (!m.filiere_id || m.filiere_id === studentFiliereId)
+      m => Number(m.semestre_id) === Number(selectedSemestreId) && (!m.filiere_id || Number(m.filiere_id) === Number(studentFiliereId))
     );
-    const applicableMatiereIds = new Set(applicableMatieres.map(m => m.id));
+    const applicableMatiereIds = new Set(applicableMatieres.map(m => Number(m.id)));
 
     // Get student's notes for applicable subjects in this semester
     const studentNotes = notes.filter(
-      n => n.etudiant_id === student.id &&
-           n.semestre_id === Number(selectedSemestreId) &&
-           applicableMatiereIds.has(n.matiere_id)
+      n => Number(n.etudiant_id) === Number(student.id) &&
+           Number(n.semestre_id) === Number(selectedSemestreId) &&
+           applicableMatiereIds.has(Number(n.matiere_id))
     );
 
     let totalPoints = 0;
@@ -83,7 +83,7 @@ export const BulletinsView: React.FC = () => {
     let totalCreditsValides = 0;
 
     studentNotes.forEach(n => {
-      const mat = applicableMatieres.find(m => m.id === n.matiere_id);
+      const mat = applicableMatieres.find(m => Number(m.id) === Number(n.matiere_id));
       const credits = mat?.credits || 3;
 
       totalPoints += n.note_finale * credits;
@@ -111,6 +111,18 @@ export const BulletinsView: React.FC = () => {
       else mention = 'Insuffisant';
     }
 
+    // Dynamic rank calculation among class peers for this semester
+    const classmates = etudiants.filter(e => Number(e.classe_id) === Number(student.classe_id));
+    const allClassBulletins = DB.getBulletins().filter(
+      b => Number(b.semestre_id) === Number(selectedSemestreId) &&
+           classmates.some(c => Number(c.id) === Number(b.etudiant_id))
+    );
+    const allMoyennes = [
+      ...allClassBulletins.filter(b => Number(b.etudiant_id) !== Number(student.id)).map(b => Number(b.moyenne_generale || b.moyenne || 0)),
+      moyenneGenerale
+    ].sort((a, b) => b - a);
+    const calculatedRank = Math.max(1, allMoyennes.indexOf(moyenneGenerale) + 1);
+
     const newBulletin = DB.saveBulletin({
       etudiant_id: student.id,
       classe_id: student.classe_id,
@@ -120,7 +132,7 @@ export const BulletinsView: React.FC = () => {
       moyenne_generale: moyenneGenerale,
       total_credits: totalCreditsValides > 0 ? totalCreditsValides : 30,
       total_credits_valides: totalCreditsValides > 0 ? totalCreditsValides : 30,
-      rang: 1,
+      rang: calculatedRank,
       decision,
       mention,
       date_generation: new Date().toISOString().split('T')[0],
@@ -144,14 +156,14 @@ export const BulletinsView: React.FC = () => {
     });
 
     // Prepare subject notes list for editing
-    const student = etudiants.find(e => e.id === bulletin.etudiant_id);
-    const studentClass = classes.find(c => c.id === student?.classe_id);
+    const student = etudiants.find(e => Number(e.id) === Number(bulletin.etudiant_id));
+    const studentClass = classes.find(c => Number(c.id) === Number(student?.classe_id));
     const studentFiliereId = (student as any)?.filiere_id || studentClass?.filiere_id || 1;
-    const semesterMatieres = matieres.filter(m => m.semestre_id === bulletin.semestre_id && (!m.filiere_id || m.filiere_id === studentFiliereId));
-    const studentNotes = DB.getNotes().filter(n => n.etudiant_id === bulletin.etudiant_id && n.semestre_id === bulletin.semestre_id);
+    const semesterMatieres = matieres.filter(m => Number(m.semestre_id) === Number(bulletin.semestre_id) && (!m.filiere_id || Number(m.filiere_id) === Number(studentFiliereId)));
+    const studentNotes = DB.getNotes().filter(n => Number(n.etudiant_id) === Number(bulletin.etudiant_id) && Number(n.semestre_id) === Number(bulletin.semestre_id));
 
     const editableSubjects = semesterMatieres.map(mat => {
-      const noteObj = studentNotes.find(n => n.matiere_id === mat.id);
+      const noteObj = studentNotes.find(n => Number(n.matiere_id) === Number(mat.id));
       const cc = noteObj ? noteObj.note_cc : 12;
       const exam = noteObj ? noteObj.note_examen : 12;
       const finale = noteObj ? noteObj.note_finale : Math.round((cc * 0.4 + exam * 0.6) * 100) / 100;

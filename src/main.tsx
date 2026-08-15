@@ -3,8 +3,23 @@ import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 
+// Handle benign Vite HMR websocket disconnection errors in sandboxed containers
+if (typeof window !== 'undefined') {
+  window.addEventListener('unhandledrejection', (event) => {
+    if (
+      event.reason &&
+      (String(event.reason).includes('WebSocket') ||
+       String(event.reason?.message).includes('WebSocket') ||
+       String(event.reason?.message).includes('failed to connect to websocket'))
+    ) {
+      event.preventDefault();
+    }
+  });
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
   </StrictMode>,
 );
+

@@ -94,8 +94,12 @@ export const ExcelBulletinView: React.FC<ExcelBulletinViewProps> = ({
   const categoryMap = new Map<string, UECategory>();
 
   semesterMatieres.forEach((mat, idx) => {
-    // Determine note for this student & subject
-    const noteObj = notes.find(n => Number(n.matiere_id) === Number(mat.id) && Number(n.etudiant_id) === Number(safeEtudiant.id));
+    // Determine note for this student & subject (safely checking semester as well)
+    const noteObj = notes.find(
+      n => Number(n.matiere_id) === Number(mat.id) &&
+           Number(n.etudiant_id) === Number(safeEtudiant.id) &&
+           (!n.semestre_id || Number(n.semestre_id) === Number(safeSemestreId))
+    );
     const cc = noteObj ? noteObj.note_cc : null;
     const exam = noteObj ? noteObj.note_examen : null;
     const noteFinale = noteObj ? noteObj.note_finale : (cc !== null && exam !== null ? Math.round((cc * 0.4 + exam * 0.6) * 100) / 100 : null);
@@ -140,6 +144,7 @@ export const ExcelBulletinView: React.FC<ExcelBulletinViewProps> = ({
   let totalCreditsGlobaux = 0;
   let totalCreditsValidesGlobaux = 0;
   let totalCreditsNonValidesGlobaux = 0;
+  let totalCreditsEvalues = 0;
 
   let pointsMajeures = 0;
   let creditsMajeures = 0;
@@ -154,6 +159,7 @@ export const ExcelBulletinView: React.FC<ExcelBulletinViewProps> = ({
       totalCreditsGlobaux += item.credits;
       if (item.moyenne_finale !== null) {
         pointsTotaux += item.moyenne_finale * item.credits;
+        totalCreditsEvalues += item.credits;
       }
 
       if (item.statut === 'Validé') {
@@ -181,7 +187,9 @@ export const ExcelBulletinView: React.FC<ExcelBulletinViewProps> = ({
 
   const moyenneGenerale = dbSavedBulletin?.moyenne_generale !== undefined && dbSavedBulletin?.moyenne_generale !== null
     ? Number(dbSavedBulletin.moyenne_generale).toFixed(2)
-    : (dbSavedBulletin?.moyenne !== undefined && dbSavedBulletin?.moyenne !== null ? Number(dbSavedBulletin.moyenne).toFixed(2) : (totalCreditsGlobaux > 0 ? (pointsTotaux / totalCreditsGlobaux).toFixed(2) : '0.00'));
+    : (dbSavedBulletin?.moyenne !== undefined && dbSavedBulletin?.moyenne !== null 
+        ? Number(dbSavedBulletin.moyenne).toFixed(2) 
+        : (totalCreditsEvalues > 0 ? (pointsTotaux / totalCreditsEvalues).toFixed(2) : (totalCreditsGlobaux > 0 ? (pointsTotaux / totalCreditsGlobaux).toFixed(2) : '0.00')));
 
   const dateEdition = new Date().toLocaleDateString('fr-FR', {
     day: '2-digit',
@@ -352,6 +360,70 @@ export const ExcelBulletinView: React.FC<ExcelBulletinViewProps> = ({
 
   const [isExportingPdf, setIsExportingPdf] = useState(false);
 
+  // Function to export bulletin directly as Excel (.xlsx)
+  const handleExportExcel = () => {
+    try {
+      const data: any[][] = [];
+
+      // Header info
+      data.push(['RÉPUBLIQUE DU MALI']);
+      data.push(['MINISTÈRE DE L\'ENSEIGNEMENT SUPÉRIEUR ET DE LA RECHERCHE SCIENTIFIQUE']);
+      data.push([universite?.nom || 'UNIVERSITÉ DES SCIENCES ET DES TECHNIQUES DE BAMAKO']);
+      data.push([faculte?.nom || studentFaculte?.nom || 'FACULTÉ DES SCIENCES ET TECHNIQUES']);
+      data.push(['BULLETIN DE NOTES - ' + safeSemestreLibelle.toUpperCase()]);
+      data.push(['Année Académique: ' + (anneeAcademique?.libelle || '2025-2026')]);
+      data.push([]);
+      data.push(['INFORMATIONS DE L\'ÉTUDIANT']);
+      data.push(['Nom & Prénom:', `${safeEtudiant.nom.toUpperCase()} ${safeEtudiant.prenom}`, 'Matricule:', safeEtudiant.matricule]);
+      data.push(['Né(e) le / à:', `${safeEtudiant.date_naissance || '12/05/2003'} à ${safeEtudiant.lieu_naissance || 'Bamako'}`, 'Sexe / Nationalité:', `${safeEtudiant.sexe === 'F' ? 'Féminin' : 'Masculin'} / ${safeEtudiant.nationalite || 'Malienne'}`]);
+      data.push(['Filière:', studentFiliere?.nom || 'Informatique', 'Classe:', studentClasse?.nom || 'Licence 1']);
+      data.push([]);
+
+      // Table Header
+      data.push(['CODE UE', 'INTITULÉ DU MODULE / MATIÈRE', 'CC (/20)', 'EXAMEN (/20)', 'MOYENNE FINALE (/20)', 'CRÉDITS ECTS', 'MENTION', 'RÉSULTAT']);
+
+      categoryList.forEach(cat => {
+        cat.items.forEach(item => {
+          data.push([
+            item.matiere.code,
+            item.matiere.nom,
+            item.note_cc !== null ? item.note_cc : '',
+            item.note_examen !== null ? item.note_examen : '',
+            item.moyenne_finale !== null ? item.moyenne_finale : '',
+            item.credits,
+            item.mention,
+            item.statut
+          ]);
+        });
+        
+        let totalCreditsCat = 0;
+        let sumWeightedNotesCat = 0;
+        cat.items.forEach(i => {
+          totalCreditsCat += i.credits;
+          if (i.moyenne_finale !== null) sumWeightedNotesCat += i.moyenne_finale * i.credits;
+        });
+        const avgCatStr = totalCreditsCat > 0 ? (sumWeightedNotesCat / totalCreditsCat).toFixed(2) : '0';
+        data.push([cat.title, '', '', '', avgCatStr, totalCreditsCat, '', 'Validé']);
+      });
+
+      data.push([]);
+      data.push(['BILAN SEMESTRIEL', '', '', '', moyenneGenerale, `${dbSavedBulletin?.total_credits_valides ?? totalCreditsValidesGlobaux} / ${totalCreditsGlobaux || 30}`, mentionGenerale, decisionJury]);
+
+      if (dbSavedBulletin?.remarques_jury) {
+        data.push([]);
+        data.push(['OBSERVATIONS DU JURY:', dbSavedBulletin.remarques_jury]);
+      }
+
+      const ws = XLSX.utils.aoa_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Bulletin');
+      XLSX.writeFile(wb, `Bulletin_${safeEtudiant.matricule}_${safeSemestreLibelle.replace(/\s+/g, '_')}.xlsx`);
+      DB.logAccess('CONSULTATION', `Export Excel du bulletin de ${safeEtudiant.prenom} ${safeEtudiant.nom} (${safeSemestreLibelle})`);
+    } catch (err) {
+      console.error('Erreur export Excel:', err);
+    }
+  };
+
   // Function to export bulletin directly as PDF
   const handleExportPDF = async () => {
     const element = document.getElementById('bulletin-document-content');
@@ -393,12 +465,23 @@ export const ExcelBulletinView: React.FC<ExcelBulletinViewProps> = ({
           <GraduationCap className="w-4.5 h-4.5 text-blue-600 shrink-0" />
           <span className="font-bold">Bulletin Officiel de Notes - Système LMD Universitaire</span>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
+            title="Télécharger le fichier Excel (.xlsx)"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span>Exporter Excel</span>
+          </button>
+
           <button
             type="button"
             onClick={handleExportPDF}
             disabled={isExportingPdf}
-            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold flex items-center gap-2 transition-all shadow-2xs disabled:opacity-50 cursor-pointer"
+            className="px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs disabled:opacity-50 cursor-pointer"
+            title="Télécharger en document PDF"
           >
             <Download className="w-4 h-4" />
             <span>{isExportingPdf ? 'Génération PDF...' : 'Exporter en PDF'}</span>
@@ -408,7 +491,7 @@ export const ExcelBulletinView: React.FC<ExcelBulletinViewProps> = ({
             <button
               type="button"
               onClick={onPrint}
-              className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold flex items-center gap-2 transition-all shadow-2xs cursor-pointer"
+              className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
             >
               <Printer className="w-4 h-4" />
               <span>Imprimer</span>
