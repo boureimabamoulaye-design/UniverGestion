@@ -7,7 +7,32 @@ export const ToastContainer: React.FC = () => {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
   useEffect(() => {
-    const unsubscribe = toast.subscribe(setToasts);
+    const unsubscribe = toast.subscribe((allToasts) => {
+      // Mask / hide small messages when elements are added or saved to the database
+      const filtered = allToasts.filter(t => {
+        const titleLower = (t.title || '').toLowerCase();
+        const descLower = (t.description || '').toLowerCase();
+        const isDbAddMessage = 
+          titleLower.includes('enregistr') || 
+          titleLower.includes('ajout') || 
+          titleLower.includes('sauvegard') || 
+          titleLower.includes('base de données') ||
+          titleLower.includes('création') ||
+          titleLower.includes('créé') ||
+          descLower.includes('enregistr') ||
+          descLower.includes('ajout');
+        
+        // Hide small DB addition notifications
+        if (t.type === 'success' && isDbAddMessage) {
+          return false;
+        }
+        if (t.type === 'info' && isDbAddMessage) {
+          return false;
+        }
+        return true;
+      });
+      setToasts(filtered);
+    });
     return () => {
       unsubscribe();
     };
