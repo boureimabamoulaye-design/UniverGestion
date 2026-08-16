@@ -1544,7 +1544,11 @@ async function startServer() {
       server: {
         middlewareMode: true,
         host: "0.0.0.0",
-        hmr: process.env.DISABLE_HMR === "true" ? false : { server: httpServer },
+        hmr: process.env.DISABLE_HMR === "true" ? false : {
+          server: httpServer,
+          protocol: "wss",
+          clientPort: 443,
+        },
         allowedHosts: [
           "localhost",
           "127.0.0.1",

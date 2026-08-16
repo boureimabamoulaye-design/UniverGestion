@@ -24,7 +24,10 @@ export default defineConfig(() => {
         '.run.app'
       ],
       cors: true,
-      hmr: process.env.DISABLE_HMR === 'true' ? false : true,
+      hmr: process.env.DISABLE_HMR === 'true' ? false : {
+        protocol: 'wss',
+        clientPort: 443,
+      },
       watch: {
         ignored: ['**/data/**', '**/dist/**', '**/*.json'],
       },
