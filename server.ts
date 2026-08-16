@@ -1,4 +1,5 @@
 import express from "express";
+import http from "http";
 import path from "path";
 import fs from "fs";
 import mysql from "mysql2/promise";
@@ -1536,11 +1537,22 @@ app.use((err: any, req: any, res: any, next: any) => {
 
 // Vite middleware in dev or static server in prod
 async function startServer() {
+  const httpServer = http.createServer(app);
+
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: {
         middlewareMode: true,
-        hmr: process.env.DISABLE_HMR === "true" ? false : { server: undefined },
+        host: "0.0.0.0",
+        hmr: process.env.DISABLE_HMR === "true" ? false : { server: httpServer },
+        allowedHosts: [
+          "localhost",
+          "127.0.0.1",
+          ".ngrok-free.app",
+          ".ngrok.app",
+          ".ngrok.io",
+          ".run.app"
+        ],
         watch: {
           ignored: ['**/data/**', '**/dist/**', '**/*.json'],
         },
@@ -1556,7 +1568,7 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  httpServer.listen(PORT, "0.0.0.0", () => {
     console.log(`UniGestion MySQL Server running on http://0.0.0.0:${PORT}`);
   });
 }
