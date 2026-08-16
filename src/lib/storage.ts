@@ -1323,6 +1323,16 @@ export class DB {
     return result;
   }
 
+  static deleteBulletin(id: number): void {
+    const list = this.getBulletins();
+    const target = list.find(b => Number(b.id) === Number(id));
+    const filtered = list.filter(b => Number(b.id) !== Number(id));
+    setItem(STORAGE_KEYS.BULLETINS, filtered);
+    deleteFromBackendTable('bulletins', id);
+    this.logAccess('SUPPRESSION', `Suppression du bulletin #${id} pour l'étudiant ID #${target?.etudiant_id || 'N/A'}`);
+    toast.success("Bulletin supprimé", "Le bulletin a été supprimé avec succès");
+  }
+
   static addNotification(notif: Omit<NotificationAlerte, 'id'>): NotificationAlerte {
     const list = this.getNotifications();
     const nextId = Math.max(0, ...list.map(n => n.id)) + 1;

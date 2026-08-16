@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { DB } from '../lib/storage';
 import { Bulletin } from '../types/database';
 import { Modal } from '../components/Modal';
-import { FileCheck2, Download, Eye, Edit3, Save, AlertTriangle } from 'lucide-react';
+import { FileCheck2, Download, Eye, Edit3, Save, AlertTriangle, Trash2 } from 'lucide-react';
 import { StudentSearchSelect } from '../components/StudentSearchSelect';
 import { ExcelBulletinView } from '../components/ExcelBulletinView';
 
@@ -297,6 +297,17 @@ export const BulletinsView: React.FC = () => {
     setIsEditModalOpen(false);
   };
 
+  const handleDeleteBulletin = (id: number) => {
+    if (window.confirm("Êtes-vous sûr de vouloir supprimer ce bulletin ? Cette action est irréversible.")) {
+      DB.deleteBulletin(id);
+      setBulletinsList(DB.getBulletins() || []);
+      if (viewingBulletin && viewingBulletin.id === id) {
+        setViewingBulletin(null);
+        setIsDetailOpen(false);
+      }
+    }
+  };
+
   const handlePrint = () => {
     window.print();
   };
@@ -447,6 +458,16 @@ export const BulletinsView: React.FC = () => {
                         >
                           <Eye className="w-3.5 h-3.5" />
                           <span>Consulter</span>
+                        </button>
+
+                        {/* Supprimer Button */}
+                        <button type="button"
+                          onClick={() => handleDeleteBulletin(b.id)}
+                          title="Supprimer ce bulletin"
+                          className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 rounded-[10px] text-xs font-bold transition-colors inline-flex items-center gap-1 cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Supprimer</span>
                         </button>
                       </td>
                     </tr>
