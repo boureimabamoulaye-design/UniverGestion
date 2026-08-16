@@ -22,9 +22,23 @@ export const SupportsCoursView: React.FC<SupportsCoursViewProps> = ({ currentUse
       window.removeEventListener('storage', handleSync);
     };
   }, []);
-  const matieres = DB.getMatieres();
+
+  const studentDetail = currentUser.role === 'ETUDIANT' ? (currentUser.etudiantDetail || DB.getEtudiants().find(e => e.id === currentUser.id)) : null;
+  const studentEnrollment = studentDetail ? DB.getStudentActiveEnrollment(studentDetail.id) : null;
+  const hasActiveInscription = isAdmin || (studentEnrollment && studentEnrollment.hasActiveEnrollment);
+
+  const allMatieres = DB.getMatieres();
   const filieres = DB.getFilieres();
-  const semestres = DB.getSemestres();
+  const allSemestres = DB.getSemestres();
+
+  // For students, filter matieres strictly to their actively enrolled filiere
+  const matieres = isAdmin 
+    ? allMatieres 
+    : allMatieres.filter(m => Number(m.filiere_id) === Number(studentEnrollment?.filiereId));
+  
+  const semestres = isAdmin
+    ? allSemestres
+    : allSemestres.filter(s => !studentEnrollment?.niveau?.id || Number(s.niveau_id) === Number(studentEnrollment.niveau.id));
 
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -119,16 +133,34 @@ export const SupportsCoursView: React.FC<SupportsCoursViewProps> = ({ currentUse
     }
   };
 
-  const studentDetail = currentUser.role === 'ETUDIANT' ? (currentUser.etudiantDetail || DB.getEtudiants().find(e => e.id === currentUser.id)) : null;
-  const studentClass = studentDetail ? DB.getClasses().find(c => c.id === studentDetail.classe_id) : null;
-  const studentFiliereId = studentDetail?.filiere_id || studentClass?.filiere_id || 1;
-  const studentMatiereIds = new Set(matieres.filter(m => m.filiere_id === studentFiliereId || !m.filiere_id).map(m => m.id));
+  const handleSecureDownload = async (item: SupportCours) => {
+    if (!item.fichier_url) return;
+    if (isAdmin) {
+      window.open(item.fichier_url, '_blank');
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/supports-cours/${item.id}/download?etudiant_id=${studentDetail?.id || currentUser.id}`);
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 403 || data.authorized === false) {
+        alert("Accès refusé : ce support de cours n'appartient pas à votre filière d'inscription.");
+        return;
+      }
+      window.open(item.fichier_url, '_blank');
+    } catch {
+      window.open(item.fichier_url, '_blank');
+    }
+  };
+
+  const studentFiliereId = studentEnrollment?.filiereId;
+  const studentMatiereIds = new Set(matieres.map(m => m.id));
 
   const filtered = list.filter(item => {
     if (!isAdmin) {
-      // Student filter: strictly check Filiere & Matiere
-      const matchesFiliere = !item.filiere_id || item.filiere_id === studentFiliereId;
-      const matchesMatiere = !item.matiere_id || studentMatiereIds.has(item.matiere_id);
+      if (!studentFiliereId) return false;
+      const matchesFiliere = !item.filiere_id || Number(item.filiere_id) === Number(studentFiliereId);
+      const matchesMatiere = !item.matiere_id || studentMatiereIds.has(Number(item.matiere_id));
       if (!matchesFiliere && !matchesMatiere) return false;
     }
 
@@ -141,7 +173,7 @@ export const SupportsCoursView: React.FC<SupportsCoursViewProps> = ({ currentUse
     if (selectedSemestreFilter !== 'all') {
       const semId = Number(selectedSemestreFilter);
       if (item.matiere_id) {
-        const mat = matieres.find(m => m.id === item.matiere_id);
+        const mat = allMatieres.find(m => m.id === item.matiere_id);
         matchesSemestre = mat ? mat.semestre_id === semId : false;
       } else {
         matchesSemestre = true;
@@ -150,6 +182,20 @@ export const SupportsCoursView: React.FC<SupportsCoursViewProps> = ({ currentUse
 
     return matchesSearch && matchesMatiere && matchesSemestre;
   });
+
+  if (!isAdmin && !hasActiveInscription) {
+    return (
+      <div className="bg-white rounded-2xl border border-amber-200 p-8 text-center space-y-4 max-w-xl mx-auto my-8">
+        <div className="w-16 h-16 bg-amber-100 text-amber-700 rounded-2xl flex items-center justify-center mx-auto">
+          <BookOpen className="w-8 h-8" />
+        </div>
+        <h3 className="text-lg font-bold text-slate-900">Aucune Inscription Active</h3>
+        <p className="text-xs text-slate-600 leading-relaxed">
+          Aucune inscription active n'est disponible pour votre dossier. Vous ne pouvez pas accéder aux supports de cours tant que votre inscription dans une filière n'est pas validée par la scolarité.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5 animate-in fade-in duration-300">
@@ -337,16 +383,14 @@ export const SupportsCoursView: React.FC<SupportsCoursViewProps> = ({ currentUse
                   {/* Action Button */}
                   <div className="pt-1">
                     {item.fichier_url ? (
-                      <a
-                        href={item.fichier_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        download
+                      <button
+                        type="button"
+                        onClick={() => handleSecureDownload(item)}
                         className="w-full h-[38px] bg-[#0066FF] hover:bg-blue-700 text-white rounded-[12px] text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-xs"
                       >
                         <Download className="w-4 h-4" />
                         <span>Télécharger le Support</span>
-                      </a>
+                      </button>
                     ) : (
                       <div className="w-full h-[38px] bg-gray-100 text-gray-500 rounded-[12px] text-xs font-semibold flex items-center justify-center gap-2">
                         <FileText className="w-4 h-4 text-gray-400" />
@@ -381,7 +425,7 @@ export const SupportsCoursView: React.FC<SupportsCoursViewProps> = ({ currentUse
               <tbody className="text-xs divide-y divide-gray-100">
                 {filtered.length > 0 ? (
                   filtered.map((item) => {
-                    const mat = matieres.find(m => m.id === item.matiere_id);
+                    const mat = allMatieres.find(m => m.id === item.matiere_id);
                     const fil = filieres.find(f => f.id === item.filiere_id);
                     return (
                       <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
@@ -409,16 +453,14 @@ export const SupportsCoursView: React.FC<SupportsCoursViewProps> = ({ currentUse
                         <td className="px-6 py-4 text-gray-500 font-mono text-[11px]">{item.date_publication}</td>
                         <td className="px-6 py-4 text-right space-x-2">
                           {item.fichier_url ? (
-                            <a
-                              href={item.fichier_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              download
+                            <button
+                              type="button"
+                              onClick={() => handleSecureDownload(item)}
                               className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-blue-50 text-[#0066FF] hover:bg-blue-100 rounded-lg text-xs font-bold transition-colors"
                             >
                               <Download className="w-3.5 h-3.5" />
                               <span>Télécharger</span>
-                            </a>
+                            </button>
                           ) : (
                             <span className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-gray-100 text-gray-600 rounded-lg text-xs font-semibold">
                               <FileText className="w-3.5 h-3.5" />

@@ -442,91 +442,348 @@ app.post("/api/mysql/test-connection", async (req, res) => {
 });
 
 // =========================================================
-// BACKEND SECURITY ACCESS CONTROL VALIDATION API
+// BACKEND SECURITY ACCESS CONTROL & STUDENT CURSUS VALIDATION
 // =========================================================
+async function getStudentActiveEnrollmentContext(etudiantId: number) {
+  const db = readDatabase();
+  let student: any = null;
+  let activeInscription: any = null;
+  let filiere: any = null;
+  let classe: any = null;
+
+  const isMySql = await isMySqlAvailable();
+  if (isMySql) {
+    try {
+      const pool = getMySqlPool();
+      const [stRows]: any = await pool.query("SELECT * FROM etudiants WHERE id = ?", [etudiantId]);
+      if (Array.isArray(stRows) && stRows.length > 0) {
+        student = stRows[0];
+      }
+
+      const [inscRows]: any = await pool.query(
+        "SELECT i.*, c.filiere_id as classe_filiere_id, c.nom as classe_nom FROM inscriptions i LEFT JOIN classes c ON i.classe_id = c.id WHERE i.etudiant_id = ? AND (i.statut_validation != 'Rejeté' OR i.statut_validation IS NULL) ORDER BY i.annee_academique_id DESC, i.id DESC",
+        [etudiantId]
+      );
+      if (Array.isArray(inscRows) && inscRows.length > 0) {
+        activeInscription = inscRows[0];
+      }
+    } catch {}
+  }
+
+  // Fallback to in-memory JSON
+  if (!student) {
+    const etudiants = db.unigestion_etudiants || db.etudiants || [];
+    student = etudiants.find((e: any) => Number(e.id) === Number(etudiantId));
+  }
+
+  if (!student) {
+    return {
+      found: false,
+      authorized: false,
+      reason: "STUDENT_NOT_FOUND",
+      message: "Étudiant introuvable dans la base de données."
+    };
+  }
+
+  // Check account block status
+  if (student.est_bloque || student.statut_compte === 'Bloqué' || student.statut === 'Suspendu') {
+    return {
+      found: true,
+      authorized: false,
+      isBlocked: true,
+      reason: "ACCOUNT_BLOCKED",
+      message: "Accès refusé : Le compte étudiant est actuellement bloqué ou suspendu."
+    };
+  }
+
+  if (db.unigestion_global_student_lock === true || db.global_student_lock === true) {
+    return {
+      found: true,
+      authorized: false,
+      isBlocked: true,
+      reason: "GLOBAL_LOCK",
+      message: "Accès temporairement suspendu : Verrouillage général de l'espace étudiant actif."
+    };
+  }
+
+  if (!activeInscription) {
+    const inscriptions = db.unigestion_inscriptions || db.inscriptions || [];
+    const studentInscriptions = inscriptions
+      .filter((i: any) => Number(i.etudiant_id) === Number(etudiantId) && i.statut_validation !== 'Rejeté' && i.statut !== 'Annulée')
+      .sort((a: any, b: any) => (Number(b.annee_academique_id || 0) - Number(a.annee_academique_id || 0)) || (Number(b.id) - Number(a.id)));
+    if (studentInscriptions.length > 0) {
+      activeInscription = studentInscriptions[0];
+    }
+  }
+
+  const classes = db.unigestion_classes || db.classes || [];
+  const filieres = db.unigestion_filieres || db.filieres || [];
+  const matieres = db.unigestion_matieres || db.matieres || [];
+
+  const classeId = activeInscription?.classe_id || student.classe_id;
+  if (classeId) {
+    classe = classes.find((c: any) => Number(c.id) === Number(classeId));
+  }
+
+  const filiereId = activeInscription?.filiere_id || classe?.filiere_id || student.filiere_id;
+  if (filiereId) {
+    filiere = filieres.find((f: any) => Number(f.id) === Number(filiereId));
+  }
+
+  const hasActiveInscription = !!(activeInscription || (classeId && filiereId));
+
+  if (!hasActiveInscription || !filiereId) {
+    return {
+      found: true,
+      authorized: false,
+      hasActiveInscription: false,
+      reason: "NO_ACTIVE_INSCRIPTION",
+      message: "Aucune inscription active n'est disponible pour cet étudiant.",
+      etudiant: student
+    };
+  }
+
+  const studentMatieres = matieres.filter((m: any) => Number(m.filiere_id) === Number(filiereId));
+  const authorizedMatiereIds = studentMatieres.map((m: any) => Number(m.id));
+
+  return {
+    found: true,
+    authorized: true,
+    hasActiveInscription: true,
+    etudiant: student,
+    activeInscription,
+    filiereId: Number(filiereId),
+    filiere,
+    classeId: Number(classeId),
+    classe,
+    authorizedMatiereIds
+  };
+}
+
+// POST /api/etudiant/authorize
 app.post("/api/etudiant/authorize", async (req, res) => {
-  const { etudiant_id } = req.body;
+  const { etudiant_id, filiere_id, matiere_id } = req.body;
 
   if (!etudiant_id) {
     return res.status(400).json({
       authorized: false,
       reason: "MISSING_PARAMS",
-      message: "L'identifiant étudiant est obligatoire pour la validation de sécurité."
+      message: "L'identifiant étudiant est obligatoire."
     });
   }
 
   try {
-    // Attempt query on MySQL WAMP table if available
-    try {
-      const pool = getMySqlPool();
-      const [rows]: any = await pool.query("SELECT * FROM etudiants WHERE id = ?", [etudiant_id]);
-      if (Array.isArray(rows) && rows.length > 0) {
-        const student = rows[0];
-        if (student.est_bloque || student.statut_compte === 'Bloqué' || student.statut === 'Suspendu') {
-          return res.status(403).json({
-            authorized: false,
-            reason: "ACCOUNT_BLOCKED",
-            message: "Accès refusé : Le compte étudiant est actuellement bloqué ou suspendu dans MySQL."
-          });
-        }
-        return res.json({
-          authorized: true,
-          message: "Accès validé par MySQL WAMP.",
-          etudiant: {
-            id: student.id,
-            matricule: student.matricule,
-            nom: student.nom,
-            prenom: student.prenom
-          }
-        });
-      }
-    } catch {}
-
-    // In-memory check fallback
-    const db = readDatabase();
-    if (db.unigestion_global_student_lock === true || db.global_student_lock === true) {
-      return res.status(403).json({
+    const ctx = await getStudentActiveEnrollmentContext(Number(etudiant_id));
+    if (!ctx.authorized) {
+      return res.status(ctx.isBlocked ? 403 : 200).json({
         authorized: false,
-        reason: "GLOBAL_LOCK",
-        message: "Accès temporairement suspendu : Verrouillage général de l'espace étudiant actif."
+        hasActiveInscription: ctx.hasActiveInscription ?? false,
+        reason: ctx.reason,
+        message: ctx.message
       });
     }
 
-    const etudiants = db.unigestion_etudiants || db.etudiants || [];
-    const student = etudiants.find((e: any) => Number(e.id) === Number(etudiant_id));
+    // If client requested a specific filiere, verify that it matches student's registered filiere
+    if (filiere_id && Number(filiere_id) !== Number(ctx.filiereId)) {
+      return res.status(403).json({
+        authorized: false,
+        reason: "FORBIDDEN_FILIERE",
+        message: "Accès refusé : Vous n'êtes pas inscrit dans cette filière académique."
+      });
+    }
 
-    if (student) {
-      if (student.est_bloque || student.statut_compte === 'Bloqué' || student.statut === 'Suspendu') {
-        return res.status(403).json({
-          authorized: false,
-          reason: "ACCOUNT_BLOCKED",
-          message: "Accès refusé : Le compte étudiant est actuellement bloqué ou suspendu."
-        });
-      }
-
-      return res.json({
-        authorized: true,
-        message: "Accès validé et autorisé par le serveur.",
-        etudiant: {
-          id: student.id,
-          matricule: student.matricule,
-          nom: student.nom,
-          prenom: student.prenom
-        }
+    // If client requested a specific matiere, verify that it belongs to student's registered filiere
+    if (matiere_id && !ctx.authorizedMatiereIds?.includes(Number(matiere_id))) {
+      return res.status(403).json({
+        authorized: false,
+        reason: "FORBIDDEN_MATIERE",
+        message: "Accès refusé : Cette matière n'appartient pas à votre filière d'inscription."
       });
     }
 
     return res.json({
       authorized: true,
-      message: "Accès autorisé par défaut."
+      hasActiveInscription: true,
+      message: "Inscription active et droits validés.",
+      filiereId: ctx.filiereId,
+      classeId: ctx.classeId,
+      etudiant: {
+        id: ctx.etudiant.id,
+        matricule: ctx.etudiant.matricule,
+        nom: ctx.etudiant.nom,
+        prenom: ctx.etudiant.prenom
+      }
     });
 
   } catch (error: any) {
-    return res.json({
-      authorized: true,
-      message: "Accès validé."
+    return res.status(500).json({
+      authorized: false,
+      reason: "SERVER_ERROR",
+      message: error.message
     });
   }
+});
+
+// GET /api/etudiant/:id/cursus - Returns strictly verified data for the student
+app.get("/api/etudiant/:id/cursus", async (req, res) => {
+  const etudiantId = Number(req.params.id);
+  if (!etudiantId) {
+    return res.status(400).json({ success: false, message: "ID étudiant invalide." });
+  }
+
+  const ctx = await getStudentActiveEnrollmentContext(etudiantId);
+  if (!ctx.authorized) {
+    return res.status(ctx.isBlocked ? 403 : 200).json({
+      success: false,
+      hasActiveInscription: ctx.hasActiveInscription ?? false,
+      reason: ctx.reason,
+      message: ctx.message
+    });
+  }
+
+  const db = readDatabase();
+  const filiereId = ctx.filiereId;
+  const classeId = ctx.classeId;
+
+  // Filter ONLY subjects of this student's filiere
+  const allMatieres = db.unigestion_matieres || db.matieres || [];
+  const authorizedMatieres = allMatieres.filter((m: any) => Number(m.filiere_id) === Number(filiereId));
+  const authorizedMatiereIds = new Set(authorizedMatieres.map((m: any) => Number(m.id)));
+
+  // Filter ONLY course materials of this student's filiere & subjects
+  const allSupports = db.unigestion_supports_cours || db.supports_cours || [];
+  const authorizedSupports = allSupports.filter((s: any) => 
+    (!s.filiere_id || Number(s.filiere_id) === Number(filiereId)) &&
+    (!s.matiere_id || authorizedMatiereIds.has(Number(s.matiere_id)))
+  );
+
+  // Filter ONLY notes of this student and within authorized subjects
+  const allNotes = db.unigestion_notes || db.notes || [];
+  const authorizedNotes = allNotes.filter((n: any) => 
+    Number(n.etudiant_id) === etudiantId &&
+    authorizedMatiereIds.has(Number(n.matiere_id))
+  );
+
+  // Filter bulletins for this student and this class/filiere
+  const allBulletins = db.unigestion_bulletins || db.bulletins || [];
+  const authorizedBulletins = allBulletins.filter((b: any) => 
+    Number(b.etudiant_id) === etudiantId &&
+    (!b.classe_id || Number(b.classe_id) === Number(classeId))
+  );
+
+  // Filter payments & absences
+  const allPaiements = db.unigestion_paiements || db.paiements || [];
+  const studentPaiements = allPaiements.filter((p: any) => Number(p.etudiant_id) === etudiantId);
+
+  const allAbsences = db.unigestion_absences || db.absences || [];
+  const studentAbsences = allAbsences.filter((a: any) => 
+    Number(a.etudiant_id) === etudiantId &&
+    authorizedMatiereIds.has(Number(a.matiere_id))
+  );
+
+  return res.json({
+    success: true,
+    hasActiveInscription: true,
+    filiere: ctx.filiere,
+    classe: ctx.classe,
+    activeInscription: ctx.activeInscription,
+    matieres: authorizedMatieres,
+    supports: authorizedSupports,
+    notes: authorizedNotes,
+    bulletins: authorizedBulletins,
+    paiements: studentPaiements,
+    absences: studentAbsences
+  });
+});
+
+// GET /api/supports-cours/:id/download - Strict download access control
+app.get("/api/supports-cours/:id/download", async (req, res) => {
+  const supportId = Number(req.params.id);
+  const etudiantId = Number(req.query.etudiant_id);
+  const userRole = req.query.role ? String(req.query.role).toUpperCase() : 'ETUDIANT';
+
+  const db = readDatabase();
+  const allSupports = db.unigestion_supports_cours || db.supports_cours || [];
+  const support = allSupports.find((s: any) => Number(s.id) === supportId);
+
+  if (!support) {
+    return res.status(404).json({ success: false, error: "NOT_FOUND", message: "Support de cours introuvable." });
+  }
+
+  // Admins always have access
+  if (userRole === 'ADMIN' || userRole === 'SUPER_ADMIN') {
+    return res.json({ success: true, authorized: true, support });
+  }
+
+  if (!etudiantId) {
+    return res.status(401).json({ success: false, error: "UNAUTHORIZED", message: "Identification requise pour télécharger ce support." });
+  }
+
+  const ctx = await getStudentActiveEnrollmentContext(etudiantId);
+  if (!ctx.authorized) {
+    return res.status(403).json({
+      success: false,
+      error: "FORBIDDEN",
+      message: ctx.message || "Accès non autorisé aux ressources académiques."
+    });
+  }
+
+  // Strict check: Is the support in the student's registered filiere or matiere?
+  const supportFiliereId = support.filiere_id ? Number(support.filiere_id) : null;
+  const supportMatiereId = support.matiere_id ? Number(support.matiere_id) : null;
+
+  const isFiliereMatch = !supportFiliereId || supportFiliereId === ctx.filiereId;
+  const isMatiereMatch = !supportMatiereId || ctx.authorizedMatiereIds?.includes(supportMatiereId);
+
+  if (!isFiliereMatch && !isMatiereMatch) {
+    return res.status(403).json({
+      success: false,
+      error: "FORBIDDEN",
+      message: "Accès refusé : Ce support de cours n'appartient pas à votre filière d'inscription."
+    });
+  }
+
+  return res.json({
+    success: true,
+    authorized: true,
+    support
+  });
+});
+
+// POST /api/supports-cours/verify-access
+app.post("/api/supports-cours/verify-access", async (req, res) => {
+  const { support_id, etudiant_id } = req.body;
+  const db = readDatabase();
+  const allSupports = db.unigestion_supports_cours || db.supports_cours || [];
+  const support = allSupports.find((s: any) => Number(s.id) === Number(support_id));
+
+  if (!support) {
+    return res.status(404).json({ authorized: false, message: "Support introuvable." });
+  }
+
+  if (!etudiant_id) {
+    return res.status(400).json({ authorized: false, message: "Identifiant étudiant manquant." });
+  }
+
+  const ctx = await getStudentActiveEnrollmentContext(Number(etudiant_id));
+  if (!ctx.authorized) {
+    return res.status(403).json({ authorized: false, message: ctx.message });
+  }
+
+  const supportFiliereId = support.filiere_id ? Number(support.filiere_id) : null;
+  const supportMatiereId = support.matiere_id ? Number(support.matiere_id) : null;
+
+  const isFiliereMatch = !supportFiliereId || supportFiliereId === ctx.filiereId;
+  const isMatiereMatch = !supportMatiereId || ctx.authorizedMatiereIds?.includes(supportMatiereId);
+
+  if (!isFiliereMatch && !isMatiereMatch) {
+    return res.status(403).json({
+      authorized: false,
+      message: "Accès refusé : Ce support de cours n'appartient pas à votre filière d'inscription."
+    });
+  }
+
+  return res.json({ authorized: true });
 });
 
 // =========================================================

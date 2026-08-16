@@ -103,29 +103,39 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
     est_bloque: false
   };
 
+  const enrollment = DB.getStudentActiveEnrollment(etudiant.id);
+  const {
+    hasActiveEnrollment,
+    inscription: activeInscription,
+    classe: studentClass,
+    filiere: studentFiliere,
+    niveau: studentNiveau
+  } = enrollment;
+
   const classes = DB.getClasses();
-  const studentClass = classes.find(c => Number(c.id) === Number(etudiant.classe_id)) || classes[0];
   const filieres = DB.getFilieres();
-  const studentFiliere = filieres.find(f => Number(f.id) === Number(studentClass?.filiere_id) || Number(f.id) === Number(etudiant.filiere_id)) || filieres[0];
   const facultes = DB.getFacultes();
-  const studentFaculte = facultes.find(f => Number(f.id) === Number(studentFiliere?.faculte_id)) || facultes[0];
+  const studentFaculte = studentFiliere ? facultes.find(f => Number(f.id) === Number(studentFiliere.faculte_id)) || facultes[0] : facultes[0];
   const universite = DB.getUniversites()[0];
   const activeAnnee = DB.getActiveAnneeAcademique();
   const annees = DB.getAnneesAcademiques();
   const niveaux = DB.getNiveaux();
-  const studentNiveau = niveaux.find(n => Number(n.id) === Number(studentClass?.niveau_id) || Number(n.id) === Number(etudiant.niveau_id)) || niveaux[0];
   const enseignants = DB.getEnseignants();
 
-  const semestres = DB.getSemestres();
-  const matieres = DB.getMatieres();
+  const allSemestres = DB.getSemestres();
+  const semestres = allSemestres.filter(s => !studentNiveau?.id || Number(s.niveau_id) === Number(studentNiveau.id));
   
-  // Dynamic student data from DB (automatically re-evaluated on dbTick change)
-  const notes = DB.getNotes().filter(n => Number(n.etudiant_id) === Number(etudiant.id));
+  // STRICT FILIERE DATA ISOLATION: Only retrieve subjects and materials for the student's enrolled filière
+  const matieres = DB.getStudentAuthorizedMatieres(etudiant.id);
+  const authorizedMatiereIds = new Set(matieres.map(m => Number(m.id)));
+
+  // Dynamic student data from DB (strictly scoped to this student and enrolled filiere)
+  const notes = DB.getStudentAuthorizedNotes(etudiant.id);
   const paiements = DB.getPaiements().filter(p => Number(p.etudiant_id) === Number(etudiant.id));
-  const absences = DB.getAbsences().filter(a => Number(a.etudiant_id) === Number(etudiant.id));
+  const absences = DB.getAbsences().filter(a => Number(a.etudiant_id) === Number(etudiant.id) && authorizedMatiereIds.has(Number(a.matiere_id)));
   const studentInscriptions = DB.getInscriptions().filter(i => Number(i.etudiant_id) === Number(etudiant.id));
-  const supportsCours = DB.getSupportsCours().filter(s => !s.filiere_id || Number(s.filiere_id) === Number(studentFiliere?.id));
-  const studentBulletins = DB.getBulletins().filter(b => Number(b.etudiant_id) === Number(etudiant.id));
+  const supportsCours = DB.getStudentAuthorizedSupports(etudiant.id);
+  const studentBulletins = DB.getStudentAuthorizedBulletins(etudiant.id);
 
   // States
   const [selectedSemestreId, setSelectedSemestreId] = useState<number>(semestres[0]?.id || 1);
@@ -153,8 +163,8 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             etudiant_id: etudiant.id,
-            filiere_id: studentFiliere?.id || etudiant.filiere_id || 1,
-            classe_id: etudiant.classe_id
+            filiere_id: studentFiliere?.id,
+            classe_id: studentClass?.id
           })
         });
 
@@ -175,7 +185,7 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
 
     verifyBackendStudentAccess();
     return () => { isMounted = false; };
-  }, [etudiant.id, studentFiliere?.id, etudiant.filiere_id, etudiant.classe_id]);
+  }, [etudiant.id, studentFiliere?.id, studentClass?.id]);
 
   // Student Password Change State
   const [isExportingPdf, setIsExportingPdf] = useState(false);
@@ -533,6 +543,48 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
             <span>Matricule : <b className="text-slate-900 font-bold">{etudiant.matricule}</b></span>
           </div>
 
+        </div>
+      </div>
+    );
+  }
+
+  // NO ACTIVE ENROLLMENT IN ANY FILIERE
+  if (!hasActiveEnrollment || !studentFiliere) {
+    return (
+      <div className="min-h-[70vh] flex items-center justify-center p-4">
+        <div className="max-w-xl w-full bg-white rounded-3xl border border-amber-200 shadow-2xl p-8 sm:p-10 text-center space-y-6 animate-in zoom-in-95 duration-200">
+          <div className="w-20 h-20 bg-amber-100 text-amber-700 rounded-3xl flex items-center justify-center mx-auto shadow-inner border border-amber-200">
+            <AlertCircle className="w-10 h-10" />
+          </div>
+          
+          <div className="space-y-1">
+            <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">
+              Aucune Inscription Active
+            </h2>
+            <p className="text-xs font-bold text-amber-700 uppercase tracking-wider">
+              Dossier académique en attente d'inscription dans une filière
+            </p>
+          </div>
+
+          <div className="p-5 bg-amber-50/90 border border-amber-200/90 rounded-2xl text-xs text-slate-800 leading-relaxed font-medium text-left space-y-3">
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="w-5 h-5 text-amber-700 flex-shrink-0 mt-0.5" />
+              <div>
+                <p>
+                  Aucune inscription active n'est disponible pour votre compte étudiant. Conformément au règlement pédagogique, les cours, notes, bulletins et examens ne peuvent être affichés qu'après validation de votre inscription dans une filière officielle.
+                </p>
+              </div>
+            </div>
+
+            <p className="text-slate-600 text-[11px] font-medium border-t border-amber-200/60 pt-2.5">
+              Pour finaliser votre inscription administrative ou pédagogique, veuillez contacter le <b>Service de la Scolarité et des Inscriptions</b>.
+            </p>
+          </div>
+
+          <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between text-[11px] text-slate-500 font-mono gap-2">
+            <span>Étudiant : <b>{etudiant.prenom} {etudiant.nom}</b></span>
+            <span>Matricule : <b className="text-slate-900 font-bold">{etudiant.matricule}</b></span>
+          </div>
         </div>
       </div>
     );

@@ -830,53 +830,125 @@ export class DB {
     }
   }
 
-  // Filiere Authorized Access Control
-  static getEtudiantAuthorizedFilieres(etudiantId: number): Filiere[] {
-    const inscriptions = this.getInscriptions().filter(i => i.etudiant_id === etudiantId);
+  // Filiere Authorized Access Control - STRICT SINGLE SOURCE OF TRUTH (Inscriptions)
+  static getStudentActiveEnrollment(etudiantId: number): {
+    hasActiveEnrollment: boolean;
+    inscription: Inscription | null;
+    classe: Classe | null;
+    filiere: Filiere | null;
+    niveau: Niveau | null;
+    filiereId: number | null;
+    classeId: number | null;
+    etudiant: Etudiant | null;
+  } {
+    const student = this.getEtudiants().find(e => Number(e.id) === Number(etudiantId));
+    if (!student) {
+      return {
+        hasActiveEnrollment: false,
+        inscription: null,
+        classe: null,
+        filiere: null,
+        niveau: null,
+        filiereId: null,
+        classeId: null,
+        etudiant: null
+      };
+    }
+
+    const inscriptions = this.getInscriptions().filter(i => 
+      Number(i.etudiant_id) === Number(etudiantId) && 
+      i.statut_validation !== 'Rejeté' && 
+      i.statut !== 'Annulée'
+    );
+
+    const activeAnnee = this.getActiveAnneeAcademique();
+    let activeInscription = inscriptions.find(i => Number(i.annee_academique_id) === Number(activeAnnee?.id));
+    if (!activeInscription && inscriptions.length > 0) {
+      activeInscription = inscriptions.sort((a, b) => (Number(b.annee_academique_id || 0) - Number(a.annee_academique_id || 0)) || (Number(b.id) - Number(a.id)))[0];
+    }
+
     const classes = this.getClasses();
     const filieres = this.getFilieres();
+    const niveaux = this.getNiveaux();
 
-    const filiereIds = new Set<number>();
-    inscriptions.forEach(ins => {
-      const cls = classes.find(c => c.id === ins.classe_id);
-      if (cls && cls.filiere_id) {
-        filiereIds.add(cls.filiere_id);
-      }
-    });
+    const targetClasseId = activeInscription?.classe_id || student.classe_id;
+    const classe = targetClasseId ? classes.find(c => Number(c.id) === Number(targetClasseId)) || null : null;
+    
+    const targetFiliereId = activeInscription ? (classes.find(c => Number(c.id) === Number(activeInscription.classe_id))?.filiere_id || student.filiere_id) : (classe?.filiere_id || student.filiere_id);
+    const filiere = targetFiliereId ? filieres.find(f => Number(f.id) === Number(targetFiliereId)) || null : null;
+    
+    const targetNiveauId = classe?.niveau_id || student.niveau_id;
+    const niveau = targetNiveauId ? niveaux.find(n => Number(n.id) === Number(targetNiveauId)) || null : null;
 
-    const student = this.getEtudiants().find(e => e.id === etudiantId);
-    if (student) {
-      if (student.filiere_id) {
-        filiereIds.add(student.filiere_id);
-      }
-      if (student.classe_id) {
-        const mainClass = classes.find(c => c.id === student.classe_id);
-        if (mainClass && mainClass.filiere_id) {
-          filiereIds.add(mainClass.filiere_id);
-        }
-      }
+    const hasActiveEnrollment = !!(activeInscription || (classe && filiere));
+
+    return {
+      hasActiveEnrollment,
+      inscription: activeInscription || null,
+      classe,
+      filiere,
+      niveau,
+      filiereId: filiere ? filiere.id : null,
+      classeId: classe ? classe.id : null,
+      etudiant: student
+    };
+  }
+
+  static getEtudiantAuthorizedFilieres(etudiantId: number): Filiere[] {
+    const enrollment = this.getStudentActiveEnrollment(etudiantId);
+    if (!enrollment.hasActiveEnrollment || !enrollment.filiere) {
+      return [];
     }
-
-    if (filiereIds.size === 0) {
-      return filieres; // Allow access if no specific constraint
-    }
-
-    return filieres.filter(f => filiereIds.has(f.id));
+    return [enrollment.filiere];
   }
 
   static isStudentAuthorizedForFiliere(etudiantId: number, filiereId: number): boolean {
-    const authorized = this.getEtudiantAuthorizedFilieres(etudiantId);
-    if (!authorized || authorized.length === 0) return true;
-    return authorized.some(f => f.id === filiereId);
+    const enrollment = this.getStudentActiveEnrollment(etudiantId);
+    if (!enrollment.hasActiveEnrollment || !enrollment.filiereId) return false;
+    return Number(enrollment.filiereId) === Number(filiereId);
   }
 
   static isStudentAuthorizedForClasse(etudiantId: number, classeId: number): boolean {
-    const cls = this.getClasses().find(c => c.id === classeId);
-    if (!cls) return true;
-    if (cls.filiere_id) {
-      return this.isStudentAuthorizedForFiliere(etudiantId, cls.filiere_id);
-    }
-    return true;
+    const cls = this.getClasses().find(c => Number(c.id) === Number(classeId));
+    if (!cls || !cls.filiere_id) return false;
+    return this.isStudentAuthorizedForFiliere(etudiantId, cls.filiere_id);
+  }
+
+  static getStudentAuthorizedMatieres(etudiantId: number): Matiere[] {
+    const enrollment = this.getStudentActiveEnrollment(etudiantId);
+    if (!enrollment.hasActiveEnrollment || !enrollment.filiereId) return [];
+    return this.getMatieres().filter(m => Number(m.filiere_id) === Number(enrollment.filiereId));
+  }
+
+  static getStudentAuthorizedSupports(etudiantId: number): SupportCours[] {
+    const enrollment = this.getStudentActiveEnrollment(etudiantId);
+    if (!enrollment.hasActiveEnrollment || !enrollment.filiereId) return [];
+    const matieres = this.getStudentAuthorizedMatieres(etudiantId);
+    const matiereIds = new Set(matieres.map(m => Number(m.id)));
+
+    return this.getSupportsCours().filter(s => {
+      const matchFiliere = !s.filiere_id || Number(s.filiere_id) === Number(enrollment.filiereId);
+      const matchMatiere = !s.matiere_id || matiereIds.has(Number(s.matiere_id));
+      return matchFiliere && matchMatiere;
+    });
+  }
+
+  static getStudentAuthorizedNotes(etudiantId: number): Note[] {
+    const matieres = this.getStudentAuthorizedMatieres(etudiantId);
+    const matiereIds = new Set(matieres.map(m => Number(m.id)));
+    return this.getNotes().filter(n => 
+      Number(n.etudiant_id) === Number(etudiantId) && 
+      matiereIds.has(Number(n.matiere_id))
+    );
+  }
+
+  static getStudentAuthorizedBulletins(etudiantId: number): Bulletin[] {
+    const enrollment = this.getStudentActiveEnrollment(etudiantId);
+    if (!enrollment.hasActiveEnrollment) return [];
+    return this.getBulletins().filter(b => 
+      Number(b.etudiant_id) === Number(etudiantId) &&
+      (!enrollment.classeId || !b.classe_id || Number(b.classe_id) === Number(enrollment.classeId))
+    );
   }
 
   static saveInscription(item: Omit<Inscription, 'id'> & { id?: number }): Inscription {
