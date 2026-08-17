@@ -3,6 +3,7 @@ import { DB } from '../lib/storage';
 import { safeFetchJson } from '../lib/api';
 import { Modal } from '../components/Modal';
 import { NotesSkeleton } from '../components/skeletons/NotesSkeleton';
+import { Etudiant, Matiere, Inscription } from '../types/database';
 import { 
   Save, 
   Search, 
@@ -19,14 +20,131 @@ import {
   Layers,
   Sparkles,
   Award,
-  AlertCircle
+  AlertCircle,
+  Calculator,
+  TrendingUp,
+  GraduationCap
 } from 'lucide-react';
 
-interface DraftGrade {
+export interface DraftGrade {
   cc: number | string;
   exam: number | string;
   observation?: string;
 }
+
+export interface WeightedAverageCalculation {
+  etudiantId: number;
+  hasActiveInscription: boolean;
+  moyennePonderee: number;
+  totalCreditsInscrits: number;
+  totalCreditsValides: number;
+  isAdmis: boolean;
+  decision: 'Admis' | 'Compensé' | 'Ajourné' | 'Non inscrit';
+  mention: 'Très Bien' | 'Bien' | 'Assez Bien' | 'Passable' | 'Ajourné' | 'N/A';
+  matieresDetails: Array<{
+    matiereId: number;
+    code: string;
+    nom: string;
+    credits: number;
+    noteCc: number;
+    noteExam: number;
+    noteFinale: number;
+    isValidated: boolean;
+  }>;
+}
+
+/**
+ * Calcule la moyenne pondérée d'un étudiant pour une année académique et un semestre donnés.
+ * Ne calcule les résultats que pour les étudiants ayant une inscription active pour l'année académique spécifiée.
+ */
+export const calculateStudentWeightedAverage = (
+  etudiantId: number,
+  anneeId: number,
+  semestreId: number,
+  matieresList: Matiere[],
+  getGradeFn: (etudiantId: number, matiereId: number) => DraftGrade,
+  inscriptionsList?: Inscription[],
+  etudiantsList?: Etudiant[]
+): WeightedAverageCalculation | null => {
+  const inscriptions = inscriptionsList || DB.getInscriptions();
+  const etudiants = etudiantsList || DB.getEtudiants();
+  
+  const etudiant = etudiants.find(e => Number(e.id) === Number(etudiantId));
+  if (!etudiant || etudiant.est_bloque || etudiant.statut === 'Suspendu') {
+    return null;
+  }
+
+  // Vérifier si l'étudiant possède une inscription active pour l'année académique
+  const anneeInscriptions = inscriptions.filter(
+    i => Number(i.annee_academique_id) === Number(anneeId)
+  );
+
+  const activeInscription = anneeInscriptions.find(
+    i => Number(i.etudiant_id) === Number(etudiantId) && (i.statut === 'Validée' || i.statut === 'En attente' || i.statut !== 'Annulée')
+  );
+
+  // Si des inscriptions existent pour l'année et qu'aucune n'est active pour cet étudiant, ne pas calculer
+  if (anneeInscriptions.length > 0 && !activeInscription) {
+    return null;
+  }
+
+  let totalPoints = 0;
+  let totalCreditsInscrits = 0;
+  let totalCreditsValides = 0;
+  const matieresDetails: WeightedAverageCalculation['matieresDetails'] = [];
+
+  matieresList.forEach(m => {
+    const g = getGradeFn(etudiantId, m.id);
+    const ccVal = g.cc !== '' && g.cc !== undefined && g.cc !== null ? Number(g.cc) : 0;
+    const examVal = g.exam !== '' && g.exam !== undefined && g.exam !== null ? Number(g.exam) : 0;
+    const noteFinale = parseFloat(((ccVal * 0.4) + (examVal * 0.6)).toFixed(2));
+    const credits = Number(m.credits) || 3;
+    const isValidated = noteFinale >= 10.0;
+
+    totalPoints += noteFinale * credits;
+    totalCreditsInscrits += credits;
+    if (isValidated) {
+      totalCreditsValides += credits;
+    }
+
+    matieresDetails.push({
+      matiereId: m.id,
+      code: m.code,
+      nom: m.nom,
+      credits,
+      noteCc: ccVal,
+      noteExam: examVal,
+      noteFinale,
+      isValidated
+    });
+  });
+
+  const moyennePonderee = totalCreditsInscrits > 0 
+    ? parseFloat((totalPoints / totalCreditsInscrits).toFixed(2)) 
+    : 0;
+
+  const isAdmis = moyennePonderee >= 10.0;
+  const decision = isAdmis ? 'Admis' : (moyennePonderee >= 9.0 ? 'Compensé' : 'Ajourné');
+
+  let mention: WeightedAverageCalculation['mention'] = 'N/A';
+  if (moyennePonderee >= 16) mention = 'Très Bien';
+  else if (moyennePonderee >= 14) mention = 'Bien';
+  else if (moyennePonderee >= 12) mention = 'Assez Bien';
+  else if (moyennePonderee >= 10) mention = 'Passable';
+  else mention = 'Ajourné';
+
+  return {
+    etudiantId,
+    hasActiveInscription: true,
+    moyennePonderee,
+    totalCreditsInscrits,
+    totalCreditsValides,
+    isAdmis,
+    decision,
+    mention,
+    matieresDetails
+  };
+};
 
 export const NotesView: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -118,7 +236,7 @@ export const NotesView: React.FC = () => {
     return semesterMatieres.find(m => m.id === activeMatiereId) || semesterMatieres[0] || null;
   }, [activeMatiereId, semesterMatieres]);
 
-  // Students belonging to selected Filière for the selected academic year
+  // Students belonging to selected Filière for the selected academic year with active inscriptions
   const filiereStudents = useMemo(() => {
     const niveaus = DB.getNiveaux();
     const inscriptions = DB.getInscriptions();
@@ -130,11 +248,17 @@ export const NotesView: React.FC = () => {
       .filter(c => Number(c.filiere_id) === Number(selectedFiliere) || filiereNiveauIds.includes(c.niveau_id))
       .map(c => c.id);
 
-    const anneeInscriptions = inscriptions.filter(i => Number(i.annee_academique_id) === Number(selectedAnnee));
+    // Active inscriptions for the selected academic year
+    const anneeInscriptions = inscriptions.filter(
+      i => Number(i.annee_academique_id) === Number(selectedAnnee) && (i.statut === 'Validée' || i.statut === 'En attente' || i.statut !== 'Annulée')
+    );
 
     return etudiants.filter(e => {
+      // Must not be blocked or suspended
+      if (e.est_bloque || e.statut === 'Suspendu') return false;
+
       if (anneeInscriptions.length > 0) {
-        const studentInsc = anneeInscriptions.find(i => i.etudiant_id === e.id);
+        const studentInsc = anneeInscriptions.find(i => Number(i.etudiant_id) === Number(e.id));
         if (!studentInsc) return false;
         return filiereClassIds.includes(studentInsc.classe_id) || filiereClassIds.includes(e.classe_id);
       }
@@ -316,18 +440,16 @@ export const NotesView: React.FC = () => {
     return null;
   };
 
-  // Progress metrics calculation
+  // Progress metrics calculation using weighted average calculation
   const progressStats = useMemo(() => {
     let filledCount = 0;
     let totalExpected = filiereStudents.length * semesterMatieres.length;
     let invalidCount = 0;
     let totalMoyennes = 0;
     let passedStudents = 0;
+    let calculatedStudentsCount = 0;
 
     filiereStudents.forEach(st => {
-      let studentSum = 0;
-      let studentCredits = 0;
-
       semesterMatieres.forEach(m => {
         const g = getStudentGrade(st.id, m.id);
         const hasCc = g.cc !== '' && g.cc !== undefined && g.cc !== null;
@@ -342,20 +464,26 @@ export const NotesView: React.FC = () => {
             invalidCount++;
           }
         }
-        const noteM = (ccNum * 0.4) + (examNum * 0.6);
-        const credit = m.credits || 3;
-        studentSum += noteM * credit;
-        studentCredits += credit;
       });
 
-      const stAvg = studentCredits > 0 ? studentSum / studentCredits : 0;
-      totalMoyennes += stAvg;
-      if (stAvg >= 10) passedStudents++;
+      const calc = calculateStudentWeightedAverage(
+        st.id,
+        Number(selectedAnnee),
+        Number(selectedSemestre),
+        semesterMatieres,
+        getStudentGrade
+      );
+
+      if (calc) {
+        calculatedStudentsCount++;
+        totalMoyennes += calc.moyennePonderee;
+        if (calc.isAdmis) passedStudents++;
+      }
     });
 
     const percentage = totalExpected > 0 ? Math.round((filledCount / totalExpected) * 100) : 0;
-    const classAvg = filiereStudents.length > 0 ? (totalMoyennes / filiereStudents.length).toFixed(2) : '0.00';
-    const passRate = filiereStudents.length > 0 ? Math.round((passedStudents / filiereStudents.length) * 100) : 0;
+    const classAvg = calculatedStudentsCount > 0 ? (totalMoyennes / calculatedStudentsCount).toFixed(2) : '0.00';
+    const passRate = calculatedStudentsCount > 0 ? Math.round((passedStudents / calculatedStudentsCount) * 100) : 0;
 
     return {
       filledCount,
@@ -498,34 +626,37 @@ export const NotesView: React.FC = () => {
     csv += `Semestre: ${currentSemestre?.libelle || ''}\n`;
     csv += `Annee Academique: ${currentAnnee.code}\n\n`;
 
-    let header = `Nom_Complet`;
+    let header = `Matricule;Nom_Complet`;
     semesterMatieres.forEach(m => {
       header += `;${m.nom}_CC;${m.nom}_EXAM;${m.nom}_MOY`;
     });
-    header += `;Moyenne_Generale;Decision\n`;
+    header += `;Moyenne_Ponderee;Decision;Credits_Valides\n`;
     csv += header;
 
     filiereStudents.forEach(st => {
-      let row = `"${st.prenom} ${st.nom}"`;
+      let row = `"${st.matricule}";"${st.prenom} ${st.nom}"`;
       
-      let sum = 0;
-      let coeffs = 0;
-
       semesterMatieres.forEach(m => {
         const g = getStudentGrade(st.id, m.id);
         const ccVal = g.cc === '' || g.cc === undefined || g.cc === null ? 0 : Number(g.cc);
         const examVal = g.exam === '' || g.exam === undefined || g.exam === null ? 0 : Number(g.exam);
-        const moy = ((ccVal * 0.4) + (examVal * 0.6)).toFixed(2);
-        const coeff = m.credits || 3;
-        sum += parseFloat(moy) * coeff;
-        coeffs += coeff;
-        row += `;${g.cc};${g.exam};${moy}`;
+        const moy = ((ccVal * 0.4) + (examVal * 0.6));
+        row += `;${ccVal};${examVal};${moy.toFixed(2)}`;
       });
 
-      const genAvg = coeffs > 0 ? (sum / coeffs).toFixed(2) : '0.00';
-      const decision = parseFloat(genAvg) >= 10 ? 'Admis' : 'Ajourné';
+      const calc = calculateStudentWeightedAverage(
+        st.id,
+        Number(selectedAnnee),
+        Number(selectedSemestre),
+        semesterMatieres,
+        getStudentGrade
+      );
 
-      row += `;${genAvg};${decision}\n`;
+      const genAvg = calc ? calc.moyennePonderee.toFixed(2) : '0.00';
+      const decision = calc ? calc.decision : 'Non inscrit';
+      const creditsStr = calc ? `${calc.totalCreditsValides}/${calc.totalCreditsInscrits}` : '0/0';
+
+      row += `;${genAvg};${decision};${creditsStr}\n`;
       csv += row;
     });
 
@@ -533,7 +664,7 @@ export const NotesView: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `PV_Collectif_Notes_${currentFiliere?.code || 'Filiere'}_${currentSemestre?.libelle || 'S1'}.csv`);
+    link.setAttribute('download', `PV_Notes_${currentFiliere?.code || 'Filiere'}_${currentSemestre?.libelle || 'S1'}_${currentAnnee.code}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -620,7 +751,7 @@ export const NotesView: React.FC = () => {
         </div>
       )}
 
-      {/* Global Toolbar Tools */}
+        {/* Global Toolbar Tools */}
         <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
           <button
             type="button"
@@ -813,13 +944,15 @@ export const NotesView: React.FC = () => {
                       <div className="text-[9px] font-semibold text-slate-500 mt-0.5">Cl 40% | Ex 60%</div>
                     </th>
                   ))}
-                  <th className="px-3 py-2.5 text-center bg-slate-200/70 text-slate-900 min-w-[95px]">Moy. Sem.</th>
+                  <th className="px-3 py-2.5 text-center bg-slate-200/70 text-slate-900 min-w-[85px] border-r border-gray-300">Moy. Pondérée</th>
+                  <th className="px-3 py-2.5 text-center bg-slate-200/70 text-slate-900 min-w-[95px] border-r border-gray-300">Mention</th>
+                  <th className="px-3 py-2.5 text-center bg-slate-200/70 text-slate-900 min-w-[80px]">Décision</th>
                 </tr>
               </thead>
               <tbody className="text-xs divide-y divide-gray-200">
                 {paginatedStudents.length === 0 ? (
                   <tr>
-                    <td colSpan={3 + semesterMatieres.length} className="text-center py-12 text-gray-400 font-medium">
+                    <td colSpan={5 + semesterMatieres.length} className="text-center py-12 text-gray-400 font-medium">
                       Aucun étudiant trouvé dans cette filière.
                     </td>
                   </tr>
@@ -883,20 +1016,54 @@ export const NotesView: React.FC = () => {
                           );
                         })}
 
-                        {/* Student Overall Semester Average */}
+                        {/* Student Overall Semester Average, Mention and Decision */}
                         {(() => {
-                          const semAvg = totalCredits > 0 ? (sumMoy / totalCredits) : 0;
-                          const isPass = semAvg >= 10;
+                          const calc = calculateStudentWeightedAverage(
+                            st.id,
+                            Number(selectedAnnee),
+                            Number(selectedSemestre),
+                            semesterMatieres,
+                            getStudentGrade
+                          );
+
+                          const semAvg = calc ? calc.moyennePonderee : 0;
+                          const isPass = calc ? calc.isAdmis : false;
+                          const mention = calc ? calc.mention : 'N/A';
+                          const decision = calc ? calc.decision : 'Non inscrit';
+
+                          const mentionStyle: Record<string, string> = {
+                            'Très Bien': 'bg-purple-100 text-purple-800 border-purple-300',
+                            'Bien': 'bg-blue-100 text-blue-800 border-blue-300',
+                            'Assez Bien': 'bg-cyan-100 text-cyan-800 border-cyan-300',
+                            'Passable': 'bg-emerald-100 text-emerald-800 border-emerald-300',
+                            'Ajourné': 'bg-rose-100 text-rose-800 border-rose-300',
+                            'N/A': 'bg-gray-100 text-gray-600 border-gray-200'
+                          };
+
                           return (
-                            <td className="px-2.5 py-2 text-center font-mono font-bold bg-slate-50/80">
-                              <span className={`inline-block px-2 py-0.5 rounded border text-[11px] font-bold ${
-                                isPass 
-                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300' 
-                                  : 'bg-red-50 text-red-800 border-red-300'
-                              }`}>
-                                {semAvg.toFixed(2)}
-                              </span>
-                            </td>
+                            <>
+                              <td className="px-2.5 py-2 text-center font-mono font-bold bg-slate-50/80 border-r border-gray-200">
+                                <span className={`inline-block px-2 py-0.5 rounded border text-[11px] font-bold ${
+                                  isPass 
+                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300' 
+                                    : 'bg-red-50 text-red-800 border-red-300'
+                                }`}>
+                                  {semAvg.toFixed(2)}
+                                </span>
+                              </td>
+                              <td className="px-2 py-2 text-center border-r border-gray-200">
+                                <span className={`inline-block px-2 py-0.5 rounded-full border text-[10px] font-extrabold ${mentionStyle[mention] || mentionStyle['N/A']}`}>
+                                  {mention}
+                                </span>
+                              </td>
+                              <td className="px-2 py-2 text-center">
+                                <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
+                                  isPass ? 'bg-emerald-100 text-emerald-800' : (decision === 'Compensé' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800')
+                                }`}>
+                                  {decision}
+                                </span>
+                              </td>
+                            </>
                           );
                         })()}
 
@@ -1108,18 +1275,18 @@ export const NotesView: React.FC = () => {
       <Modal
         isOpen={isPrintModalOpen}
         onClose={() => setIsPrintModalOpen(false)}
-        title="Procès-Verbal Officiel de Notes (PV)"
+        title="Procès-Verbal Officiel de Notes & Délibération (PV)"
       >
         <div className="space-y-6 text-xs p-4 bg-white">
           <div className="text-center border-b pb-4 space-y-1">
             <h3 className="font-bold text-sm uppercase text-[#1A1A1A]">Université - Secrétariat Général / Scolarité</h3>
-            <p className="text-[10px] text-gray-500">Procès-Verbal des Notes d'Examen</p>
+            <p className="text-[10px] text-gray-500">Procès-Verbal des Notes d'Examen & Délibération LMD</p>
             <h4 className="font-bold text-[#0066FF] text-base mt-2 uppercase">
-              PV Collectif - {currentSemestre?.libelle}
+              PV Collectif de Session - {currentSemestre?.libelle}
             </h4>
             <div className="flex flex-wrap items-center justify-center gap-4 text-[11px] text-gray-600 pt-2 font-medium">
-              <span>Filière: <strong>{currentFiliere?.nom}</strong></span> | 
-              <span>Année: <strong>{currentAnnee.code}</strong></span>
+              <span>Filière: <strong>{currentFiliere?.nom}</strong> ({currentFiliere?.code})</span> | 
+              <span>Année Académique: <strong>{currentAnnee.code}</strong></span>
             </div>
           </div>
 
@@ -1128,30 +1295,39 @@ export const NotesView: React.FC = () => {
             <table className="w-full text-left text-[11px]">
               <thead className="bg-gray-100 font-bold border-b">
                 <tr>
-                  <th className="p-2 border-r">N°</th>
+                  <th className="p-2 border-r text-center">N°</th>
                   <th className="p-2 border-r">Matricule</th>
                   <th className="p-2 border-r">Nom Completo</th>
-                  <th className="p-2 border-r text-center">Moyenne Générale</th>
+                  <th className="p-2 border-r text-center">Moyenne Pondérée</th>
+                  <th className="p-2 border-r text-center">Mention</th>
+                  <th className="p-2 border-r text-center">Crédits ECTS</th>
                   <th className="p-2 text-center">Décision Finale</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {filiereStudents.map((st, i) => {
-                  let sum = 0;
-                  let coeffs = 0;
+                  const calc = calculateStudentWeightedAverage(
+                    st.id,
+                    Number(selectedAnnee),
+                    Number(selectedSemestre),
+                    semesterMatieres,
+                    getStudentGrade
+                  );
 
-                  semesterMatieres.forEach(m => {
-                    const g = getStudentGrade(st.id, m.id);
-                    const ccVal = g.cc === '' || g.cc === undefined || g.cc === null ? 0 : Number(g.cc);
-                    const examVal = g.exam === '' || g.exam === undefined || g.exam === null ? 0 : Number(g.exam);
-                    const moy = ((ccVal * 0.4) + (examVal * 0.6));
-                    const c = m.credits || 3;
-                    sum += moy * c;
-                    coeffs += c;
-                  });
+                  const genMoy = calc ? calc.moyennePonderee.toFixed(2) : '0.00';
+                  const isP = calc ? calc.isAdmis : false;
+                  const mention = calc ? calc.mention : 'N/A';
+                  const decision = calc ? calc.decision : 'Non inscrit';
+                  const creditsStr = calc ? `${calc.totalCreditsValides} / ${calc.totalCreditsInscrits}` : '0 / 0';
 
-                  const genMoy = coeffs > 0 ? (sum / coeffs).toFixed(2) : '0.00';
-                  const isP = parseFloat(genMoy) >= 10;
+                  const mentionStyle: Record<string, string> = {
+                    'Très Bien': 'text-purple-700 font-bold',
+                    'Bien': 'text-blue-700 font-bold',
+                    'Assez Bien': 'text-cyan-700 font-bold',
+                    'Passable': 'text-emerald-700 font-bold',
+                    'Ajourné': 'text-rose-700 font-bold',
+                    'N/A': 'text-gray-500'
+                  };
 
                   return (
                     <tr key={st.id}>
@@ -1159,9 +1335,11 @@ export const NotesView: React.FC = () => {
                       <td className="p-2 border-r font-mono">{st.matricule}</td>
                       <td className="p-2 border-r font-semibold">{st.prenom} {st.nom}</td>
                       <td className="p-2 border-r text-center font-mono font-bold">{genMoy} / 20</td>
+                      <td className={`p-2 border-r text-center ${mentionStyle[mention] || ''}`}>{mention}</td>
+                      <td className="p-2 border-r text-center font-mono">{creditsStr}</td>
                       <td className="p-2 text-center font-bold">
-                        <span className={isP ? 'text-emerald-700' : 'text-red-600'}>
-                          {isP ? 'Admis' : 'Ajourné'}
+                        <span className={isP ? 'text-emerald-700' : (decision === 'Compensé' ? 'text-amber-700' : 'text-red-600')}>
+                          {decision}
                         </span>
                       </td>
                     </tr>

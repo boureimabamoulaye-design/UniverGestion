@@ -590,7 +590,7 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
                 className="h-10 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-xs shrink-0"
               >
                 <Printer className="w-4 h-4" />
-                <span>Imprimer / Télécharger PDF</span>
+                <span>Imprimer / PDF</span>
               </button>
             </div>
           </div>
