@@ -42,7 +42,6 @@ export type ActiveTab =
   | 'semestres'
   | 'inscriptions'
   | 'notes'
-  | 'bulletins'
   | 'absences'
   | 'examen'
   | 'paiements'
@@ -87,8 +86,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'matieres', label: 'Matières', icon: FileText },
     { id: 'semestres', label: 'Semestres', icon: Calendar },
     { id: 'inscriptions', label: 'Inscriptions', icon: UserPlus },
-    { id: 'notes', label: 'Saisie des Notes', icon: FileCheck2 },
-    { id: 'bulletins', label: 'Bulletins & Délibérations', icon: Award },
+    { id: 'notes', label: 'Saisie des Notes', icon: Award },
     { id: 'absences', label: 'Absences & Alertes', icon: AlertCircle },
     { id: 'paiements', label: 'Paiements', icon: CreditCard },
     { id: 'annees', label: 'Années Académiques', icon: Clock },

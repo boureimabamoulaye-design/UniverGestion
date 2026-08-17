@@ -18,7 +18,6 @@ import { MatieresView } from './views/MatieresView';
 import { SemestresView } from './views/SemestresView';
 import { InscriptionsView } from './views/InscriptionsView';
 import { NotesView } from './views/NotesView';
-import { BulletinsView } from './views/BulletinsView';
 import { AbsencesView } from './views/AbsencesView';
 import { PaiementsView } from './views/PaiementsView';
 import { AnneesAcademiquesView } from './views/AnneesAcademiquesView';
@@ -170,7 +169,6 @@ export default function App() {
                   {activeTab === 'semestres' && <SemestresView />}
                   {activeTab === 'inscriptions' && <InscriptionsView />}
                   {activeTab === 'notes' && <NotesView />}
-                  {activeTab === 'bulletins' && <BulletinsView />}
                   {activeTab === 'absences' && <AbsencesView />}
                   {activeTab === 'paiements' && <PaiementsView />}
                   {activeTab === 'annees' && <AnneesAcademiquesView />}

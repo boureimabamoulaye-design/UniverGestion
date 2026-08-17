@@ -179,14 +179,6 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ setActiv
             <FileText className="w-3.5 h-3.5 text-gray-500" />
             Saisie Notes
           </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('bulletins')}
-            className="h-[38px] px-3.5 bg-amber-500 hover:bg-amber-600 text-white rounded-[12px] text-xs font-semibold transition-colors shadow-xs flex items-center gap-2"
-          >
-            <Award className="w-3.5 h-3.5" />
-            Bulletins LMD
-          </button>
         </div>
       </div>
 
