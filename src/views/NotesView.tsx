@@ -89,6 +89,13 @@ export const NotesView: React.FC = () => {
     DB.logAccess('VISITE_PAGE', 'Consultation du Registre de Saisie des Notes');
   }, []);
 
+  // Reset drafts and sync grades when academic year, filiere, or semester changes
+  useEffect(() => {
+    setDraftGrades({});
+    setNotesList(DB.getNotes());
+    setIsSaved(false);
+  }, [selectedAnnee, selectedFiliere, selectedSemestre]);
+
   // Selected Entities
   const currentAnnee = annees.find(a => a.id === Number(selectedAnnee)) || activeAnnee;
   const currentFiliere = filieres.find(f => f.id === Number(selectedFiliere));
@@ -111,9 +118,10 @@ export const NotesView: React.FC = () => {
     return semesterMatieres.find(m => m.id === activeMatiereId) || semesterMatieres[0] || null;
   }, [activeMatiereId, semesterMatieres]);
 
-  // Students belonging to selected Filière (via Niveau & Classe)
+  // Students belonging to selected Filière for the selected academic year
   const filiereStudents = useMemo(() => {
     const niveaus = DB.getNiveaux();
+    const inscriptions = DB.getInscriptions();
     const filiereNiveauIds = niveaus
       .filter(n => Number(n.filiere_id) === Number(selectedFiliere))
       .map(n => n.id);
@@ -122,14 +130,17 @@ export const NotesView: React.FC = () => {
       .filter(c => Number(c.filiere_id) === Number(selectedFiliere) || filiereNiveauIds.includes(c.niveau_id))
       .map(c => c.id);
 
-    if (filiereClassIds.length === 0) {
-      return etudiants.filter(e => (e as any).filiere_id === Number(selectedFiliere) || !e.classe_id);
-    }
+    const anneeInscriptions = inscriptions.filter(i => Number(i.annee_academique_id) === Number(selectedAnnee));
 
-    return etudiants.filter(e => 
-      filiereClassIds.includes(e.classe_id) || (e as any).filiere_id === Number(selectedFiliere)
-    );
-  }, [etudiants, classes, selectedFiliere]);
+    return etudiants.filter(e => {
+      if (anneeInscriptions.length > 0) {
+        const studentInsc = anneeInscriptions.find(i => i.etudiant_id === e.id);
+        if (!studentInsc) return false;
+        return filiereClassIds.includes(studentInsc.classe_id) || filiereClassIds.includes(e.classe_id);
+      }
+      return filiereClassIds.includes(e.classe_id) || (e as any).filiere_id === Number(selectedFiliere);
+    });
+  }, [etudiants, classes, selectedFiliere, selectedAnnee]);
 
   // Key generator helper
   const getGradeKey = (etudiantId: number, matiereId: number) => `${etudiantId}_${matiereId}`;

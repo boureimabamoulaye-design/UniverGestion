@@ -47,6 +47,9 @@ export const EtudiantsView: React.FC = () => {
   const filieres = DB.getFilieres();
   const notes = DB.getNotes();
   const paiements = DB.getPaiements();
+  const inscriptions = DB.getInscriptions();
+  const annees = DB.getAnneesAcademiques();
+  const activeAnnee = DB.getActiveAnneeAcademique();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -56,8 +59,9 @@ export const EtudiantsView: React.FC = () => {
   const [viewingItem, setViewingItem] = useState<Etudiant | null>(null);
   const [deleteConfirmStudent, setDeleteConfirmStudent] = useState<Etudiant | null>(null);
 
-  // Search & Filters - Empty search by default (Requirement 9)
+  // Search & Filters - Filter by Academic Year by default
   const [search, setSearch] = useState('');
+  const [filterAnnee, setFilterAnnee] = useState<string>(activeAnnee ? String(activeAnnee.id) : 'all');
   const [filterFiliere, setFilterFiliere] = useState<string>('all');
   const [filterClasse, setFilterClasse] = useState<string>('all');
 
@@ -73,6 +77,7 @@ export const EtudiantsView: React.FC = () => {
     telephone: '',
     email: '',
     classe_id: classes[0]?.id || 1,
+    annee_academique_id: activeAnnee?.id || 1,
     statut: 'Inscrit' as 'Régulier' | 'Inscrit' | 'Suspendu' | 'Diplômé',
     // Tutor info (Requirement 1)
     tuteur_nom: '',
@@ -87,6 +92,7 @@ export const EtudiantsView: React.FC = () => {
   const handleOpenModal = (item?: Etudiant) => {
     if (item) {
       setEditingItem(item);
+      const studentInsc = inscriptions.find(i => i.etudiant_id === item.id);
       setFormData({
         matricule: item.matricule,
         nom: item.nom,
@@ -99,6 +105,7 @@ export const EtudiantsView: React.FC = () => {
         telephone: item.telephone || '',
         email: item.email,
         classe_id: item.classe_id,
+        annee_academique_id: studentInsc?.annee_academique_id || activeAnnee?.id || 1,
         statut: item.statut as any,
         tuteur_nom: item.tuteur_nom || '',
         tuteur_prenom: item.tuteur_prenom || '',
@@ -122,6 +129,7 @@ export const EtudiantsView: React.FC = () => {
         telephone: '',
         email: '',
         classe_id: classes[0]?.id || 1,
+        annee_academique_id: activeAnnee?.id || 1,
         statut: 'Inscrit',
         tuteur_nom: '',
         tuteur_prenom: '',
@@ -138,14 +146,49 @@ export const EtudiantsView: React.FC = () => {
     e.preventDefault();
     if (!formData.nom || !formData.prenom || !formData.matricule) return;
 
-    DB.saveEtudiant({
+    const savedStudent = DB.saveEtudiant({
       ...(editingItem ? { id: editingItem.id } : {}),
-      ...formData,
+      matricule: formData.matricule,
+      nom: formData.nom,
+      prenom: formData.prenom,
+      date_naissance: formData.date_naissance,
+      lieu_naissance: formData.lieu_naissance,
+      sexe: formData.sexe,
+      nationalite: formData.nationalite,
+      adresse: formData.adresse,
+      telephone: formData.telephone,
+      email: formData.email,
       classe_id: Number(formData.classe_id),
+      statut: formData.statut,
+      tuteur_nom: formData.tuteur_nom,
+      tuteur_prenom: formData.tuteur_prenom,
+      tuteur_telephone: formData.tuteur_telephone,
+      statut_compte: formData.statut_compte,
       mot_de_passe: formData.mot_de_passe || 'etudiant123',
       date_inscription: editingItem ? editingItem.date_inscription : new Date().toISOString().split('T')[0],
       est_bloque: formData.statut_compte === 'Bloqué'
     });
+
+    // Ensure inscription record exists for the selected academic year
+    const existingInscriptions = DB.getInscriptions();
+    const targetAnneeId = Number(formData.annee_academique_id) || activeAnnee?.id || 1;
+    const hasInsc = existingInscriptions.some(
+      i => i.etudiant_id === savedStudent.id && Number(i.annee_academique_id) === targetAnneeId
+    );
+
+    if (!hasInsc) {
+      DB.saveInscription({
+        etudiant_id: savedStudent.id,
+        classe_id: Number(formData.classe_id),
+        annee_academique_id: targetAnneeId,
+        date_inscription: new Date().toISOString().split('T')[0],
+        statut: 'Validée',
+        frais_inscription: 150000,
+        type_inscription: editingItem ? 'Réinscrire' : 'Inscrire',
+        statut_paiement: 'Payé',
+        statut_validation: 'Validé'
+      });
+    }
 
     setList(DB.getEtudiants());
     setIsModalOpen(false);
@@ -228,7 +271,11 @@ export const EtudiantsView: React.FC = () => {
     const matchesFiliere = filterFiliere === 'all' || studentClass?.filiere_id === Number(filterFiliere);
     const matchesClasse = filterClasse === 'all' || e.classe_id === Number(filterClasse);
 
-    return matchesSearch && matchesFiliere && matchesClasse;
+    const matchesAnnee = filterAnnee === 'all' || 
+      inscriptions.some(i => i.etudiant_id === e.id && Number(i.annee_academique_id) === Number(filterAnnee)) ||
+      (inscriptions.filter(i => i.etudiant_id === e.id).length === 0 && Number(filterAnnee) === (activeAnnee?.id || 1));
+
+    return matchesSearch && matchesAnnee && matchesFiliere && matchesClasse;
   });
 
   if (isLoading) {
@@ -243,7 +290,7 @@ export const EtudiantsView: React.FC = () => {
         <div>
           <h2 className="text-lg sm:text-xl font-bold text-[#1A1A1A]">Gestion des Étudiants</h2>
           <p className="text-xs text-gray-500 mt-0.5">
-            Effectif total : <span className="font-bold text-[#0066FF]">{list.length} étudiants inscrits</span>
+            Effectif affiché : <span className="font-bold text-[#0066FF]">{filtered.length} étudiants</span> {filterAnnee !== 'all' && `(Année ${annees.find(a => a.id === Number(filterAnnee))?.libelle || ''})`}
           </p>
         </div>
 
@@ -286,17 +333,32 @@ export const EtudiantsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Multicriteria Search & Filters Bar (Requirement 9: Empty placeholder search) */}
-      <div className="bg-white p-3 sm:p-4 rounded-[16px] sm:rounded-[20px] border border-[#E5E7EB] shadow-xs grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+      {/* Multicriteria Search & Filters Bar (Année, Filière, Classe) */}
+      <div className="bg-white p-3 sm:p-4 rounded-[16px] sm:rounded-[20px] border border-[#E5E7EB] shadow-xs grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
         <div className="relative sm:col-span-2">
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Rechercher un étudiant..."
+            placeholder="Rechercher un étudiant (nom, matricule)..."
             className="w-full h-[40px] sm:h-[44px] bg-[#F9FAFB] border border-[#E5E7EB] rounded-[12px] sm:rounded-[14px] pl-9 pr-3 text-xs sm:text-sm focus:outline-none focus:border-[#0066FF]"
           />
           <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+        </div>
+
+        <div>
+          <select
+            value={filterAnnee}
+            onChange={(e) => setFilterAnnee(e.target.value)}
+            className="w-full h-[40px] sm:h-[44px] bg-[#F9FAFB] border border-[#E5E7EB] rounded-[12px] sm:rounded-[14px] px-3 text-xs font-semibold text-blue-800 focus:outline-none focus:border-[#0066FF]"
+          >
+            <option value="all">Toutes les années académiques</option>
+            {annees.map(a => (
+              <option key={a.id} value={a.id}>
+                {a.libelle} {a.est_active ? '(Active)' : ''}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div>
@@ -462,7 +524,7 @@ export const EtudiantsView: React.FC = () => {
         title={editingItem ? 'Modifier la Fiche Étudiant' : 'Inscrire un Nouvel Étudiant'}
       >
         <form onSubmit={handleSave} className="space-y-4 text-xs">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block font-semibold text-gray-700 mb-1">Matricule Unique *</label>
               <input
@@ -472,6 +534,18 @@ export const EtudiantsView: React.FC = () => {
                 className="w-full h-[44px] px-3 border border-[#E5E7EB] rounded-[14px] font-mono font-bold"
                 required
               />
+            </div>
+            <div>
+              <label className="block font-semibold text-gray-700 mb-1">Année Académique *</label>
+              <select
+                value={formData.annee_academique_id}
+                onChange={(e) => setFormData({ ...formData, annee_academique_id: Number(e.target.value) })}
+                className="w-full h-[44px] px-3 border border-[#E5E7EB] rounded-[14px] bg-white font-medium text-blue-700"
+              >
+                {annees.map(a => (
+                  <option key={a.id} value={a.id}>{a.libelle} {a.est_active ? '(Active)' : ''}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block font-semibold text-gray-700 mb-1">Classe / Promotion *</label>

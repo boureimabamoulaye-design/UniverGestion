@@ -134,6 +134,7 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
   const studentBulletins = DB.getStudentAuthorizedBulletins(etudiant.id);
 
   // States
+  const [selectedAnneeId, setSelectedAnneeId] = useState<number>(activeAnnee?.id || 1);
   const [selectedSemestreId, setSelectedSemestreId] = useState<number>(semestres[0]?.id || 1);
   const [phone, setPhone] = useState(etudiant.telephone || '');
   const [adresse, setAdresse] = useState(etudiant.adresse || '');
@@ -268,7 +269,10 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
       Number(m.semestre_id) === Number(sem.id) && 
       (!m.filiere_id || Number(m.filiere_id) === Number(studentFiliere?.id) || Number(m.filiere_id) === Number(etudiant.filiere_id))
     );
-    const semNotes = notes.filter(n => Number(n.semestre_id) === Number(sem.id));
+    const semNotes = notes.filter(n => 
+      Number(n.semestre_id) === Number(sem.id) &&
+      (!n.annee_academique_id || Number(n.annee_academique_id) === Number(selectedAnneeId))
+    );
     const noteMatiereIds = new Set(semNotes.map(n => Number(n.matiere_id)));
     const extraMatieresWithNotes = matieres.filter(m => noteMatiereIds.has(Number(m.id)) && !semMatieres.some(sm => Number(sm.id) === Number(m.id)));
 
@@ -568,7 +572,19 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <select
+                value={selectedAnneeId}
+                onChange={(e) => setSelectedAnneeId(Number(e.target.value))}
+                className="h-10 px-3 bg-slate-50 border border-slate-200 text-blue-700 rounded-xl text-xs font-bold focus:outline-none focus:border-blue-600"
+              >
+                {annees.map(a => (
+                  <option key={a.id} value={a.id}>
+                    Année : {a.libelle} {a.est_active ? '(Active)' : ''}
+                  </option>
+                ))}
+              </select>
+
               <button type="button"
                 onClick={() => window.print()}
                 className="h-10 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-xs shrink-0"

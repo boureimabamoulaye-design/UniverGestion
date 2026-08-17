@@ -29,6 +29,7 @@ export const InscriptionsView: React.FC = () => {
 
   // Search & Filter State for main list
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterAnneeId, setFilterAnneeId] = useState<number | 'ALL'>(activeAnnee ? activeAnnee.id : 'ALL');
   const [filterClasseId, setFilterClasseId] = useState<number | 'ALL'>('ALL');
   const [successBanner, setSuccessBanner] = useState<string | null>(null);
 
@@ -269,9 +270,10 @@ export const InscriptionsView: React.FC = () => {
     const matchesSearch = searchQuery === '' || 
       (student && `${student.prenom} ${student.nom} ${student.matricule}`.toLowerCase().includes(searchQuery.toLowerCase()));
     
+    const matchesAnnee = filterAnneeId === 'ALL' || Number(item.annee_academique_id) === Number(filterAnneeId);
     const matchesClasse = filterClasseId === 'ALL' || item.classe_id === Number(filterClasseId);
 
-    return matchesSearch && matchesClasse;
+    return matchesSearch && matchesAnnee && matchesClasse;
   });
 
   return (
@@ -340,14 +342,24 @@ export const InscriptionsView: React.FC = () => {
           />
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <Filter className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+          <select
+            value={filterAnneeId}
+            onChange={(e) => setFilterAnneeId(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value))}
+            className="h-9 bg-gray-50 border border-gray-200 rounded-xl px-3 text-xs font-bold text-blue-700 focus:outline-none focus:border-blue-600"
+          >
+            <option value="ALL">Toutes les années académiques</option>
+            {annees.map(a => (
+              <option key={a.id} value={a.id}>{a.libelle} {a.est_active ? '(Active)' : ''}</option>
+            ))}
+          </select>
           <select
             value={filterClasseId}
             onChange={(e) => setFilterClasseId(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value))}
-            className="h-9 bg-gray-50 border border-gray-200 rounded-xl px-3 text-xs font-semibold text-slate-700 focus:outline-none focus:border-blue-600 w-full sm:w-auto"
+            className="h-9 bg-gray-50 border border-gray-200 rounded-xl px-3 text-xs font-semibold text-slate-700 focus:outline-none focus:border-blue-600"
           >
-            <option value="ALL">Toutes les classes ({list.length} inscriptions)</option>
+            <option value="ALL">Toutes les classes</option>
             {classes.map(c => (
               <option key={c.id} value={c.id}>{c.nom}</option>
             ))}
