@@ -567,147 +567,14 @@ export const INITIAL_INSCRIPTIONS: Inscription[] = [
   }
 ];
 
-export const INITIAL_NOTES: Note[] = [
-  // Étudiant 1: Mamadou Traoré (IGL) - Semestre 1
-  { id: 1, etudiant_id: 1, matiere_id: 1, semestre_id: 1, annee_academique_id: 1, note_cc: 16, note_examen: 15, note_finale: 15.4, appreciation: 'Très Bon Travail' },
-  { id: 2, etudiant_id: 1, matiere_id: 2, semestre_id: 1, annee_academique_id: 1, note_cc: 14, note_examen: 16, note_finale: 15.2, appreciation: 'Bien Maîtrisé' },
-  { id: 3, etudiant_id: 1, matiere_id: 3, semestre_id: 1, annee_academique_id: 1, note_cc: 13, note_examen: 14, note_finale: 13.6, appreciation: 'Assez Bien' },
-  { id: 4, etudiant_id: 1, matiere_id: 4, semestre_id: 1, annee_academique_id: 1, note_cc: 15, note_examen: 17, note_finale: 16.2, appreciation: 'Excellent' },
-
-  // Étudiant 1: Mamadou Traoré (IGL) - Semestre 2
-  { id: 5, etudiant_id: 1, matiere_id: 5, semestre_id: 2, annee_academique_id: 1, note_cc: 15, note_examen: 16, note_finale: 15.6, appreciation: 'Bien' },
-  { id: 6, etudiant_id: 1, matiere_id: 6, semestre_id: 2, annee_academique_id: 1, note_cc: 14, note_examen: 15, note_finale: 14.6, appreciation: 'Bien' },
-  { id: 7, etudiant_id: 1, matiere_id: 7, semestre_id: 2, annee_academique_id: 1, note_cc: 13, note_examen: 14, note_finale: 13.6, appreciation: 'Assez Bien' },
-  { id: 8, etudiant_id: 1, matiere_id: 8, semestre_id: 2, annee_academique_id: 1, note_cc: 16, note_examen: 17, note_finale: 16.6, appreciation: 'Très Bien' },
-
-  // Étudiant 2: Aïssata Diarra (FC) - Semestre 1
-  { id: 9, etudiant_id: 2, matiere_id: 9, semestre_id: 1, annee_academique_id: 1, note_cc: 17, note_examen: 16, note_finale: 16.4, appreciation: 'Excellent' },
-  { id: 10, etudiant_id: 2, matiere_id: 10, semestre_id: 1, annee_academique_id: 1, note_cc: 15, note_examen: 14, note_finale: 14.4, appreciation: 'Bien' },
-  { id: 11, etudiant_id: 2, matiere_id: 11, semestre_id: 1, annee_academique_id: 1, note_cc: 14, note_examen: 15, note_finale: 14.6, appreciation: 'Bien' },
-  { id: 12, etudiant_id: 2, matiere_id: 12, semestre_id: 1, annee_academique_id: 1, note_cc: 16, note_examen: 18, note_finale: 17.2, appreciation: 'Très Bien' },
-
-  // Étudiant 2: Aïssata Diarra (FC) - Semestre 2
-  { id: 13, etudiant_id: 2, matiere_id: 13, semestre_id: 2, annee_academique_id: 1, note_cc: 16, note_examen: 15, note_finale: 15.4, appreciation: 'Bien' },
-  { id: 14, etudiant_id: 2, matiere_id: 14, semestre_id: 2, annee_academique_id: 1, note_cc: 15, note_examen: 16, note_finale: 15.6, appreciation: 'Bien' },
-  { id: 15, etudiant_id: 2, matiere_id: 15, semestre_id: 2, annee_academique_id: 1, note_cc: 14, note_examen: 14, note_finale: 14.0, appreciation: 'Bien' },
-  { id: 16, etudiant_id: 2, matiere_id: 16, semestre_id: 2, annee_academique_id: 1, note_cc: 17, note_examen: 17, note_finale: 17.0, appreciation: 'Très Bien' },
-
-  // Étudiant 3: Oumar Sangaré (DA) - Semestre 1
-  { id: 17, etudiant_id: 3, matiere_id: 17, semestre_id: 1, annee_academique_id: 1, note_cc: 14, note_examen: 13, note_finale: 13.4, appreciation: 'Assez Bien' },
-  { id: 18, etudiant_id: 3, matiere_id: 18, semestre_id: 1, annee_academique_id: 1, note_cc: 15, note_examen: 15, note_finale: 15.0, appreciation: 'Bien' },
-  { id: 19, etudiant_id: 3, matiere_id: 19, semestre_id: 1, annee_academique_id: 1, note_cc: 12, note_examen: 14, note_finale: 13.2, appreciation: 'Assez Bien' },
-  { id: 20, etudiant_id: 3, matiere_id: 20, semestre_id: 1, annee_academique_id: 1, note_cc: 16, note_examen: 16, note_finale: 16.0, appreciation: 'Très Bien' },
-
-  // Étudiant 3: Oumar Sangaré (DA) - Semestre 2
-  { id: 21, etudiant_id: 3, matiere_id: 21, semestre_id: 2, annee_academique_id: 1, note_cc: 15, note_examen: 14, note_finale: 14.4, appreciation: 'Bien' },
-  { id: 22, etudiant_id: 3, matiere_id: 22, semestre_id: 2, annee_academique_id: 1, note_cc: 14, note_examen: 15, note_finale: 14.6, appreciation: 'Bien' },
-  { id: 23, etudiant_id: 3, matiere_id: 23, semestre_id: 2, annee_academique_id: 1, note_cc: 13, note_examen: 13, note_finale: 13.0, appreciation: 'Assez Bien' },
-  { id: 24, etudiant_id: 3, matiere_id: 24, semestre_id: 2, annee_academique_id: 1, note_cc: 16, note_examen: 15, note_finale: 15.4, appreciation: 'Bien' }
-];
+export const INITIAL_NOTES: Note[] = [];
 
 export const INITIAL_ABSENCES: Absence[] = [
   { id: 1, etudiant_id: 1, matiere_id: 3, date_absence: '2025-11-12', heures: 2, justifiee: true, motif: 'Raison médicale certifiée' },
   { id: 2, etudiant_id: 2, matiere_id: 10, date_absence: '2025-12-01', heures: 2, justifiee: false, motif: 'Absence non justifiée' }
 ];
 
-export const INITIAL_BULLETINS: Bulletin[] = [
-  {
-    id: 1,
-    etudiant_id: 1,
-    classe_id: 1,
-    semestre_id: 1,
-    annee_academique_id: 1,
-    moyenne: 15.4,
-    moyenne_generale: 15.4,
-    total_credits: 18,
-    total_credits_valides: 18,
-    decision: 'Admis',
-    mention: 'Bien',
-    rang: 1,
-    date_generation: '2026-02-15',
-    remarques_jury: 'Semestre validé avec mention Bien.'
-  },
-  {
-    id: 2,
-    etudiant_id: 1,
-    classe_id: 1,
-    semestre_id: 2,
-    annee_academique_id: 1,
-    moyenne: 15.57,
-    moyenne_generale: 15.57,
-    total_credits: 18,
-    total_credits_valides: 18,
-    decision: 'Admis',
-    mention: 'Bien',
-    rang: 1,
-    date_generation: '2026-06-20',
-    remarques_jury: 'Semestre validé avec mention Bien.'
-  },
-  {
-    id: 3,
-    etudiant_id: 2,
-    classe_id: 2,
-    semestre_id: 1,
-    annee_academique_id: 1,
-    moyenne: 15.64,
-    moyenne_generale: 15.64,
-    total_credits: 18,
-    total_credits_valides: 18,
-    decision: 'Admis',
-    mention: 'Bien',
-    rang: 1,
-    date_generation: '2026-02-15',
-    remarques_jury: 'Semestre validé avec mention Bien.'
-  },
-  {
-    id: 4,
-    etudiant_id: 2,
-    classe_id: 2,
-    semestre_id: 2,
-    annee_academique_id: 1,
-    moyenne: 15.63,
-    moyenne_generale: 15.63,
-    total_credits: 18,
-    total_credits_valides: 18,
-    decision: 'Admis',
-    mention: 'Bien',
-    rang: 1,
-    date_generation: '2026-06-20',
-    remarques_jury: 'Semestre validé avec mention Bien.'
-  },
-  {
-    id: 5,
-    etudiant_id: 3,
-    classe_id: 3,
-    semestre_id: 1,
-    annee_academique_id: 1,
-    moyenne: 14.47,
-    moyenne_generale: 14.47,
-    total_credits: 18,
-    total_credits_valides: 18,
-    decision: 'Admis',
-    mention: 'Bien',
-    rang: 1,
-    date_generation: '2026-02-15',
-    remarques_jury: 'Semestre validé avec mention Bien.'
-  },
-  {
-    id: 6,
-    etudiant_id: 3,
-    classe_id: 3,
-    semestre_id: 2,
-    annee_academique_id: 1,
-    moyenne: 14.44,
-    moyenne_generale: 14.44,
-    total_credits: 18,
-    total_credits_valides: 18,
-    decision: 'Admis',
-    mention: 'Bien',
-    rang: 1,
-    date_generation: '2026-06-20',
-    remarques_jury: 'Semestre validé avec mention Bien.'
-  }
-];
+export const INITIAL_BULLETINS: Bulletin[] = [];
 
 export const INITIAL_PAIEMENTS: Paiement[] = [
   {

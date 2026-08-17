@@ -380,46 +380,59 @@ export const NotesView: React.FC = () => {
     filiereStudents.forEach(st => {
       semesterMatieres.forEach(m => {
         const g = getStudentGrade(st.id, m.id);
-        const ccVal = g.cc === '' || g.cc === undefined || g.cc === null ? 0 : Number(g.cc);
-        const examVal = g.exam === '' || g.exam === undefined || g.exam === null ? 0 : Number(g.exam);
-        const noteFinale = parseFloat(((ccVal * 0.4) + (examVal * 0.6)).toFixed(2));
-        let appreciation = g.observation || (noteFinale >= 10 ? 'Validé' : 'Ajourné');
+        const hasCc = g.cc !== '' && g.cc !== undefined && g.cc !== null;
+        const hasExam = g.exam !== '' && g.exam !== undefined && g.exam !== null;
+        
+        const existingNote = notesList.find(
+          n => n.etudiant_id === st.id &&
+               n.matiere_id === m.id &&
+               n.semestre_id === Number(selectedSemestre) &&
+               n.annee_academique_id === Number(selectedAnnee)
+        );
 
-        gradesPayload.push({
-          etudiant_id: st.id,
-          matiere_id: m.id,
-          note_cc: ccVal,
-          note_examen: examVal,
-          appreciation
-        });
+        if (hasCc || hasExam || existingNote) {
+          const ccVal = hasCc ? Number(g.cc) : (existingNote?.note_cc ?? 0);
+          const examVal = hasExam ? Number(g.exam) : (existingNote?.note_examen ?? 0);
+          const noteFinale = parseFloat(((ccVal * 0.4) + (examVal * 0.6)).toFixed(2));
+          let appreciation = g.observation || (noteFinale >= 10 ? 'Validé' : 'Ajourné');
+
+          gradesPayload.push({
+            etudiant_id: st.id,
+            matiere_id: m.id,
+            note_cc: ccVal,
+            note_examen: examVal,
+            appreciation
+          });
+        }
       });
     });
 
     setIsSubmitting(true);
     try {
-      const data = await safeFetchJson('/api/notes/saisie-collective', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          annee_academique_id: Number(selectedAnnee),
-          filiere_id: Number(selectedFiliere),
-          semestre_id: Number(selectedSemestre),
-          grades: gradesPayload
-        })
-      });
+      if (gradesPayload.length > 0) {
+        const data = await safeFetchJson('/api/notes/saisie-collective', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            annee_academique_id: Number(selectedAnnee),
+            filiere_id: Number(selectedFiliere),
+            semestre_id: Number(selectedSemestre),
+            grades: gradesPayload
+          })
+        });
 
-      if (data && data.success === false) {
-        setErrorBanner(data.message || "Erreur lors de l'enregistrement des notes dans la base MySQL.");
-        return;
+        if (data && data.success === false) {
+          setErrorBanner(data.message || "Erreur lors de l'enregistrement des notes dans la base MySQL.");
+          return;
+        }
       }
 
       // Sync local cache
       filiereStudents.forEach(st => {
         semesterMatieres.forEach(m => {
           const g = getStudentGrade(st.id, m.id);
-          const ccVal = g.cc === '' || g.cc === undefined || g.cc === null ? 0 : Number(g.cc);
-          const examVal = g.exam === '' || g.exam === undefined || g.exam === null ? 0 : Number(g.exam);
-          const noteFinale = parseFloat(((ccVal * 0.4) + (examVal * 0.6)).toFixed(2));
+          const hasCc = g.cc !== '' && g.cc !== undefined && g.cc !== null;
+          const hasExam = g.exam !== '' && g.exam !== undefined && g.exam !== null;
 
           const existingNote = notesList.find(
             n => n.etudiant_id === st.id &&
@@ -428,19 +441,25 @@ export const NotesView: React.FC = () => {
                  n.annee_academique_id === Number(selectedAnnee)
           );
 
-          let appreciation = g.observation || (noteFinale >= 10 ? 'Validé' : 'Ajourné');
+          if (hasCc || hasExam || existingNote) {
+            const ccVal = hasCc ? Number(g.cc) : (existingNote?.note_cc ?? 0);
+            const examVal = hasExam ? Number(g.exam) : (existingNote?.note_examen ?? 0);
+            const noteFinale = parseFloat(((ccVal * 0.4) + (examVal * 0.6)).toFixed(2));
 
-          DB.saveNote({
-            id: existingNote?.id,
-            etudiant_id: st.id,
-            matiere_id: m.id,
-            semestre_id: Number(selectedSemestre),
-            annee_academique_id: Number(selectedAnnee),
-            note_cc: ccVal,
-            note_examen: examVal,
-            note_finale: noteFinale,
-            appreciation
-          });
+            let appreciation = g.observation || (noteFinale >= 10 ? 'Validé' : 'Ajourné');
+
+            DB.saveNote({
+              id: existingNote?.id,
+              etudiant_id: st.id,
+              matiere_id: m.id,
+              semestre_id: Number(selectedSemestre),
+              annee_academique_id: Number(selectedAnnee),
+              note_cc: ccVal,
+              note_examen: examVal,
+              note_finale: noteFinale,
+              appreciation
+            });
+          }
         });
       });
 

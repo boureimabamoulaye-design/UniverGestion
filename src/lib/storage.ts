@@ -340,26 +340,7 @@ export class DB {
   }
 
   static getNotes(): Note[] {
-    const list = getItem(STORAGE_KEYS.NOTES, INITIAL_NOTES);
-    if (!Array.isArray(list) || list.length === 0) {
-      setItem(STORAGE_KEYS.NOTES, INITIAL_NOTES);
-      return INITIAL_NOTES;
-    }
-    // Ensure all demo initial notes (including S1 & S2) are included if not present
-    const existingKeys = new Set(list.map(n => `${n.etudiant_id}_${n.matiere_id}_${n.semestre_id}`));
-    let hasAdded = false;
-    INITIAL_NOTES.forEach(initN => {
-      const key = `${initN.etudiant_id}_${initN.matiere_id}_${initN.semestre_id}`;
-      if (!existingKeys.has(key)) {
-        const nextId = Math.max(0, ...list.map(n => n.id)) + 1;
-        list.push({ ...initN, id: nextId });
-        hasAdded = true;
-      }
-    });
-    if (hasAdded) {
-      setItem(STORAGE_KEYS.NOTES, list);
-    }
-    return list;
+    return getItem(STORAGE_KEYS.NOTES, INITIAL_NOTES);
   }
 
   static getAbsences(): Absence[] {
@@ -367,25 +348,7 @@ export class DB {
   }
 
   static getBulletins(): Bulletin[] {
-    const list = getItem(STORAGE_KEYS.BULLETINS, INITIAL_BULLETINS);
-    if (!Array.isArray(list) || list.length === 0) {
-      setItem(STORAGE_KEYS.BULLETINS, INITIAL_BULLETINS);
-      return INITIAL_BULLETINS;
-    }
-    const existingKeys = new Set(list.map(b => `${b.etudiant_id}_${b.semestre_id}`));
-    let hasAdded = false;
-    INITIAL_BULLETINS.forEach(initB => {
-      const key = `${initB.etudiant_id}_${initB.semestre_id}`;
-      if (!existingKeys.has(key)) {
-        const nextId = Math.max(0, ...list.map(b => b.id)) + 1;
-        list.push({ ...initB, id: nextId });
-        hasAdded = true;
-      }
-    });
-    if (hasAdded) {
-      setItem(STORAGE_KEYS.BULLETINS, list);
-    }
-    return list;
+    return getItem(STORAGE_KEYS.BULLETINS, INITIAL_BULLETINS);
   }
 
   static getPaiements(): Paiement[] {
