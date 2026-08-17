@@ -4,7 +4,6 @@ import { DB } from '../lib/storage';
 import {
   GraduationCap,
   Award,
-  FileCheck2,
   CreditCard,
   AlertCircle,
   Save,
@@ -23,9 +22,6 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { Modal } from '../components/Modal';
-import { ExcelBulletinView } from '../components/ExcelBulletinView';
-import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
 
 interface EtudiantPortalViewProps {
   user: AuthUser;
@@ -35,7 +31,7 @@ interface EtudiantPortalViewProps {
 
 export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
   user,
-  activeTab = 'bulletins',
+  activeTab = 'profil_etudiant',
   setActiveTab
 }) => {
   // Real-time synchronization tick with DB updates
@@ -188,41 +184,6 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
   }, [etudiant.id, studentFiliere?.id, studentClass?.id]);
 
   // Student Password Change State
-  const [isExportingPdf, setIsExportingPdf] = useState(false);
-
-  const handleExportPDF = async () => {
-    setIsExportingPdf(true);
-    try {
-      const element = document.getElementById('bulletin-document-content');
-      if (!element) return;
-
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        logging: false
-      });
-
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pdfWidth;
-      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
-
-      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-
-      const activeSemestreObj = semestres.find(s => Number(s.id) === Number(selectedSemestreId)) || semestres[0];
-      const semLibelle = activeSemestreObj?.libelle || 'Semestre';
-      const fileName = `Bulletin_${etudiant.matricule}_${semLibelle.replace(/\s+/g, '_')}.pdf`;
-      pdf.save(fileName);
-      DB.logAccess('CONSULTATION', `Export PDF du bulletin de ${etudiant.prenom} ${etudiant.nom} (${semLibelle})`);
-    } catch (err) {
-      console.error('Erreur lors de la génération du PDF:', err);
-    } finally {
-      setIsExportingPdf(false);
-    }
-  };
-
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState(false);
@@ -252,13 +213,11 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
     setTimeout(() => setPasswordSuccess(false), 4000);
   };
 
-  // Modals
-  const [isExcelBulletinModalOpen, setIsExcelBulletinModalOpen] = useState(false);
   const [viewingReceipt, setViewingReceipt] = useState<Paiement | null>(null);
 
   // Current selected tab state helper
-  const validStudentTabs = ['bulletins', 'examen', 'paiements', 'profil_etudiant', 'absences'];
-  const currentTab = validStudentTabs.includes(activeTab) ? activeTab : 'bulletins';
+  const validStudentTabs = ['profil_etudiant', 'examen', 'paiements', 'absences'];
+  const currentTab = validStudentTabs.includes(activeTab) ? activeTab : 'profil_etudiant';
 
   const handleUpdateProfile = (e: React.FormEvent) => {
     e.preventDefault();
@@ -592,57 +551,6 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-
-      {/* TAB 1: MON BULLETIN (Format Admin Officiel direct) */}
-      {currentTab === 'bulletins' && (
-        <div className="space-y-6 animate-in fade-in duration-300">
-          
-          {/* Header & Semester Selection Bar */}
-          <div className="bg-white p-3.5 sm:p-4 rounded-[16px] border border-[#E5E7EB] shadow-xs flex flex-wrap items-center justify-between gap-3">
-            {/* Semester Select Dropdown */}
-            <div className="flex items-center gap-2">
-              <label className="text-xs font-bold text-gray-700 whitespace-nowrap">Semestre :</label>
-              <select
-                value={selectedSemestreId}
-                onChange={(e) => setSelectedSemestreId(Number(e.target.value))}
-                className="h-[40px] bg-white border border-[#E5E7EB] rounded-[12px] px-3.5 text-xs font-bold text-[#0066FF] focus:outline-none focus:border-[#0066FF] shadow-2xs cursor-pointer"
-              >
-                {semestres.map(s => (
-                  <option key={s.id} value={s.id}>{s.libelle}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Exporter en PDF Button right on the semester line */}
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleExportPDF}
-                disabled={isExportingPdf}
-                className="h-[40px] px-4 bg-red-600 hover:bg-red-700 text-white rounded-[12px] text-xs font-bold flex items-center gap-2 shadow-2xs transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
-                title="Exporter le bulletin officiel en document PDF"
-              >
-                <Download className="w-4 h-4" />
-                <span>{isExportingPdf ? 'Génération PDF...' : 'Exporter en PDF'}</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Bulletin Admin Direct */}
-          <ExcelBulletinView
-            etudiant={etudiant}
-            semestre={semestres.find(s => Number(s.id) === Number(selectedSemestreId)) || semestres[0]}
-            notes={notes}
-            matieres={matieres}
-            classe={studentClass}
-            filiere={studentFiliere}
-            faculte={studentFaculte}
-            universite={universite}
-            anneeAcademique={activeAnnee}
-            hideActionBar={true}
-          />
-        </div>
-      )}
 
       {/* TAB EXAMEN & RELEVÉ DE NOTES (Semestre 1 & Semestre 2) */}
       {currentTab === 'examen' && (

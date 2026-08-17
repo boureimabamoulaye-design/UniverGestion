@@ -223,14 +223,6 @@ export interface Administrateur {
 
 export type Utilisateur = Administrateur;
 
-export interface AutorisationFiliere {
-  id: number;
-  administrateur_id?: number;
-  utilisateur_id?: number;
-  filiere_id: number;
-  droit_acces: 'Lecture' | 'Écriture' | 'Total';
-}
-
 export interface HistoriqueAcces {
   id: number;
   administrateur_id?: number;

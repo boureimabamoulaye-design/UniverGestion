@@ -1,6 +1,6 @@
 {
   "name": "UniGestion Mali",
-  "description": "Système de gestion scolaire universitaire complet pour le Mali : inscriptions, notes, bulletins, paiements, absences et analytique.",
+  "description": "Système de gestion scolaire universitaire complet pour le Mali : inscriptions, notes, bulletins & délibérations LMD certifiées, examens, paiements, absences, supports de cours et analytique.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

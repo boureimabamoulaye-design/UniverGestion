@@ -617,13 +617,15 @@ export const INITIAL_BULLETINS: Bulletin[] = [
     classe_id: 1,
     semestre_id: 1,
     annee_academique_id: 1,
-    moyenne: 15.2,
+    moyenne: 15.4,
+    moyenne_generale: 15.4,
     total_credits: 18,
     total_credits_valides: 18,
     decision: 'Admis',
     mention: 'Bien',
     rang: 1,
-    date_generation: '2026-02-15'
+    date_generation: '2026-02-15',
+    remarques_jury: 'Semestre validé avec mention Bien.'
   },
   {
     id: 2,
@@ -631,13 +633,15 @@ export const INITIAL_BULLETINS: Bulletin[] = [
     classe_id: 1,
     semestre_id: 2,
     annee_academique_id: 1,
-    moyenne: 15.1,
+    moyenne: 15.57,
+    moyenne_generale: 15.57,
     total_credits: 18,
     total_credits_valides: 18,
     decision: 'Admis',
     mention: 'Bien',
     rang: 1,
-    date_generation: '2026-06-20'
+    date_generation: '2026-06-20',
+    remarques_jury: 'Semestre validé avec mention Bien.'
   },
   {
     id: 3,
@@ -645,13 +649,15 @@ export const INITIAL_BULLETINS: Bulletin[] = [
     classe_id: 2,
     semestre_id: 1,
     annee_academique_id: 1,
-    moyenne: 15.7,
+    moyenne: 15.64,
+    moyenne_generale: 15.64,
     total_credits: 18,
     total_credits_valides: 18,
     decision: 'Admis',
     mention: 'Bien',
     rang: 1,
-    date_generation: '2026-02-15'
+    date_generation: '2026-02-15',
+    remarques_jury: 'Semestre validé avec mention Bien.'
   },
   {
     id: 4,
@@ -659,13 +665,15 @@ export const INITIAL_BULLETINS: Bulletin[] = [
     classe_id: 2,
     semestre_id: 2,
     annee_academique_id: 1,
-    moyenne: 15.5,
+    moyenne: 15.63,
+    moyenne_generale: 15.63,
     total_credits: 18,
     total_credits_valides: 18,
     decision: 'Admis',
     mention: 'Bien',
     rang: 1,
-    date_generation: '2026-06-20'
+    date_generation: '2026-06-20',
+    remarques_jury: 'Semestre validé avec mention Bien.'
   },
   {
     id: 5,
@@ -673,13 +681,15 @@ export const INITIAL_BULLETINS: Bulletin[] = [
     classe_id: 3,
     semestre_id: 1,
     annee_academique_id: 1,
-    moyenne: 14.4,
+    moyenne: 14.47,
+    moyenne_generale: 14.47,
     total_credits: 18,
     total_credits_valides: 18,
     decision: 'Admis',
     mention: 'Bien',
     rang: 1,
-    date_generation: '2026-02-15'
+    date_generation: '2026-02-15',
+    remarques_jury: 'Semestre validé avec mention Bien.'
   },
   {
     id: 6,
@@ -687,13 +697,15 @@ export const INITIAL_BULLETINS: Bulletin[] = [
     classe_id: 3,
     semestre_id: 2,
     annee_academique_id: 1,
-    moyenne: 14.2,
+    moyenne: 14.44,
+    moyenne_generale: 14.44,
     total_credits: 18,
     total_credits_valides: 18,
     decision: 'Admis',
     mention: 'Bien',
     rang: 1,
-    date_generation: '2026-06-20'
+    date_generation: '2026-06-20',
+    remarques_jury: 'Semestre validé avec mention Bien.'
   }
 ];
 

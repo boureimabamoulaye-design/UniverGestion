@@ -1,846 +1,745 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { DB } from '../lib/storage';
-import { Bulletin } from '../types/database';
+import { Etudiant, Classe, Semestre, AnneeAcademique, Filiere, Note, Matiere, Bulletin, Universite } from '../types/database';
+import { 
+  Award, 
+  Search, 
+  Filter, 
+  Printer, 
+  Download, 
+  RefreshCw, 
+  FileText, 
+  CheckCircle2, 
+  AlertTriangle, 
+  Clock, 
+  Eye, 
+  GraduationCap,
+  Calculator,
+  UserCheck
+} from 'lucide-react';
 import { Modal } from '../components/Modal';
-import { FileCheck2, Download, Eye, Edit3, Save, AlertTriangle, Trash2, Users, Search, Award, RefreshCw } from 'lucide-react';
-import { StudentSearchSelect } from '../components/StudentSearchSelect';
-import { ExcelBulletinView } from '../components/ExcelBulletinView';
 
 export const BulletinsView: React.FC = () => {
-  const [bulletinsList, setBulletinsList] = useState<Bulletin[]>(() => {
-    try {
-      return DB.getBulletins() || [];
-    } catch {
-      return [];
-    }
-  });
+  const [etudiants, setEtudiants] = useState<Etudiant[]>([]);
+  const [classes, setClasses] = useState<Classe[]>([]);
+  const [filieres, setFilieres] = useState<Filiere[]>([]);
+  const [semestres, setSemestres] = useState<Semestre[]>([]);
+  const [annees, setAnnees] = useState<AnneeAcademique[]>([]);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [matieres, setMatieres] = useState<Matiere[]>([]);
+  const [bulletins, setBulletins] = useState<Bulletin[]>([]);
+  const [universite, setUniversite] = useState<Universite | null>(null);
 
-  const etudiants = DB.getEtudiants() || [];
-  const semestres = DB.getSemestres() || [];
-  const classes = DB.getClasses() || [];
-  const matieres = DB.getMatieres() || [];
-  const notes = DB.getNotes() || [];
-  const filieres = DB.getFilieres() || [];
-  const activeAnnee = DB.getActiveAnneeAcademique();
-  const universites = DB.getUniversites() || [];
-  const universite = universites[0];
+  // Filters
+  const [selectedAnneeId, setSelectedAnneeId] = useState<number>(1);
+  const [selectedFiliereId, setSelectedFiliereId] = useState<string>('ALL');
+  const [selectedClasseId, setSelectedClasseId] = useState<string>('ALL');
+  const [selectedSemestreId, setSelectedSemestreId] = useState<number>(1);
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // View Mode: 'BY_STUDENT' (dossiers par étudiant) or 'TABLE' (liste globale)
-  const [viewMode, setViewMode] = useState<'BY_STUDENT' | 'TABLE'>('BY_STUDENT');
-  const [studentSearchTerm, setStudentSearchTerm] = useState('');
-  const [selectedFiliereId, setSelectedFiliereId] = useState<number | 'ALL'>('ALL');
-  const [selectedClasseId, setSelectedClasseId] = useState<number | 'ALL'>('ALL');
-  const [selectedStudentId, setSelectedStudentId] = useState<number>(() => etudiants[0]?.id || 1);
-  const [selectedSemestreId, setSelectedSemestreId] = useState<number>(() => semestres[0]?.id || 1);
-  
-  const [viewingBulletin, setViewingBulletin] = useState<Bulletin | null>(null);
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  // Selected bulletin for detailed modal view
+  const [viewStudent, setViewStudent] = useState<Etudiant | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
-  // Bulletin Editing Modal state (Requirement 8)
-  const [editingBulletin, setEditingBulletin] = useState<Bulletin | null>(null);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const loadData = () => {
+    const univs = DB.getUniversites();
+    setUniversite(univs[0] || null);
+    setEtudiants(DB.getEtudiants());
+    setClasses(DB.getClasses());
+    setFilieres(DB.getFilieres());
+    setSemestres(DB.getSemestres());
+    const allAnnees = DB.getAnneesAcademiques();
+    setAnnees(allAnnees);
+    const active = allAnnees.find(a => a.est_active) || allAnnees[0];
+    if (active) setSelectedAnneeId(active.id);
+    setNotes(DB.getNotes());
+    setMatieres(DB.getMatieres());
+    setBulletins(DB.getBulletins());
+  };
 
-  // Form State for Editing Bulletin
-  const [editFormData, setEditFormData] = useState({
-    moyenne: 12,
-    total_credits: 30,
-    decision: 'Admis',
-    mention: 'Assez Bien',
-    remarques_jury: '',
-  });
+  useEffect(() => {
+    loadData();
+    const handleSync = () => loadData();
+    window.addEventListener('unigestion_db_change', handleSync);
+    return () => window.removeEventListener('unigestion_db_change', handleSync);
+  }, []);
 
-  // Local state for editing subject marks within the bulletin
-  const [editSubjectNotes, setEditSubjectNotes] = useState<{
-    matiere_id: number;
-    code: string;
-    nom: string;
-    credits: number;
-    note_cc: number;
-    note_examen: number;
-    note_finale: number;
-  }[]>([]);
+  // Filtered classes based on selected filiere
+  const filteredClasses = useMemo(() => {
+    if (selectedFiliereId === 'ALL') return classes;
+    return classes.filter(c => Number(c.filiere_id) === Number(selectedFiliereId));
+  }, [classes, selectedFiliereId]);
 
-  // Filter students by selected filiere, classe and search
-  const filteredEtudiants = etudiants.filter(e => {
-    const cls = classes.find(c => Number(c.id) === Number(e.classe_id));
-    const matchFiliere = selectedFiliereId === 'ALL' || Number(cls?.filiere_id) === Number(selectedFiliereId);
-    const matchClasse = selectedClasseId === 'ALL' || Number(e.classe_id) === Number(selectedClasseId);
-    const fullName = `${e.prenom || ''} ${e.nom || ''} ${e.matricule || ''}`.toLowerCase();
-    const matchSearch = !studentSearchTerm.trim() || fullName.includes(studentSearchTerm.toLowerCase().trim());
-    return matchFiliere && matchClasse && matchSearch;
-  });
+  // Recalculate bulletins for all or current selection
+  const handleRecalculateAll = () => {
+    const result = DB.generateBulletinsForAllStudents(selectedSemestreId, selectedAnneeId);
+    setBulletins(DB.getBulletins());
+    alert(`Recalcul terminé : ${result.total} bulletin(s) recalculé(s) selon les notes réelles.`);
+  };
 
-  const handleFiliereChange = (filiereId: number | 'ALL') => {
-    setSelectedFiliereId(filiereId);
-    setSelectedClasseId('ALL');
-    const newFiltered = filiereId === 'ALL'
-      ? etudiants
-      : etudiants.filter(e => {
-          const cls = classes.find(c => Number(c.id) === Number(e.classe_id));
-          return Number(cls?.filiere_id) === Number(filiereId);
+  // Compute calculated bulletin rows for current filter
+  const studentRows = useMemo(() => {
+    return etudiants
+      .filter(etud => {
+        const cls = classes.find(c => Number(c.id) === Number(etud.classe_id));
+        const filiereId = (etud as any).filiere_id || cls?.filiere_id;
+        
+        if (selectedFiliereId !== 'ALL' && Number(filiereId) !== Number(selectedFiliereId)) return false;
+        if (selectedClasseId !== 'ALL' && Number(etud.classe_id) !== Number(selectedClasseId)) return false;
+        
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase();
+          const matchName = `${etud.prenom} ${etud.nom}`.toLowerCase().includes(q);
+          const matchMatricule = (etud.matricule || '').toLowerCase().includes(q);
+          if (!matchName && !matchMatricule) return false;
+        }
+        return true;
+      })
+      .map(etud => {
+        const cls = classes.find(c => Number(c.id) === Number(etud.classe_id));
+        const filiere = filieres.find(f => Number(f.id) === Number((etud as any).filiere_id || cls?.filiere_id));
+        
+        // Subject list for this filiere & semester
+        const semMatieres = matieres.filter(
+          m => Number(m.semestre_id) === Number(selectedSemestreId) && (!m.filiere_id || Number(m.filiere_id) === Number(filiere?.id))
+        );
+        const resolvedMatieres = semMatieres.length > 0 ? semMatieres : matieres.filter(m => Number(m.semestre_id) === Number(selectedSemestreId));
+        const applicableIds = new Set(resolvedMatieres.map(m => Number(m.id)));
+
+        // Student notes
+        const stNotes = notes.filter(
+          n => Number(n.etudiant_id) === Number(etud.id) &&
+               Number(n.semestre_id) === Number(selectedSemestreId) &&
+               Number(n.annee_academique_id || selectedAnneeId) === Number(selectedAnneeId) &&
+               applicableIds.has(Number(n.matiere_id))
+        );
+
+        // Real calculations
+        let totalPoints = 0;
+        let totalCreditsEvalues = 0;
+        let totalCreditsValides = 0;
+        const totalCreditsInscrits = resolvedMatieres.reduce((s, m) => s + (Number(m.credits) || 3), 0) || 18;
+
+        stNotes.forEach(n => {
+          const mat = resolvedMatieres.find(m => Number(m.id) === Number(n.matiere_id));
+          const cr = Number(mat?.credits) || 3;
+          const fin = Number(n.note_finale) || 0;
+          totalPoints += fin * cr;
+          totalCreditsEvalues += cr;
+          if (fin >= 10.0) totalCreditsValides += cr;
         });
-    if (newFiltered.length > 0 && !newFiltered.some(e => Number(e.id) === Number(selectedStudentId))) {
-      setSelectedStudentId(newFiltered[0].id);
-    }
+
+        const hasEvaluations = totalCreditsEvalues > 0;
+        const moyenne = hasEvaluations ? Number((totalPoints / totalCreditsEvalues).toFixed(2)) : 0;
+        
+        let decision: 'Admis' | 'Ajourné' | 'Compensé' | 'En attente' = 'En attente';
+        let mention = 'N/A';
+
+        if (hasEvaluations) {
+          if (moyenne >= 10.0) decision = 'Admis';
+          else if (moyenne >= 9.0) decision = 'Compensé';
+          else decision = 'Ajourné';
+
+          if (moyenne >= 16) mention = 'Très Bien';
+          else if (moyenne >= 14) mention = 'Bien';
+          else if (moyenne >= 12) mention = 'Assez Bien';
+          else if (moyenne >= 10) mention = 'Passable';
+        }
+
+        const existingBulletin = bulletins.find(
+          b => Number(b.etudiant_id) === Number(etud.id) &&
+               Number(b.semestre_id) === Number(selectedSemestreId) &&
+               Number(b.annee_academique_id) === Number(selectedAnneeId)
+        );
+
+        return {
+          etudiant: etud,
+          classe: cls,
+          filiere,
+          totalMatieres: resolvedMatieres.length,
+          matieresEvaluees: stNotes.length,
+          totalCreditsInscrits,
+          totalCreditsValides,
+          moyenne,
+          hasEvaluations,
+          decision,
+          mention,
+          rang: existingBulletin?.rang || '-',
+          bulletinId: existingBulletin?.id
+        };
+      })
+      .sort((a, b) => (b.moyenne || 0) - (a.moyenne || 0));
+  }, [etudiants, classes, filieres, matieres, notes, bulletins, selectedFiliereId, selectedClasseId, selectedSemestreId, selectedAnneeId, searchQuery]);
+
+  // Overall Promo Statistics
+  const stats = useMemo(() => {
+    const total = studentRows.length;
+    const evalues = studentRows.filter(r => r.hasEvaluations).length;
+    const admis = studentRows.filter(r => r.decision === 'Admis').length;
+    const tauxReussite = evalues > 0 ? Number(((admis / evalues) * 100).toFixed(1)) : 0;
+    const sumMoyennes = studentRows.filter(r => r.hasEvaluations).reduce((acc, r) => acc + r.moyenne, 0);
+    const moyennePromo = evalues > 0 ? Number((sumMoyennes / evalues).toFixed(2)) : 0;
+
+    return { total, evalues, admis, tauxReussite, moyennePromo };
+  }, [studentRows]);
+
+  // Handle Open Detail Modal
+  const handleOpenDetail = (student: Etudiant) => {
+    setViewStudent(student);
+    setIsDetailModalOpen(true);
   };
 
-  // Generate or recalculate Bulletin for selected student and semester
-  const handleGenerateBulletin = (targetStudentId?: number, targetSemestreId?: number) => {
-    const sId = targetStudentId || selectedStudentId;
-    const semId = targetSemestreId || selectedSemestreId;
-    const student = etudiants.find(e => Number(e.id) === Number(sId));
-    if (!student) return;
+  // Detailed Bulletin Data for Modal
+  const detailData = useMemo(() => {
+    if (!viewStudent) return null;
+    const cls = classes.find(c => Number(c.id) === Number(viewStudent.classe_id));
+    const filiere = filieres.find(f => Number(f.id) === Number((viewStudent as any).filiere_id || cls?.filiere_id));
+    const sem = semestres.find(s => Number(s.id) === Number(selectedSemestreId));
+    const annee = annees.find(a => Number(a.id) === Number(selectedAnneeId));
 
-    const newBulletin = DB.generateStudentBulletin(student.id, semId, activeAnnee?.id);
-    if (newBulletin) {
-      setBulletinsList(DB.getBulletins() || []);
-      setViewingBulletin(newBulletin);
-      setIsDetailOpen(true);
-    }
-  };
-
-  // Batch generate bulletins for all students
-  const handleGenerateAllBulletins = () => {
-    DB.generateBulletinsForAllStudents(
-      selectedSemestreId ? Number(selectedSemestreId) : undefined,
-      activeAnnee?.id
+    const semMatieres = matieres.filter(
+      m => Number(m.semestre_id) === Number(selectedSemestreId) && (!m.filiere_id || Number(m.filiere_id) === Number(filiere?.id))
     );
-    setBulletinsList(DB.getBulletins() || []);
-  };
+    const resolvedMatieres = semMatieres.length > 0 ? semMatieres : matieres.filter(m => Number(m.semestre_id) === Number(selectedSemestreId));
 
-  // Open Edit Bulletin Modal (Requirement 8)
-  const handleOpenEditModal = (bulletin: Bulletin) => {
-    setEditingBulletin(bulletin);
-    const moyNum = Number(bulletin.moyenne_generale ?? bulletin.moyenne ?? 10);
-    const credsNum = Number(bulletin.total_credits_valides ?? bulletin.total_credits ?? 30);
-    setEditFormData({
-      moyenne: !isNaN(moyNum) ? moyNum : 10,
-      total_credits: !isNaN(credsNum) ? credsNum : 30,
-      decision: bulletin.decision || 'Admis',
-      mention: bulletin.mention || 'Passable',
-      remarques_jury: bulletin.remarques_jury || ''
-    });
+    const studentNotes = notes.filter(
+      n => Number(n.etudiant_id) === Number(viewStudent.id) &&
+           Number(n.semestre_id) === Number(selectedSemestreId) &&
+           Number(n.annee_academique_id || selectedAnneeId) === Number(selectedAnneeId)
+    );
 
-    // Prepare subject notes list for editing
-    const student = etudiants.find(e => Number(e.id) === Number(bulletin.etudiant_id));
-    const studentClass = classes.find(c => Number(c.id) === Number(student?.classe_id));
-    const studentFiliereId = (student as any)?.filiere_id || studentClass?.filiere_id || 1;
-    const semesterMatieres = matieres.filter(m => Number(m.semestre_id) === Number(bulletin.semestre_id) && (!m.filiere_id || Number(m.filiere_id) === Number(studentFiliereId)));
-    const resolvedMatieres = semesterMatieres.length > 0 ? semesterMatieres : matieres.filter(m => Number(m.semestre_id) === Number(bulletin.semestre_id));
-    const studentNotes = (DB.getNotes() || []).filter(n => Number(n.etudiant_id) === Number(bulletin.etudiant_id) && Number(n.semestre_id) === Number(bulletin.semestre_id));
+    let totalPoints = 0;
+    let totalCreditsEvalues = 0;
+    let totalCreditsValides = 0;
+    const totalCreditsInscrits = resolvedMatieres.reduce((s, m) => s + (Number(m.credits) || 3), 0);
 
-    const editableSubjects = resolvedMatieres.map(mat => {
-      const noteObj = studentNotes.find(n => Number(n.matiere_id) === Number(mat.id));
-      const cc = noteObj && noteObj.note_cc !== undefined && noteObj.note_cc !== null ? Number(noteObj.note_cc) : 12;
-      const exam = noteObj && noteObj.note_examen !== undefined && noteObj.note_examen !== null ? Number(noteObj.note_examen) : 12;
-      const finale = noteObj && noteObj.note_finale !== undefined && noteObj.note_finale !== null 
-        ? Number(noteObj.note_finale) 
-        : Math.round((cc * 0.4 + exam * 0.6) * 100) / 100;
+    const lines = resolvedMatieres.map(mat => {
+      const n = studentNotes.find(item => Number(item.matiere_id) === Number(mat.id));
+      const credits = Number(mat.credits) || 3;
+      if (n) {
+        const cc = Number(n.note_cc) || 0;
+        const exam = Number(n.note_examen) || 0;
+        const finale = Number(n.note_finale) || Number(((cc * 0.4) + (exam * 0.6)).toFixed(2));
+        const validee = finale >= 10.0;
+        totalPoints += finale * credits;
+        totalCreditsEvalues += credits;
+        if (validee) totalCreditsValides += credits;
 
-      return {
-        matiere_id: mat.id,
-        code: mat.code || `MAT-${mat.id}`,
-        nom: mat.nom || `Matière ${mat.id}`,
-        credits: Number(mat.credits) || 3,
-        note_cc: cc,
-        note_examen: exam,
-        note_finale: finale
-      };
-    });
-
-    setEditSubjectNotes(editableSubjects);
-    setIsEditModalOpen(true);
-  };
-
-  // Recalculate average automatically when subject marks change
-  const handleSubjectNoteChange = (index: number, field: 'note_cc' | 'note_examen', val: number) => {
-    const updated = [...editSubjectNotes];
-    if (!updated[index]) return;
-    const item = { ...updated[index] };
-    const numVal = isNaN(val) ? 0 : val;
-
-    if (field === 'note_cc') item.note_cc = Math.max(0, Math.min(20, numVal));
-    if (field === 'note_examen') item.note_examen = Math.max(0, Math.min(20, numVal));
-
-    item.note_finale = Math.round((item.note_cc * 0.4 + item.note_examen * 0.6) * 100) / 100;
-    updated[index] = item;
-    setEditSubjectNotes(updated);
-
-    // Auto recalculate overall average & credits
-    let pts = 0;
-    let creds = 0;
-    let valides = 0;
-    updated.forEach(s => {
-      pts += s.note_finale * s.credits;
-      creds += s.credits;
-      if (s.note_finale >= 10) valides += s.credits;
-    });
-
-    const newAvg = creds > 0 ? parseFloat((pts / creds).toFixed(2)) : 10;
-    let newDec = newAvg >= 10 ? 'Admis' : 'Ajourné';
-    let newMen = newAvg >= 16 ? 'Très Bien' : newAvg >= 14 ? 'Bien' : newAvg >= 12 ? 'Assez Bien' : 'Passable';
-
-    setEditFormData(prev => ({
-      ...prev,
-      moyenne: newAvg,
-      total_credits: valides,
-      decision: newDec,
-      mention: newAvg < 10 ? 'Sans Mention' : newMen
-    }));
-  };
-
-  // Save modified bulletin and subject notes into DB
-  const handleSaveEditedBulletin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingBulletin) return;
-
-    // 1. Save all updated subject notes into DB
-    editSubjectNotes.forEach(item => {
-      const existingNote = (DB.getNotes() || []).find(
-        n => Number(n.etudiant_id) === Number(editingBulletin.etudiant_id) && 
-             Number(n.matiere_id) === Number(item.matiere_id) && 
-             Number(n.semestre_id) === Number(editingBulletin.semestre_id)
-      );
-
-      DB.saveNote({
-        ...(existingNote ? { id: existingNote.id } : {}),
-        etudiant_id: editingBulletin.etudiant_id,
-        matiere_id: item.matiere_id,
-        semestre_id: editingBulletin.semestre_id,
-        annee_academique_id: editingBulletin.annee_academique_id || activeAnnee?.id || 1,
-        note_cc: item.note_cc,
-        note_examen: item.note_examen,
-        note_finale: item.note_finale,
-        appreciation: item.note_finale >= 10 ? 'Matière Validée' : 'Ajournée'
-      });
-    });
-
-    // 2. Save updated Bulletin record
-    const updatedRecord = DB.saveBulletin({
-      ...editingBulletin,
-      moyenne: Number(editFormData.moyenne),
-      moyenne_generale: Number(editFormData.moyenne),
-      total_credits: Number(editFormData.total_credits),
-      total_credits_valides: Number(editFormData.total_credits),
-      decision: editFormData.decision,
-      mention: editFormData.mention,
-      remarques_jury: editFormData.remarques_jury,
-      date_generation: new Date().toISOString().split('T')[0]
-    });
-
-    DB.logAccess('MODIFICATION', `Bulletin de l'étudiant #${editingBulletin.etudiant_id} modifié par l'administration (Moyenne: ${editFormData.moyenne}, Décision: ${editFormData.decision})`);
-
-    setBulletinsList(DB.getBulletins() || []);
-    setViewingBulletin(updatedRecord);
-    setIsEditModalOpen(false);
-  };
-
-  const handleDeleteBulletin = (id: number) => {
-    if (window.confirm("Êtes-vous sûr de vouloir supprimer ce bulletin ? Cette action est irréversible.")) {
-      DB.deleteBulletin(id);
-      setBulletinsList(DB.getBulletins() || []);
-      if (viewingBulletin && viewingBulletin.id === id) {
-        setViewingBulletin(null);
-        setIsDetailOpen(false);
+        return {
+          matiere: mat,
+          hasNote: true,
+          note_cc: cc,
+          note_examen: exam,
+          note_finale: finale,
+          credits,
+          validee,
+          appreciation: n.appreciation || (finale >= 16 ? 'Très Bien' : finale >= 14 ? 'Bien' : finale >= 12 ? 'Assez Bien' : finale >= 10 ? 'Passable' : 'Insuffisant')
+        };
+      } else {
+        return {
+          matiere: mat,
+          hasNote: false,
+          note_cc: null,
+          note_examen: null,
+          note_finale: null,
+          credits,
+          validee: false,
+          appreciation: 'Non noté'
+        };
       }
+    });
+
+    const hasEvaluations = totalCreditsEvalues > 0;
+    const moyenne = hasEvaluations ? Number((totalPoints / totalCreditsEvalues).toFixed(2)) : 0;
+    
+    let decision: 'Admis' | 'Ajourné' | 'Compensé' | 'En attente' = 'En attente';
+    let mention = 'N/A';
+
+    if (hasEvaluations) {
+      if (moyenne >= 10.0) decision = 'Admis';
+      else if (moyenne >= 9.0) decision = 'Compensé';
+      else decision = 'Ajourné';
+
+      if (moyenne >= 16) mention = 'Très Bien';
+      else if (moyenne >= 14) mention = 'Bien';
+      else if (moyenne >= 12) mention = 'Assez Bien';
+      else if (moyenne >= 10) mention = 'Passable';
     }
-  };
+
+    const bRecord = bulletins.find(
+      b => Number(b.etudiant_id) === Number(viewStudent.id) &&
+           Number(b.semestre_id) === Number(selectedSemestreId) &&
+           Number(b.annee_academique_id) === Number(selectedAnneeId)
+    );
+
+    return {
+      etudiant: viewStudent,
+      classe: cls,
+      filiere,
+      semestre: sem,
+      annee: annee,
+      lines,
+      totalCreditsInscrits,
+      totalCreditsValides,
+      totalPoints,
+      totalCreditsEvalues,
+      moyenne,
+      decision,
+      mention,
+      rang: bRecord?.rang || 1,
+      dateGeneration: bRecord?.date_generation || new Date().toISOString().split('T')[0]
+    };
+  }, [viewStudent, classes, filieres, semestres, annees, matieres, notes, bulletins, selectedSemestreId, selectedAnneeId]);
 
   const handlePrint = () => {
     window.print();
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
-      
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-[#1A1A1A]">Bulletins & Relevés de Notes des Étudiants</h2>
-          <p className="text-xs text-gray-500 mt-1">
-            Gestion individuelle et semestrielle des bulletins pour chaque étudiant inscrit ({etudiants.length} étudiants, {bulletinsList.length} bulletins émis).
-          </p>
+    <div className="space-y-6">
+      {/* Top Header */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center space-x-3">
+              <div className="p-2.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg">
+                <Award className="w-6 h-6" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+                  Bulletins & Délibérations LMD
+                </h1>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Calculs certifiés en temps réel basés strictement sur les notes CC (40%) et Examen (60%).
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleRecalculateAll}
+              className="inline-flex items-center px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-sm font-medium transition-colors"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Recalculer les moyennes
+            </button>
+            <button
+              onClick={handlePrint}
+              className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium shadow-sm transition-colors"
+            >
+              <Printer className="w-4 h-4 mr-2" />
+              Imprimer les délibérations
+            </button>
+          </div>
         </div>
 
-        {/* Global actions */}
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleGenerateAllBulletins}
-            className="h-[40px] px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-[12px] text-xs font-bold flex items-center gap-2 transition-colors shadow-xs"
-            title="Générer les bulletins pour tous les étudiants inscrits"
-          >
-            <RefreshCw className="w-4 h-4" />
-            <span>Générer pour TOUS les Étudiants</span>
-          </button>
+        {/* Global Stats Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-100 dark:border-slate-800">
+          <div className="bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-lg border border-slate-100 dark:border-slate-800">
+            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Effectif Sélectionné</div>
+            <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1">{stats.total}</div>
+          </div>
+          <div className="bg-blue-50/50 dark:bg-blue-950/30 p-3.5 rounded-lg border border-blue-100/50 dark:border-blue-900/30">
+            <div className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Étudiants Évalués</div>
+            <div className="text-2xl font-bold text-blue-700 dark:text-blue-300 mt-1">{stats.evalues} / {stats.total}</div>
+          </div>
+          <div className="bg-emerald-50/50 dark:bg-emerald-950/30 p-3.5 rounded-lg border border-emerald-100/50 dark:border-emerald-900/30">
+            <div className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Taux d'Admission</div>
+            <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-300 mt-1">{stats.tauxReussite}%</div>
+          </div>
+          <div className="bg-purple-50/50 dark:bg-purple-950/30 p-3.5 rounded-lg border border-purple-100/50 dark:border-purple-900/30">
+            <div className="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wider">Moyenne de Promotion</div>
+            <div className="text-2xl font-bold text-purple-700 dark:text-purple-300 mt-1">{stats.moyennePromo} / 20</div>
+          </div>
         </div>
       </div>
 
-      {/* Mode Switcher & Filter Bar */}
-      <div className="bg-white p-4 rounded-[16px] border border-gray-200 shadow-xs space-y-4">
-        
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-gray-100 pb-3">
-          {/* Tabs */}
-          <div className="flex items-center bg-gray-100 p-1 rounded-xl">
-            <button
-              type="button"
-              onClick={() => setViewMode('BY_STUDENT')}
-              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
-                viewMode === 'BY_STUDENT'
-                  ? 'bg-white text-[#0066FF] shadow-xs'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <Users className="w-4 h-4" />
-              <span>Dossiers par Étudiant ({filteredEtudiants.length})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setViewMode('TABLE')}
-              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
-                viewMode === 'TABLE'
-                  ? 'bg-white text-[#0066FF] shadow-xs'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <FileCheck2 className="w-4 h-4" />
-              <span>Tableau Général des Bulletins ({bulletinsList.length})</span>
-            </button>
-          </div>
-
-          {/* Quick Search */}
-          <div className="relative w-full md:w-72">
-            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={studentSearchTerm}
-              onChange={(e) => setStudentSearchTerm(e.target.value)}
-              placeholder="Rechercher étudiant, matricule..."
-              className="w-full h-[38px] pl-9 pr-3 text-xs bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-[#0066FF] focus:bg-white transition-all"
-            />
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* Filter Toolbar */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          {/* Année Académique */}
           <div>
-            <label className="block text-[11px] font-bold text-gray-600 mb-1">Filière</label>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Année Académique</label>
             <select
-              value={selectedFiliereId}
-              onChange={(e) => handleFiliereChange(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value))}
-              className="w-full h-[38px] bg-white border border-gray-200 rounded-lg px-3 text-xs font-semibold focus:outline-none focus:border-[#0066FF]"
+              value={selectedAnneeId}
+              onChange={(e) => setSelectedAnneeId(Number(e.target.value))}
+              className="w-full text-sm border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
             >
-              <option value="ALL">Toutes les filières ({filieres.length})</option>
-              {filieres.map(f => (
-                <option key={f.id} value={f.id}>{f.nom} ({f.code})</option>
+              {annees.map(a => (
+                <option key={a.id} value={a.id}>{a.libelle} {a.est_active ? '(Active)' : ''}</option>
               ))}
             </select>
           </div>
 
+          {/* Semestre */}
           <div>
-            <label className="block text-[11px] font-bold text-gray-600 mb-1">Classe</label>
-            <select
-              value={selectedClasseId}
-              onChange={(e) => setSelectedClasseId(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value))}
-              className="w-full h-[38px] bg-white border border-gray-200 rounded-lg px-3 text-xs font-semibold focus:outline-none focus:border-[#0066FF]"
-            >
-              <option value="ALL">Toutes les classes</option>
-              {classes
-                .filter(c => selectedFiliereId === 'ALL' || Number(c.filiere_id) === Number(selectedFiliereId))
-                .map(c => (
-                  <option key={c.id} value={c.id}>{c.nom}</option>
-                ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-bold text-gray-600 mb-1">Semestre de référence</label>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Semestre LMD</label>
             <select
               value={selectedSemestreId}
               onChange={(e) => setSelectedSemestreId(Number(e.target.value))}
-              className="w-full h-[38px] bg-white border border-gray-200 rounded-lg px-3 text-xs font-semibold focus:outline-none focus:border-[#0066FF]"
+              className="w-full text-sm border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 font-medium"
             >
               {semestres.map(s => (
-                <option key={s.id} value={s.id}>{s.libelle}</option>
+                <option key={s.id} value={s.id}>{s.libelle} ({s.code})</option>
               ))}
             </select>
           </div>
 
-          <div className="flex items-end">
-            <button
-              type="button"
-              onClick={() => handleGenerateBulletin()}
-              className="w-full h-[38px] px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+          {/* Filière */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Filière</label>
+            <select
+              value={selectedFiliereId}
+              onChange={(e) => {
+                setSelectedFiliereId(e.target.value);
+                setSelectedClasseId('ALL');
+              }}
+              className="w-full text-sm border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
             >
-              <FileCheck2 className="w-4 h-4 text-blue-400" />
-              <span>Générer Saisie Directe</span>
-            </button>
+              <option value="ALL">Toutes les filières</option>
+              {filieres.map(f => (
+                <option key={f.id} value={f.id}>{f.code} - {f.nom}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Classe */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Classe</label>
+            <select
+              value={selectedClasseId}
+              onChange={(e) => setSelectedClasseId(e.target.value)}
+              className="w-full text-sm border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="ALL">Toutes les classes</option>
+              {filteredClasses.map(c => (
+                <option key={c.id} value={c.id}>{c.nom}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Recherche */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Recherche</label>
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Nom, matricule..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full text-sm border border-slate-200 dark:border-slate-700 rounded-lg pl-9 pr-3 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
           </div>
         </div>
       </div>
 
-      {/* VIEW MODE 1: BY STUDENT (Dossiers individuels par étudiant) */}
-      {viewMode === 'BY_STUDENT' && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredEtudiants.length === 0 ? (
-              <div className="col-span-full p-12 bg-white rounded-2xl border border-gray-200 text-center text-gray-500">
-                Aucun étudiant ne correspond aux critères de recherche.
-              </div>
-            ) : (
-              filteredEtudiants.map(student => {
-                const studentClass = classes.find(c => Number(c.id) === Number(student.classe_id));
-                const studentFiliere = filieres.find(f => Number(f.id) === Number(studentClass?.filiere_id || (student as any)?.filiere_id));
-                const studentBulletins = bulletinsList.filter(b => Number(b.etudiant_id) === Number(student.id));
-
-                return (
-                  <div
-                    key={student.id}
-                    className="bg-white rounded-2xl border border-gray-200 shadow-xs hover:shadow-md transition-all p-5 flex flex-col justify-between gap-4"
-                  >
-                    {/* Student Info Card Top */}
-                    <div>
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-blue-50 border border-blue-200 text-[#0066FF] font-bold flex items-center justify-center text-sm shrink-0">
-                            {(student.prenom?.[0] || 'E')}{(student.nom?.[0] || '')}
-                          </div>
-                          <div>
-                            <h4 className="text-sm font-bold text-gray-900 leading-tight">
-                              {student.prenom} {student.nom}
-                            </h4>
-                            <p className="text-[11px] font-mono text-[#0066FF] font-bold mt-0.5">
-                              {student.matricule}
-                            </p>
-                          </div>
-                        </div>
-
-                        <span className="px-2 py-0.5 bg-gray-100 text-gray-700 text-[10px] font-bold rounded-md">
-                          {studentClass?.nom || 'Classe non assignée'}
-                        </span>
-                      </div>
-
-                      <div className="mt-2 text-[11px] text-gray-500 flex items-center gap-1.5">
-                        <Award className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                        <span className="truncate">{studentFiliere?.nom || 'Filière Universitaire'}</span>
-                      </div>
-                    </div>
-
-                    {/* Bulletins Per Semester for This Student */}
-                    <div className="space-y-2 bg-gray-50/80 p-3 rounded-xl border border-gray-100">
-                      <div className="text-[11px] font-bold text-gray-700 flex items-center justify-between mb-1">
-                        <span>Bulletins Semestriels</span>
-                        <span className="text-[10px] text-gray-400 font-normal">
-                          {studentBulletins.length} / {semestres.length} émis
-                        </span>
-                      </div>
-
-                      {semestres.map(sem => {
-                        const b = studentBulletins.find(sb => Number(sb.semestre_id) === Number(sem.id));
-                        const moy = Number(b?.moyenne_generale ?? b?.moyenne ?? 0);
-                        const isAdmis = b && (b.decision === 'Admis' || moy >= 10);
-
-                        return (
-                          <div
-                            key={sem.id}
-                            className="bg-white p-2.5 rounded-lg border border-gray-200/70 flex items-center justify-between gap-2"
-                          >
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-bold text-xs text-gray-900">{sem.libelle}</span>
-                                {b && (
-                                  <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full ${
-                                    isAdmis ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-600 border border-red-200'
-                                  }`}>
-                                    {b.decision || (moy >= 10 ? 'Admis' : 'Ajourné')}
-                                  </span>
-                                )}
-                              </div>
-                              {b ? (
-                                <p className="text-[11px] font-mono text-gray-600 mt-0.5">
-                                  Moyenne: <span className="font-bold text-[#0066FF]">{moy.toFixed(2)}/20</span> • {b.total_credits_valides ?? b.total_credits ?? 30} ECTS
-                                </p>
-                              ) : (
-                                <p className="text-[10px] text-gray-400 italic">Bulletin non généré</p>
-                              )}
-                            </div>
-
-                            {/* Actions per semester bulletin */}
-                            <div className="flex items-center gap-1 shrink-0">
-                              {b ? (
-                                <>
-                                  <button
-                                    type="button"
-                                    onClick={() => { setViewingBulletin(b); setIsDetailOpen(true); }}
-                                    title="Consulter le bulletin"
-                                    className="p-1.5 bg-blue-50 hover:bg-blue-100 text-[#0066FF] rounded-md transition-colors cursor-pointer"
-                                  >
-                                    <Eye className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOpenEditModal(b)}
-                                    title="Modifier le bulletin"
-                                    className="p-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-md transition-colors cursor-pointer"
-                                  >
-                                    <Edit3 className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => { setViewingBulletin(b); setIsDetailOpen(true); }}
-                                    title="Télécharger PDF"
-                                    className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-md transition-colors cursor-pointer"
-                                  >
-                                    <Download className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteBulletin(b.id)}
-                                    title="Supprimer"
-                                    className="p-1.5 bg-gray-100 hover:bg-red-50 text-gray-500 hover:text-red-600 rounded-md transition-colors cursor-pointer"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                </>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={() => handleGenerateBulletin(student.id, sem.id)}
-                                  className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white text-[10px] font-bold rounded-md flex items-center gap-1 transition-colors cursor-pointer"
-                                >
-                                  <FileCheck2 className="w-3 h-3" />
-                                  <span>Générer</span>
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* VIEW MODE 2: TABLE GÉNÉRALE */}
-      {viewMode === 'TABLE' && (
-        <div className="bg-white rounded-[20px] border border-[#E5E7EB] shadow-xs overflow-hidden">
-          <div className="p-5 border-b border-gray-100 font-bold text-sm text-[#1A1A1A] flex items-center justify-between">
-            <span>Bulletins Émis ({bulletinsList.length})</span>
-            <span className="text-xs text-gray-400 font-normal">Saisie, modification & suppression directe</span>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[700px]">
-              <thead>
-                <tr className="bg-gray-50 text-[11px] font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
-                  <th className="px-6 py-4">Matricule</th>
-                  <th className="px-6 py-4">Étudiant</th>
-                  <th className="px-6 py-4">Semestre</th>
-                  <th className="px-6 py-4 text-center">Moyenne Général</th>
-                  <th className="px-6 py-4 text-center">Crédits Validés</th>
-                  <th className="px-6 py-4">Décision Conseil</th>
-                  <th className="px-6 py-4 text-right">Actions</th>
+      {/* Bulletins Table */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 text-xs font-bold uppercase tracking-wider border-b border-slate-200 dark:border-slate-700">
+                <th className="py-3.5 px-4">Rang</th>
+                <th className="py-3.5 px-4">Matricule</th>
+                <th className="py-3.5 px-4">Étudiant</th>
+                <th className="py-3.5 px-4">Classe & Filière</th>
+                <th className="py-3.5 px-4 text-center">Évaluations</th>
+                <th className="py-3.5 px-4 text-center">Crédits Validés</th>
+                <th className="py-3.5 px-4 text-center">Moyenne / 20</th>
+                <th className="py-3.5 px-4 text-center">Décision</th>
+                <th className="py-3.5 px-4 text-center">Mention</th>
+                <th className="py-3.5 px-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
+              {studentRows.length === 0 ? (
+                <tr>
+                  <td colSpan={10} className="text-center py-12 text-slate-400">
+                    <GraduationCap className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
+                    Aucun étudiant trouvé pour ces critères de filtrage.
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="text-xs divide-y divide-gray-100">
-                {bulletinsList.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-6 py-8 text-center text-gray-400">
-                      Aucun bulletin généré pour le moment. Cliquez sur « Générer pour TOUS les Étudiants » ci-dessus.
+              ) : (
+                studentRows.map((row, idx) => (
+                  <tr 
+                    key={row.etudiant.id} 
+                    className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
+                  >
+                    <td className="py-3 px-4 font-bold text-slate-700 dark:text-slate-300">
+                      {row.hasEvaluations ? (
+                        <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
+                          idx === 0 ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300' :
+                          idx === 1 ? 'bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-200' :
+                          idx === 2 ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-300' :
+                          'text-slate-600 dark:text-slate-400'
+                        }`}>
+                          {idx + 1}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">-</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4 font-mono text-xs text-slate-600 dark:text-slate-400">
+                      {row.etudiant.matricule || '-'}
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="font-semibold text-slate-900 dark:text-white">
+                        {row.etudiant.prenom} {row.etudiant.nom}
+                      </div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">
+                        {row.etudiant.email}
+                      </div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="text-slate-800 dark:text-slate-200 text-xs font-medium">
+                        {row.classe?.nom || 'Classe non assignée'}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {row.filiere?.code ? `Filière ${row.filiere.code}` : ''}
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                        row.matieresEvaluees === row.totalMatieres && row.totalMatieres > 0
+                          ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
+                          : row.matieresEvaluees > 0
+                          ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400'
+                          : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                      }`}>
+                        {row.matieresEvaluees} / {row.totalMatieres} matières
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-center font-semibold text-slate-800 dark:text-slate-200">
+                      {row.totalCreditsValides} / {row.totalCreditsInscrits}
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      {row.hasEvaluations ? (
+                        <span className={`text-base font-bold ${
+                          row.moyenne >= 14 ? 'text-emerald-600 dark:text-emerald-400' :
+                          row.moyenne >= 10 ? 'text-blue-600 dark:text-blue-400' :
+                          row.moyenne >= 9 ? 'text-amber-600 dark:text-amber-400' :
+                          'text-red-600 dark:text-red-400'
+                        }`}>
+                          {row.moyenne.toFixed(2)}
+                        </span>
+                      ) : (
+                        <span className="text-xs italic text-slate-400">Non noté</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4 text-center">
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
+                        row.decision === 'Admis' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' :
+                        row.decision === 'Compensé' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300' :
+                        row.decision === 'Ajourné' ? 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300' :
+                        'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                      }`}>
+                        {row.decision}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-center text-xs font-medium text-slate-600 dark:text-slate-300">
+                      {row.mention}
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <button
+                        onClick={() => handleOpenDetail(row.etudiant)}
+                        className="inline-flex items-center px-3 py-1.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded-lg text-xs font-medium transition-colors"
+                      >
+                        <Eye className="w-3.5 h-3.5 mr-1" />
+                        Relevé officiel
+                      </button>
                     </td>
                   </tr>
-                ) : (
-                  bulletinsList.map((b) => {
-                    const st = etudiants.find(e => Number(e.id) === Number(b.etudiant_id));
-                    const sem = semestres.find(s => Number(s.id) === Number(b.semestre_id));
-                    const moyVal = Number(b.moyenne_generale ?? b.moyenne ?? 0);
-                    const credsVal = Number(b.total_credits_valides ?? b.total_credits ?? 0);
-                    const displayMoy = !isNaN(moyVal) ? moyVal.toFixed(2) : '0.00';
-                    const displayCreds = !isNaN(credsVal) ? credsVal : 0;
-
-                    return (
-                      <tr key={b.id} className="hover:bg-gray-50/50 transition-colors">
-                        <td className="px-6 py-4 font-mono font-bold text-[#0066FF]">{st?.matricule || 'N/A'}</td>
-                        <td className="px-6 py-4 font-semibold text-[#1A1A1A]">
-                          {st ? `${st.prenom || ''} ${st.nom || ''}`.trim() : `Étudiant #${b.etudiant_id}`}
-                        </td>
-                        <td className="px-6 py-4 text-gray-600 font-medium">{sem?.libelle || `Semestre #${b.semestre_id}`}</td>
-                        <td className="px-6 py-4 text-center font-bold text-[#0066FF] font-mono text-sm">
-                          {displayMoy} / 20
-                        </td>
-                        <td className="px-6 py-4 text-center font-bold text-emerald-600 font-mono">
-                          {displayCreds} / 30 ECTS
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                            b.decision === 'Admis' || b.decision === 'Passage sous réserve' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'
-                          }`}>
-                            {b.decision || 'Admis'} ({b.mention || 'Passable'})
-                          </span>
-                          {b.remarques_jury && (
-                            <span className="block text-[10px] text-gray-400 italic mt-0.5 max-w-[180px] truncate">
-                              {b.remarques_jury}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 text-right space-x-1.5 whitespace-nowrap">
-                          <button type="button"
-                            onClick={() => handleOpenEditModal(b)}
-                            title="Modifier directement le bulletin"
-                            className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-[10px] text-xs font-bold transition-colors inline-flex items-center gap-1 cursor-pointer"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                            <span>Modifier</span>
-                          </button>
-
-                          <button type="button"
-                            onClick={() => { setViewingBulletin(b); setIsDetailOpen(true); }}
-                            title="Télécharger / Exporter le bulletin en PDF"
-                            className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-[10px] text-xs font-bold transition-colors inline-flex items-center gap-1 cursor-pointer"
-                          >
-                            <Download className="w-3.5 h-3.5" />
-                            <span>Exporter en PDF</span>
-                          </button>
-
-                          <button type="button"
-                            onClick={() => { setViewingBulletin(b); setIsDetailOpen(true); }}
-                            className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-[#0066FF] rounded-[10px] text-xs font-bold transition-colors inline-flex items-center gap-1 cursor-pointer"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                            <span>Consulter</span>
-                          </button>
-
-                          <button type="button"
-                            onClick={() => handleDeleteBulletin(b.id)}
-                            title="Supprimer ce bulletin"
-                            className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 rounded-[10px] text-xs font-bold transition-colors inline-flex items-center gap-1 cursor-pointer"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                            <span>Supprimer</span>
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
-      )}
+      </div>
 
-      {/* MODAL MODIFICATION DU BULLETIN (Requirement 8) */}
-      {editingBulletin && isEditModalOpen && (() => {
-        const student = etudiants.find(e => Number(e.id) === Number(editingBulletin.etudiant_id));
-        const semester = semestres.find(s => Number(s.id) === Number(editingBulletin.semestre_id));
+      {/* Official Bulletin Detail Modal */}
+      {isDetailModalOpen && detailData && (
+        <Modal
+          isOpen={isDetailModalOpen}
+          onClose={() => setIsDetailModalOpen(false)}
+          title="Bulletin de Notes Officiel (LMD)"
+          maxWidth="max-w-4xl"
+        >
+          <div className="space-y-6 print:p-0">
+            {/* University Header / Official Stamp */}
+            <div className="border-b-2 border-slate-800 pb-4">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h2 className="text-lg font-black uppercase text-slate-900 tracking-wide">
+                    {universite?.nom || 'UNIVERSITÉ DES SCIENCES ET TECHNOLOGIES'}
+                  </h2>
+                  <p className="text-xs text-slate-600 font-medium">
+                    Excellence - Rigueur - Savoir
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {universite?.adresse || 'Bamako, République du Mali'} | Tél : {universite?.telephone || '+223 20 00 00 00'}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <span className="inline-block border-2 border-blue-600 text-blue-700 px-3 py-1 text-xs font-black uppercase tracking-wider rounded">
+                    Relevé de Notes Officiel
+                  </span>
+                  <div className="text-xs text-slate-500 mt-1">
+                    Année : {detailData.annee?.libelle || '2025 - 2026'}
+                  </div>
+                </div>
+              </div>
+            </div>
 
-        return (
-          <Modal
-            isOpen={isEditModalOpen}
-            onClose={() => setIsEditModalOpen(false)}
-            title={`Modifier le Bulletin : ${student?.prenom || ''} ${student?.nom || ''} (${semester?.libelle || ''})`}
-            maxWidth="max-w-3xl"
-          >
-            <form onSubmit={handleSaveEditedBulletin} className="space-y-5 text-xs">
-              
-              <div className="p-3.5 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 font-semibold flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>
-                  Modifications Administrateur : Vous pouvez ajuster les notes individuellement ou outrepasser directement la moyenne et la décision du jury.
+            {/* Student & Promotion Summary Card */}
+            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+              <div>
+                <span className="text-slate-500 block">Nom & Prénom :</span>
+                <span className="font-bold text-slate-900 text-sm">{detailData.etudiant.prenom} {detailData.etudiant.nom}</span>
+              </div>
+              <div>
+                <span className="text-slate-500 block">Matricule :</span>
+                <span className="font-mono font-bold text-slate-900 text-sm">{detailData.etudiant.matricule || 'N/A'}</span>
+              </div>
+              <div>
+                <span className="text-slate-500 block">Filière / Spécialité :</span>
+                <span className="font-semibold text-slate-900">{detailData.filiere?.nom || 'Tronc Commun'}</span>
+              </div>
+              <div>
+                <span className="text-slate-500 block">Semestre :</span>
+                <span className="font-semibold text-blue-700">{detailData.semestre?.libelle} ({detailData.semestre?.code})</span>
+              </div>
+            </div>
+
+            {/* Subject-by-Subject Grades Table */}
+            <div className="border border-slate-200 rounded-lg overflow-hidden">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-100 text-slate-700 font-bold uppercase tracking-wider border-b border-slate-200">
+                    <th className="py-2.5 px-3">Code</th>
+                    <th className="py-2.5 px-3">Unité d'Enseignement (Matière)</th>
+                    <th className="py-2.5 px-2 text-center">Crédits</th>
+                    <th className="py-2.5 px-2 text-center">Note CC (40%)</th>
+                    <th className="py-2.5 px-2 text-center">Examen (60%)</th>
+                    <th className="py-2.5 px-2 text-center">Note Finale</th>
+                    <th className="py-2.5 px-2 text-center">Points (Note×Crédits)</th>
+                    <th className="py-2.5 px-3 text-center">Validation</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {detailData.lines.map(line => (
+                    <tr key={line.matiere.id} className="hover:bg-slate-50">
+                      <td className="py-2 px-3 font-mono font-medium text-slate-600">{line.matiere.code}</td>
+                      <td className="py-2 px-3 font-medium text-slate-900">{line.matiere.nom}</td>
+                      <td className="py-2 px-2 text-center font-bold text-slate-700">{line.credits}</td>
+                      <td className="py-2 px-2 text-center font-mono">
+                        {line.hasNote ? `${line.note_cc}/20` : <span className="text-slate-400 italic">-</span>}
+                      </td>
+                      <td className="py-2 px-2 text-center font-mono">
+                        {line.hasNote ? `${line.note_examen}/20` : <span className="text-slate-400 italic">-</span>}
+                      </td>
+                      <td className="py-2 px-2 text-center font-mono font-bold">
+                        {line.hasNote ? (
+                          <span className={line.validee ? 'text-emerald-700' : 'text-red-600'}>
+                            {line.note_finale?.toFixed(2)}/20
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 italic">-</span>
+                        )}
+                      </td>
+                      <td className="py-2 px-2 text-center font-mono font-semibold text-slate-700">
+                        {line.hasNote ? ((line.note_finale || 0) * line.credits).toFixed(2) : '-'}
+                      </td>
+                      <td className="py-2 px-3 text-center">
+                        {line.hasNote ? (
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${
+                            line.validee ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
+                          }`}>
+                            {line.validee ? 'Validé' : 'Ajourné'}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 italic">Non noté</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-slate-50 font-bold border-t-2 border-slate-300 text-slate-900">
+                    <td colSpan={2} className="py-2.5 px-3 uppercase">Total Semestre</td>
+                    <td className="py-2.5 px-2 text-center">{detailData.totalCreditsInscrits}</td>
+                    <td colSpan={3} className="py-2.5 px-2 text-right">Points Évalués :</td>
+                    <td className="py-2.5 px-2 text-center font-mono">{detailData.totalPoints.toFixed(2)}</td>
+                    <td className="py-2.5 px-3 text-center text-emerald-700">{detailData.totalCreditsValides} / {detailData.totalCreditsInscrits} ECTS</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            {/* Deliberation Final Results */}
+            <div className="bg-blue-50/70 p-4 rounded-lg border border-blue-200 grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+              <div>
+                <span className="text-xs text-slate-600 block">Moyenne Générale Pondérée</span>
+                <span className="text-xl font-black text-blue-900">{detailData.moyenne.toFixed(2)} / 20</span>
+              </div>
+              <div>
+                <span className="text-xs text-slate-600 block">Crédits Validés</span>
+                <span className="text-xl font-bold text-slate-900">{detailData.totalCreditsValides} / {detailData.totalCreditsInscrits}</span>
+              </div>
+              <div>
+                <span className="text-xs text-slate-600 block">Décision du Jury</span>
+                <span className={`text-base font-black uppercase ${
+                  detailData.decision === 'Admis' ? 'text-emerald-700' :
+                  detailData.decision === 'Compensé' ? 'text-amber-700' :
+                  detailData.decision === 'Ajourné' ? 'text-red-700' :
+                  'text-slate-600'
+                }`}>
+                  {detailData.decision}
                 </span>
               </div>
-
-              {/* Subject Marks Editor Table */}
-              <div className="space-y-2">
-                <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">
-                  1. Modification des Notes de Matières (Réajustement automatique)
-                </h4>
-                <div className="border border-slate-200 rounded-xl overflow-hidden">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-slate-100 text-[10px] font-bold text-slate-600 uppercase">
-                        <th className="px-3 py-2">Code UE</th>
-                        <th className="px-3 py-2">Matière</th>
-                        <th className="px-3 py-2 text-center">Note CC (/20)</th>
-                        <th className="px-3 py-2 text-center">Note Exam (/20)</th>
-                        <th className="px-3 py-2 text-center">Note Finale</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200 bg-white">
-                      {editSubjectNotes.map((item, idx) => (
-                        <tr key={idx}>
-                          <td className="px-3 py-2 font-mono font-bold text-blue-600">{item.code}</td>
-                          <td className="px-3 py-2 font-semibold text-slate-900">{item.nom}</td>
-                          <td className="px-3 py-2 text-center">
-                            <input
-                              type="number"
-                              step="0.25"
-                              min="0"
-                              max="20"
-                              value={item.note_cc}
-                              onChange={(e) => handleSubjectNoteChange(idx, 'note_cc', parseFloat(e.target.value) || 0)}
-                              className="w-16 h-8 text-center bg-slate-50 border border-slate-300 rounded font-mono font-bold"
-                            />
-                          </td>
-                          <td className="px-3 py-2 text-center">
-                            <input
-                              type="number"
-                              step="0.25"
-                              min="0"
-                              max="20"
-                              value={item.note_examen}
-                              onChange={(e) => handleSubjectNoteChange(idx, 'note_examen', parseFloat(e.target.value) || 0)}
-                              className="w-16 h-8 text-center bg-slate-50 border border-slate-300 rounded font-mono font-bold"
-                            />
-                          </td>
-                          <td className="px-3 py-2 text-center font-mono font-extrabold text-slate-900">
-                            {Number(item.note_finale || 0).toFixed(2)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+              <div>
+                <span className="text-xs text-slate-600 block">Mention Attribuée</span>
+                <span className="text-base font-bold text-purple-900">{detailData.mention}</span>
               </div>
+            </div>
 
-              {/* Global Bulletin Decision & Override Settings */}
-              <div className="space-y-2 pt-2 border-t border-slate-200">
-                <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">
-                  2. Ajustement des Paramètres Globaux du Bulletin & Délibération
-                </h4>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Moyenne Générale (/20) *</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      max="20"
-                      value={editFormData.moyenne}
-                      onChange={(e) => setEditFormData({ ...editFormData, moyenne: parseFloat(e.target.value) || 0 })}
-                      className="w-full h-10 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-blue-600"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Crédits Validés (ECTS) *</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="60"
-                      value={editFormData.total_credits}
-                      onChange={(e) => setEditFormData({ ...editFormData, total_credits: parseInt(e.target.value) || 0 })}
-                      className="w-full h-10 px-3 bg-white border border-slate-300 rounded-xl font-mono font-bold text-emerald-600"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Décision du Conseil / Jury *</label>
-                    <select
-                      value={editFormData.decision}
-                      onChange={(e) => setEditFormData({ ...editFormData, decision: e.target.value })}
-                      className="w-full h-10 px-3 bg-white border border-slate-300 rounded-xl font-bold text-slate-900"
-                    >
-                      <option value="Admis">Admis</option>
-                      <option value="Ajourné">Ajourné</option>
-                      <option value="Compensé">Compensé</option>
-                      <option value="Passage sous réserve">Passage sous réserve</option>
-                      <option value="Exclu">Exclu</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Mention Attribuée *</label>
-                    <select
-                      value={editFormData.mention}
-                      onChange={(e) => setEditFormData({ ...editFormData, mention: e.target.value })}
-                      className="w-full h-10 px-3 bg-white border border-slate-300 rounded-xl font-semibold text-slate-900"
-                    >
-                      <option value="Très Bien">Très Bien</option>
-                      <option value="Bien">Bien</option>
-                      <option value="Assez Bien">Assez Bien</option>
-                      <option value="Passable">Passable</option>
-                      <option value="Sans Mention">Sans Mention / Ajourné</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Remarques & Appréciations du Jury</label>
-                    <input
-                      type="text"
-                      value={editFormData.remarques_jury}
-                      onChange={(e) => setEditFormData({ ...editFormData, remarques_jury: e.target.value })}
-                      placeholder="Ex : Passage sous réserve, Félicitations du Conseil..."
-                      className="w-full h-10 px-3 bg-white border border-slate-300 rounded-xl text-slate-800"
-                    />
-                  </div>
-                </div>
+            {/* Official Signatures Box */}
+            <div className="pt-6 border-t border-slate-200 grid grid-cols-2 gap-8 text-xs text-center">
+              <div>
+                <p className="font-semibold text-slate-700">Le Responsable Pédagogique</p>
+                <div className="h-14"></div>
+                <p className="text-slate-500 italic">Signature & Cachet</p>
               </div>
-
-              {/* Footer Actions */}
-              <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-200">
-                <button
-                  type="button"
-                  onClick={() => setIsEditModalOpen(false)}
-                  className="h-10 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  className="h-10 px-6 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl flex items-center gap-2 shadow-sm"
-                >
-                  <Save className="w-4 h-4" />
-                  <span>Enregistrer la Modification</span>
-                </button>
+              <div>
+                <p className="font-semibold text-slate-700">Le Recteur / Directeur des Études</p>
+                <div className="h-14"></div>
+                <p className="text-slate-500 italic">Signature & Sceau Officiel</p>
               </div>
+            </div>
 
-            </form>
-          </Modal>
-        );
-      })()}
-
-      {/* Modal Printable Official Transcript (Style Excel) */}
-      {viewingBulletin && (() => {
-        const st = etudiants.find(e => Number(e.id) === Number(viewingBulletin.etudiant_id)) || etudiants[0];
-        const sem = semestres.find(s => Number(s.id) === Number(viewingBulletin.semestre_id)) || semestres[0];
-        const cls = classes.find(c => Number(c.id) === Number(st?.classe_id));
-        const fil = filieres.find(f => Number(f.id) === Number(cls?.filiere_id));
-        const facultes = DB.getFacultes() || [];
-        const fac = facultes.find(f => Number(f.id) === Number(fil?.faculte_id));
-
-        return (
-          <Modal
-            isOpen={isDetailOpen}
-            onClose={() => setIsDetailOpen(false)}
-            title="Bulletin de Notes Universitaire (Style Excel)"
-            maxWidth="max-w-4xl"
-          >
-            <ExcelBulletinView
-              etudiant={st}
-              semestre={sem}
-              notes={DB.getNotes() || []}
-              matieres={DB.getMatieres() || []}
-              classe={cls}
-              filiere={fil}
-              faculte={fac}
-              universite={universite}
-              anneeAcademique={activeAnnee}
-              onPrint={handlePrint}
-            />
-          </Modal>
-        );
-      })()}
-
+            {/* Action Buttons in Modal */}
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={() => setIsDetailModalOpen(false)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium transition-colors"
+              >
+                Fermer
+              </button>
+              <button
+                type="button"
+                onClick={handlePrint}
+                className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium shadow-sm transition-colors"
+              >
+                <Printer className="w-4 h-4 mr-2" />
+                Imprimer ce bulletin
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };

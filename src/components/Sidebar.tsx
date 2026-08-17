@@ -42,8 +42,8 @@ export type ActiveTab =
   | 'semestres'
   | 'inscriptions'
   | 'notes'
-  | 'absences'
   | 'bulletins'
+  | 'absences'
   | 'examen'
   | 'paiements'
   | 'annees'
@@ -87,9 +87,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'matieres', label: 'Matières', icon: FileText },
     { id: 'semestres', label: 'Semestres', icon: Calendar },
     { id: 'inscriptions', label: 'Inscriptions', icon: UserPlus },
-    { id: 'notes', label: 'Saisie des Notes', icon: Award },
+    { id: 'notes', label: 'Saisie des Notes', icon: FileCheck2 },
+    { id: 'bulletins', label: 'Bulletins & Délibérations', icon: Award },
     { id: 'absences', label: 'Absences & Alertes', icon: AlertCircle },
-    { id: 'bulletins', label: 'Bulletins', icon: FileCheck2 },
     { id: 'paiements', label: 'Paiements', icon: CreditCard },
     { id: 'annees', label: 'Années Académiques', icon: Clock },
     { id: 'utilisateurs', label: 'Utilisateurs & Accès', icon: ShieldCheck },
@@ -108,11 +108,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   );
 
   const studentNav = isStudentBlocked ? [
-    { id: 'bulletins', label: 'Accès Bloqué', icon: Lock },
+    { id: 'profil_etudiant', label: 'Accès Bloqué', icon: Lock },
   ] : [
     { id: 'profil_etudiant', label: 'Mon Profil', icon: GraduationCap },
     { id: 'supports_cours', label: 'Supports de cours', icon: BookOpen },
-    { id: 'bulletins', label: 'Mon Bulletin', icon: FileCheck2 },
     { id: 'examen', label: 'Examen & Notes', icon: Award },
     { id: 'absences', label: 'Absences', icon: AlertCircle },
     { id: 'paiements', label: 'Mes Paiements', icon: CreditCard },

@@ -40,7 +40,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ setActiv
   const matieres = DB.getMatieres();
   const inscriptions = DB.getInscriptions();
   const paiements = DB.getPaiements();
-  const bulletins = DB.getBulletins();
+  const notes = DB.getNotes();
   const logs = DB.getHistorique();
 
   const handleToggleGlobalLock = () => {
@@ -162,22 +162,30 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ setActiv
           </div>
           <p className="text-xs text-gray-500 mt-0.5">Aperçu analytique en temps réel du système scolaire universitaire.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             type="button"
             onClick={() => setActiveTab('inscriptions')}
-            className="h-[38px] px-4 bg-[#0066FF] hover:bg-blue-700 text-white rounded-[12px] text-xs font-semibold transition-colors shadow-xs flex items-center gap-2"
+            className="h-[38px] px-3.5 bg-[#0066FF] hover:bg-blue-700 text-white rounded-[12px] text-xs font-semibold transition-colors shadow-xs flex items-center gap-2"
           >
             <UserPlus className="w-3.5 h-3.5" />
-            + Nouvelle Inscription
+            + Inscription
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('notes')}
-            className="h-[38px] px-4 bg-white border border-[#E5E7EB] hover:bg-gray-50 text-[#374151] rounded-[12px] text-xs font-semibold transition-colors flex items-center gap-2"
+            className="h-[38px] px-3.5 bg-white border border-[#E5E7EB] hover:bg-gray-50 text-[#374151] rounded-[12px] text-xs font-semibold transition-colors flex items-center gap-2"
           >
             <FileText className="w-3.5 h-3.5 text-gray-500" />
-            + Saisie des Notes
+            Saisie Notes
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('bulletins')}
+            className="h-[38px] px-3.5 bg-amber-500 hover:bg-amber-600 text-white rounded-[12px] text-xs font-semibold transition-colors shadow-xs flex items-center gap-2"
+          >
+            <Award className="w-3.5 h-3.5" />
+            Bulletins LMD
           </button>
         </div>
       </div>
@@ -241,7 +249,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ setActiv
               { label: 'Unités d\'Enseignement', value: matieres.length, badge: 'Modules', icon: FileText, tab: 'matieres', color: 'text-cyan-600', bg: 'bg-cyan-50' },
               { label: 'Inscriptions Validées', value: inscriptions.length, badge: 'Complets', icon: UserPlus, tab: 'inscriptions', color: 'text-purple-600', bg: 'bg-purple-50' },
               { label: 'Scolarité Recouvrée', value: `${(totalPaiementsMois / 1000).toFixed(0)}k FCFA`, badge: 'Comptabilité', icon: CreditCard, tab: 'paiements', color: 'text-emerald-600', bg: 'bg-emerald-50' },
-              { label: 'Bulletins Générés', value: bulletins.length, badge: 'Édités', icon: FileCheck2, tab: 'bulletins', color: 'text-rose-600', bg: 'bg-rose-50' },
+              { label: 'Notes & Évaluations', value: notes.length, badge: 'Saisies', icon: Award, tab: 'notes', color: 'text-rose-600', bg: 'bg-rose-50' },
             ].map((s, idx) => {
               const Icon = s.icon;
               return (

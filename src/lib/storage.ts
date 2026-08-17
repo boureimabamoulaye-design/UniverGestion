@@ -1131,7 +1131,7 @@ export class DB {
     const studentClass = classes.find(c => Number(c.id) === Number(student.classe_id));
     const studentFiliereId = (student as any)?.filiere_id || studentClass?.filiere_id || 1;
 
-    // Retrieve subjects for this student's filiere & semester
+    // Retrieve subjects strictly for this student's filiere & semester
     const semesterMatieres = matieres.filter(
       m => Number(m.semestre_id) === Number(semestreId) && (!m.filiere_id || Number(m.filiere_id) === Number(studentFiliereId))
     );
@@ -1141,16 +1141,18 @@ export class DB {
 
     const applicableMatiereIds = new Set(resolvedMatieres.map(m => Number(m.id)));
 
-    // Get student's notes for this semester
+    // Get ONLY real, entered notes for this student in this semester & academic year
     const studentNotes = notes.filter(
       n => Number(n.etudiant_id) === Number(student.id) &&
            Number(n.semestre_id) === Number(semestreId) &&
+           Number(n.annee_academique_id || targetAnneeId) === Number(targetAnneeId) &&
            applicableMatiereIds.has(Number(n.matiere_id))
     );
 
     let totalPoints = 0;
-    let totalCredits = 0;
+    let totalCreditsEvalues = 0;
     let totalCreditsValides = 0;
+    const totalCreditsInscrits = resolvedMatieres.reduce((sum, m) => sum + (Number(m.credits) || 3), 0) || 18;
 
     if (studentNotes.length > 0) {
       studentNotes.forEach(n => {
@@ -1158,48 +1160,75 @@ export class DB {
         const credits = Number(mat?.credits) || 3;
         const noteFin = Number(n.note_finale) || 0;
         totalPoints += noteFin * credits;
-        totalCredits += credits;
-        if (noteFin >= 10) totalCreditsValides += credits;
-      });
-    } else {
-      // Calculate from standard theoretical credits if notes are not yet encoded
-      resolvedMatieres.forEach(m => {
-        const credits = Number(m.credits) || 3;
-        totalCredits += credits;
-        totalPoints += 12 * credits; // default baseline evaluation
-        totalCreditsValides += credits;
+        totalCreditsEvalues += credits;
+        if (noteFin >= 10.0) {
+          totalCreditsValides += credits;
+        }
       });
     }
 
-    const moyenneGenerale = totalCredits > 0 ? parseFloat((totalPoints / totalCredits).toFixed(2)) : 10;
+    // STRICT: Never invent or assume fake default grades!
+    const hasEvaluations = totalCreditsEvalues > 0;
+    const moyenneGenerale = hasEvaluations ? Number((totalPoints / totalCreditsEvalues).toFixed(2)) : 0;
 
-    let decision: 'Admis' | 'Ajourné' | 'Compensé' | 'En attente' = 'Admis';
-    if (moyenneGenerale < 10) {
-      decision = moyenneGenerale >= 9.0 ? 'Compensé' : 'Ajourné';
+    let decision: 'Admis' | 'Ajourné' | 'Compensé' | 'En attente' = 'En attente';
+    let mention: 'Passable' | 'Assez Bien' | 'Bien' | 'Très Bien' | 'N/A' = 'N/A';
+
+    if (hasEvaluations) {
+      if (moyenneGenerale >= 10.0) {
+        decision = 'Admis';
+      } else if (moyenneGenerale >= 9.0) {
+        decision = 'Compensé';
+      } else {
+        decision = 'Ajourné';
+      }
+
+      if (moyenneGenerale >= 16) mention = 'Très Bien';
+      else if (moyenneGenerale >= 14) mention = 'Bien';
+      else if (moyenneGenerale >= 12) mention = 'Assez Bien';
+      else if (moyenneGenerale >= 10) mention = 'Passable';
+      else mention = 'N/A';
     }
 
-    let mention: 'Passable' | 'Assez Bien' | 'Bien' | 'Très Bien' | 'N/A' = 'Passable';
-    if (moyenneGenerale >= 16) mention = 'Très Bien';
-    else if (moyenneGenerale >= 14) mention = 'Bien';
-    else if (moyenneGenerale >= 12) mention = 'Assez Bien';
-    else if (moyenneGenerale >= 10) mention = 'Passable';
-    else mention = 'N/A';
+    const bulletins = this.getBulletins();
+    const existing = bulletins.find(
+      b => Number(b.etudiant_id) === Number(student.id) &&
+           Number(b.semestre_id) === Number(semestreId) &&
+           Number(b.annee_academique_id) === Number(targetAnneeId)
+    );
 
-    return this.saveBulletin({
+    const bData: Omit<Bulletin, 'id'> & { id?: number } = {
+      ...(existing ? { id: existing.id } : {}),
       etudiant_id: student.id,
-      classe_id: student.classe_id,
+      classe_id: student.classe_id || 1,
       semestre_id: Number(semestreId),
       annee_academique_id: targetAnneeId,
       moyenne: moyenneGenerale,
       moyenne_generale: moyenneGenerale,
-      total_credits: totalCredits > 0 ? totalCredits : 30,
-      total_credits_valides: totalCreditsValides > 0 ? totalCreditsValides : 30,
+      total_credits: totalCreditsInscrits,
+      total_credits_valides: totalCreditsValides,
       decision,
       mention,
       rang: 1,
       date_generation: new Date().toISOString().split('T')[0],
-      remarques_jury: 'Bulletin officiel délibéré.'
+      remarques_jury: hasEvaluations ? (decision === 'Admis' ? 'Semestre validé par le jury.' : 'Ajourné / Rachat en session de rattrapage.') : 'En attente de saisie des évaluations.'
+    };
+
+    const saved = this.saveBulletin(bData);
+
+    // Recompute rank within class
+    const classBulletins = this.getBulletins()
+      .filter(b => Number(b.classe_id) === Number(student.classe_id) && Number(b.semestre_id) === Number(semestreId) && Number(b.annee_academique_id) === Number(targetAnneeId))
+      .sort((a, b) => (b.moyenne || 0) - (a.moyenne || 0));
+
+    classBulletins.forEach((b, idx) => {
+      if (b.rang !== idx + 1) {
+        b.rang = idx + 1;
+      }
     });
+    setItem(STORAGE_KEYS.BULLETINS, this.getBulletins());
+
+    return saved;
   }
 
   static generateBulletinsForAllStudents(targetSemestreId?: number, targetAnneeId?: number): { total: number; studentsCount: number } {
@@ -1248,81 +1277,7 @@ export class DB {
   }
 
   static recalculateBulletin(etudiantId: number, semestreId: number, anneeId: number): Bulletin | null {
-    const notes = this.getNotes().filter(n => n.etudiant_id === etudiantId && n.semestre_id === semestreId && n.annee_academique_id === anneeId);
-    if (notes.length === 0) return null;
-
-    const matieres = this.getMatieres();
-    let totalWeightedNotes = 0;
-    let totalCreditsForAvg = 0;
-    let totalCredits = 0;
-
-    notes.forEach(note => {
-      const mat = matieres.find(m => m.id === note.matiere_id);
-      const credit = mat?.credits || 3;
-      totalWeightedNotes += note.note_finale * credit;
-      totalCreditsForAvg += credit;
-      if (note.note_finale >= 10) {
-        totalCredits += credit;
-      }
-    });
-
-    const moyenne = totalCreditsForAvg > 0 ? Number((totalWeightedNotes / totalCreditsForAvg).toFixed(2)) : 0;
-
-    let decision: 'Admis' | 'Ajourné' | 'Compensé' | 'En attente' = 'Admis';
-    if (moyenne < 10) {
-      decision = moyenne >= 9.0 ? 'Compensé' : 'Ajourné';
-    }
-
-    let mention: 'Passable' | 'Assez Bien' | 'Bien' | 'Très Bien' | 'N/A' = 'N/A';
-    if (moyenne >= 16) mention = 'Très Bien';
-    else if (moyenne >= 14) mention = 'Bien';
-    else if (moyenne >= 12) mention = 'Assez Bien';
-    else if (moyenne >= 10) mention = 'Passable';
-
-    const student = this.getEtudiants().find(e => e.id === etudiantId);
-    const classeId = student?.classe_id || 1;
-
-    const bulletins = this.getBulletins();
-    const existingIdx = bulletins.findIndex(b => b.etudiant_id === etudiantId && b.semestre_id === semestreId && b.annee_academique_id === anneeId);
-
-    const bData: Omit<Bulletin, 'id'> = {
-      etudiant_id: etudiantId,
-      classe_id: classeId,
-      semestre_id: semestreId,
-      annee_academique_id: anneeId,
-      moyenne,
-      total_credits: totalCredits,
-      decision,
-      mention,
-      rang: 1, // Will compute class rank
-      date_generation: new Date().toISOString().split('T')[0]
-    };
-
-    let result: Bulletin;
-    if (existingIdx !== -1) {
-      bulletins[existingIdx] = { ...bulletins[existingIdx], ...bData };
-      result = bulletins[existingIdx];
-    } else {
-      const nextId = Math.max(0, ...bulletins.map(b => b.id)) + 1;
-      result = { ...bData, id: nextId };
-      bulletins.push(result);
-    }
-
-    // Recompute ranks for class
-    const classBulletins = bulletins
-      .filter(b => b.classe_id === classeId && b.semestre_id === semestreId && b.annee_academique_id === anneeId)
-      .sort((a, b) => b.moyenne - a.moyenne);
-
-    classBulletins.forEach((b, idx) => {
-      const globalIdx = bulletins.findIndex(g => g.id === b.id);
-      if (globalIdx !== -1) {
-        bulletins[globalIdx].rang = idx + 1;
-      }
-    });
-
-    setItem(STORAGE_KEYS.BULLETINS, bulletins);
-    saveToBackendTable('bulletins', result);
-    return result;
+    return this.generateStudentBulletin(etudiantId, semestreId, anneeId);
   }
 
   static savePaiement(item: Omit<Paiement, 'id'> & { id?: number }): Paiement {

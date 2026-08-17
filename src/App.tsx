@@ -18,8 +18,8 @@ import { MatieresView } from './views/MatieresView';
 import { SemestresView } from './views/SemestresView';
 import { InscriptionsView } from './views/InscriptionsView';
 import { NotesView } from './views/NotesView';
-import { AbsencesView } from './views/AbsencesView';
 import { BulletinsView } from './views/BulletinsView';
+import { AbsencesView } from './views/AbsencesView';
 import { PaiementsView } from './views/PaiementsView';
 import { AnneesAcademiquesView } from './views/AnneesAcademiquesView';
 import { UtilisateursView } from './views/UtilisateursView';
@@ -37,7 +37,7 @@ export default function App() {
   const isStaffOrAdmin = currentUser ? currentUser.role?.toUpperCase() !== 'ETUDIANT' : false;
 
   const getInitialTab = (): ActiveTab => {
-    return isStaffOrAdmin ? 'dashboard' : 'bulletins';
+    return isStaffOrAdmin ? 'dashboard' : 'profil_etudiant';
   };
 
   const [activeTab, setActiveTabState] = useState<ActiveTab>(getInitialTab);
@@ -100,7 +100,7 @@ export default function App() {
           onLoginSuccess={(u) => {
             handleSetCurrentUser(u);
             const isStaff = u.role?.toUpperCase() !== 'ETUDIANT';
-            const defaultTab = isStaff ? 'dashboard' : 'bulletins';
+            const defaultTab = isStaff ? 'dashboard' : 'profil_etudiant';
             handleTabChange(defaultTab);
           }}
         />
@@ -170,8 +170,8 @@ export default function App() {
                   {activeTab === 'semestres' && <SemestresView />}
                   {activeTab === 'inscriptions' && <InscriptionsView />}
                   {activeTab === 'notes' && <NotesView />}
-                  {activeTab === 'absences' && <AbsencesView />}
                   {activeTab === 'bulletins' && <BulletinsView />}
+                  {activeTab === 'absences' && <AbsencesView />}
                   {activeTab === 'paiements' && <PaiementsView />}
                   {activeTab === 'annees' && <AnneesAcademiquesView />}
                   {(activeTab === 'administrateurs' || activeTab === 'utilisateurs') && <UtilisateursView />}
