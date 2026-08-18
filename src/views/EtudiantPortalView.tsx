@@ -79,9 +79,9 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
     matricule: anyUser.matricule || anyUser.email_or_matricule || '2024-USTTB-001',
     nom: user.nom || 'Traoré',
     prenom: user.prenom || 'Mamadou',
-    email: anyUser.email || 'm.traore@usttb.edu.ml',
-    telephone: '+223 76 00 11 22',
-    adresse: 'Hamdallaye ACI 2000, Bamako',
+    email: anyUser.email || 'mamadou.traore@usttb.edu.ml',
+    telephone: '+223 76 12 34 56',
+    adresse: 'Badalabougou, Rue 12, Porte 45',
     date_naissance: '2003-05-12',
     lieu_naissance: 'Bamako',
     sexe: 'M' as const,
@@ -136,16 +136,6 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
   // States
   const [selectedAnneeId, setSelectedAnneeId] = useState<number>(activeAnnee?.id || 1);
   const [selectedSemestreId, setSelectedSemestreId] = useState<number>(semestres[0]?.id || 1);
-  const [phone, setPhone] = useState(etudiant.telephone || '');
-  const [adresse, setAdresse] = useState(etudiant.adresse || '');
-  const [isSaved, setIsSaved] = useState(false);
-
-  useEffect(() => {
-    if (etudiant) {
-      setPhone(etudiant.telephone || '');
-      setAdresse(etudiant.adresse || '');
-    }
-  }, [etudiant.id]);
 
   // Backend authorization state
   const [backendAuthDeniedReason, setBackendAuthDeniedReason] = useState<string | null>(null);
@@ -220,19 +210,6 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
   const validStudentTabs = ['profil_etudiant', 'examen', 'paiements', 'absences'];
   const currentTab = validStudentTabs.includes(activeTab) ? activeTab : 'profil_etudiant';
 
-  const handleUpdateProfile = (e: React.FormEvent) => {
-    e.preventDefault();
-    etudiant.telephone = phone;
-    etudiant.adresse = adresse;
-    DB.saveEtudiant({
-      ...etudiant,
-      telephone: phone,
-      adresse
-    });
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 3000);
-  };
-
   const getMention = (avg: number | null) => {
     if (avg === null) return 'En attente';
     if (avg >= 16) return 'Très Bien';
@@ -259,8 +236,8 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
     ? combinedSemestres.sort((a, b) => (a.ordre || a.id) - (b.ordre || b.id))
     : semestres.slice(0, 2);
 
-  // Tab mode for Examen tab: 0 = Bilan Annuel (S1 + S2), or semester ID (1 for S1, 2 for S2)
-  const [examenViewFilter, setExamenViewFilter] = useState<number>(0);
+  // Tab mode for Examen tab: semester ID (1 for S1, 2 for S2) or 0 = Bilan Annuel
+  const [examenViewFilter, setExamenViewFilter] = useState<number>(1);
 
   // Per-semester detailed calculations
   const semestresCalculations = activeSemestres.map(sem => {
@@ -556,212 +533,315 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
 
-      {/* TAB EXAMEN & RELEVÉ DE NOTES (Semestre 1 & Semestre 2) */}
+      {/* TAB EXAMEN & RELEVÉ DE NOTES */}
       {currentTab === 'examen' && (
         <div className="space-y-6 animate-in fade-in duration-300">
           
-          {/* Header Bar */}
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2">
-                <Award className="w-5 h-5 text-blue-600" />
-                <span>Espace Examen & Relevé des Notes (Semestre 1 & 2)</span>
-              </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Consultez le calcul des notes par semestre attribué à la filière <b>{studentFiliere?.nom || 'Informatique & Génie Logiciel'}</b> ({studentClass?.code || 'L1'}), votre moyenne générale et votre bilan LMD.
-              </p>
-            </div>
-
+          {/* Semester Selector & Quick Actions */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-3">
+              <label htmlFor="select-semestre-filter" className="text-xs font-extrabold text-slate-800 flex items-center gap-1.5">
+                <Calendar className="w-4 h-4 text-blue-600" />
+                <span>Sélectionner le Relevé :</span>
+              </label>
               <select
-                value={selectedAnneeId}
-                onChange={(e) => setSelectedAnneeId(Number(e.target.value))}
-                className="h-10 px-3 bg-slate-50 border border-slate-200 text-blue-700 rounded-xl text-xs font-bold focus:outline-none focus:border-blue-600"
+                id="select-semestre-filter"
+                value={examenViewFilter}
+                onChange={(e) => setExamenViewFilter(Number(e.target.value))}
+                className="h-10 px-3.5 bg-slate-50 border border-slate-300 text-slate-900 rounded-xl text-xs font-bold focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 cursor-pointer"
               >
-                {annees.map(a => (
-                  <option key={a.id} value={a.id}>
-                    Année : {a.libelle} {a.est_active ? '(Active)' : ''}
+                {semestresCalculations.map(sc => (
+                  <option key={sc.semestre.id} value={sc.semestre.id}>
+                    {sc.semestre.libelle} {sc.average !== null && !isNaN(Number(sc.average)) ? `(${Number(sc.average).toFixed(2)}/20)` : ''}
                   </option>
                 ))}
+                <option value={0}>
+                  Bilan Annuel Global (S1 + S2) {annualAverage !== null && !isNaN(Number(annualAverage)) ? `(${Number(annualAverage).toFixed(2)}/20)` : ''}
+                </option>
               </select>
+            </div>
 
-              <button type="button"
+            {/* Quick Actions & Status Badge */}
+            <div className="flex flex-wrap items-center gap-2.5">
+              {examenViewFilter !== 0 ? (
+                (() => {
+                  const currentSc = semestresCalculations.find(sc => sc.semestre.id === examenViewFilter);
+                  if (!currentSc) return null;
+                  return (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-500 font-medium">Moyenne {currentSc.semestre.code} :</span>
+                      <span className="px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 font-mono font-bold text-xs">
+                        {currentSc.average !== null ? `${currentSc.average.toFixed(2)} / 20` : '--'}
+                      </span>
+                    </div>
+                  );
+                })()
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-500 font-medium">Moyenne Annuelle :</span>
+                  <span className="px-2.5 py-1 rounded-lg bg-blue-600 text-white font-mono font-bold text-xs shadow-2xs">
+                    {annualAverage !== null ? `${Number(annualAverage).toFixed(2)} / 20` : '--'}
+                  </span>
+                </div>
+              )}
+
+              <button
+                type="button"
                 onClick={() => window.print()}
-                className="h-10 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-xs shrink-0"
+                className="h-9 px-3.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
+                title="Télécharger le relevé de notes en format PDF"
               >
-                <Printer className="w-4 h-4" />
-                <span>Imprimer / PDF</span>
+                <Download className="w-3.5 h-3.5 text-blue-600" />
+                <span>Télécharger</span>
               </button>
             </div>
           </div>
 
-
-
-          {/* View Filter Switcher Tabs */}
-          <div className="flex flex-wrap items-center gap-2 p-1.5 bg-slate-100 rounded-xl border border-slate-200">
-            <button type="button"
-              onClick={() => setExamenViewFilter(0)}
-              className={`px-4 py-2 rounded-lg text-xs font-extrabold transition-all flex items-center gap-2 ${
-                examenViewFilter === 0
-                  ? 'bg-white text-blue-600 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-              }`}
-            >
-              <FileText className="w-4 h-4" />
-              <span>Bilan Annuel Global (S1 + S2)</span>
-              {annualAverage !== null && !isNaN(Number(annualAverage)) && (
-                <span className="px-2 py-0.5 rounded-md bg-blue-100 text-blue-700 text-[10px] font-mono">
-                  {Number(annualAverage).toFixed(2)}/20
-                </span>
-              )}
-            </button>
-
-            {semestresCalculations.map(sc => (
-              <button type="button"
-                key={sc.semestre.id}
-                onClick={() => setExamenViewFilter(sc.semestre.id)}
-                className={`px-4 py-2 rounded-lg text-xs font-extrabold transition-all flex items-center gap-2 ${
-                  examenViewFilter === sc.semestre.id
-                    ? 'bg-white text-blue-600 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-                }`}
-              >
-                <span>{sc.semestre.libelle}</span>
-                {sc.average !== null && !isNaN(Number(sc.average)) && (
-                  <span className="px-2 py-0.5 rounded-md bg-slate-200/80 text-slate-800 text-[10px] font-mono">
-                    {Number(sc.average).toFixed(2)}/20
+          {/* TABLEAU RÉCAPITULATIF DU BILAN ANNUEL (S1 + S2) - SI BILAN GLOBAL SÉLECTIONNÉ */}
+          {examenViewFilter === 0 && (
+            <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+              <div className="px-4 py-2.5 bg-slate-900 text-white flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-blue-400" />
+                  <span className="font-bold text-xs uppercase tracking-wide">
+                    Bilan Annuel Consolidé LMD • {studentFiliere?.nom || 'Informatique'} ({studentClass?.code || 'L1'})
                   </span>
-                )}
-              </button>
-            ))}
-          </div>
-
-          {/* Detailed Exam Marks Tables */}
-          {semestresCalculations
-            .filter(sc => examenViewFilter === 0 || examenViewFilter === sc.semestre.id)
-            .map(sc => (
-              <div key={sc.semestre.id} className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-                <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-1 rounded-lg bg-blue-600 text-white font-extrabold text-xs font-mono">
-                      {sc.semestre.code}
-                    </span>
-                    <h4 className="font-bold text-xs text-slate-900 uppercase tracking-wider">
-                      Relevé des Notes - {sc.semestre.libelle} ({sc.matieres.length} matières)
-                    </h4>
-                  </div>
-
-                  <div className="flex items-center gap-3 text-xs font-bold">
-                    <span className="text-slate-500">
-                      Moyenne : <b className="text-slate-900 font-mono">{sc.average !== null ? sc.average.toFixed(2) : '--'}/20</b>
-                    </span>
-                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
-                      sc.isAdmis
-                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                        : 'bg-red-100 text-red-800 border border-red-200'
-                    }`}>
-                      {sc.average !== null ? (sc.isAdmis ? 'ADMIS(E)' : 'AJOURNÉ(E)') : 'En attente'}
-                    </span>
-                  </div>
                 </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse min-w-[640px]">
-                    <thead>
-                      <tr className="bg-slate-100/80 text-[11px] font-bold text-slate-600 uppercase tracking-wider border-b border-slate-200">
-                        <th className="px-5 py-3">Code / UE</th>
-                        <th className="px-5 py-3">Matière / Module</th>
-                        <th className="px-5 py-3 text-center">Crédits</th>
-                        <th className="px-5 py-3 text-center">Note CC (/20)</th>
-                        <th className="px-5 py-3 text-center">Note Examen (/20)</th>
-                        <th className="px-5 py-3 text-center">Note Finale (/20)</th>
-                        <th className="px-5 py-3 text-right">Décision UE</th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-xs divide-y divide-slate-200">
-                      {sc.rows.length === 0 ? (
-                        <tr>
-                          <td colSpan={7} className="px-5 py-8 text-center text-slate-400 font-medium">
-                            Aucune note d'examen enregistrée pour le {sc.semestre.libelle}.
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-slate-300">Résultat Annuel :</span>
+                  <span className={`px-2.5 py-0.5 rounded text-[11px] font-black uppercase ${
+                    isAnnualAdmis ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
+                  }`}>
+                    {annualAverage !== null ? (isAnnualAdmis ? 'Admis(e)' : 'Ajourné(e)') : 'En attente'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Structured Compact Annual Summary Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse min-w-[620px]">
+                  <thead>
+                    <tr className="bg-slate-100 text-[11px] font-bold text-slate-700 uppercase tracking-wider border-b border-slate-200">
+                      <th className="px-3 py-2 border-r border-slate-200">Matière / Semestre</th>
+                      <th className="px-2.5 py-2 text-center border-r border-slate-200 w-28">Note de classe</th>
+                      <th className="px-2.5 py-2 text-center border-r border-slate-200 w-28">Note d'examen</th>
+                      <th className="px-2.5 py-2 text-center border-r border-slate-200 w-32 bg-blue-50/60 text-blue-900 font-extrabold">Moyenne générale</th>
+                      <th className="px-2.5 py-2 text-center border-r border-slate-200 w-28">Crédit</th>
+                      <th className="px-2.5 py-2 text-center border-r border-slate-200 w-28">Mention</th>
+                      <th className="px-2.5 py-2 text-center w-24">Statut</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-xs divide-y divide-slate-200">
+                    {semestresCalculations.map((sc, idx) => {
+                      let totalCc = 0;
+                      let totalExam = 0;
+                      let validRowsCount = 0;
+                      sc.rows.forEach(r => {
+                        if (r.cc !== null && r.exam !== null) {
+                          totalCc += r.cc;
+                          totalExam += r.exam;
+                          validRowsCount++;
+                        }
+                      });
+                      const avgCc = validRowsCount > 0 ? (totalCc / validRowsCount).toFixed(2) : '--';
+                      const avgExam = validRowsCount > 0 ? (totalExam / validRowsCount).toFixed(2) : '--';
+
+                      return (
+                        <tr key={sc.semestre.id} className={idx % 2 === 0 ? 'bg-white hover:bg-slate-50/80' : 'bg-slate-50/40 hover:bg-slate-50/80'}>
+                          <td className="px-3 py-2 font-bold text-slate-900 border-r border-slate-200">
+                            <span className="font-mono text-blue-700 mr-1.5">[{sc.semestre.code}]</span>
+                            <span>{sc.semestre.libelle}</span>
+                          </td>
+                          <td className="px-2.5 py-2 text-center font-mono text-slate-700 border-r border-slate-200">
+                            {avgCc}
+                          </td>
+                          <td className="px-2.5 py-2 text-center font-mono text-slate-700 border-r border-slate-200">
+                            {avgExam}
+                          </td>
+                          <td className="px-2.5 py-2 text-center font-mono font-bold text-blue-700 border-r border-slate-200 bg-blue-50/30">
+                            {sc.average !== null ? `${sc.average.toFixed(2)} / 20` : '--'}
+                          </td>
+                          <td className="px-2.5 py-2 text-center font-mono font-bold text-slate-800 border-r border-slate-200">
+                            {sc.validatedCredits} / {sc.totalCredits}
+                          </td>
+                          <td className="px-2.5 py-2 text-center font-semibold text-slate-800 border-r border-slate-200 text-[11px]">
+                            {sc.mention}
+                          </td>
+                          <td className="px-2.5 py-2 text-center">
+                            <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                              sc.isAdmis ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-rose-100 text-rose-800 border border-rose-300'
+                            }`}>
+                              {sc.average !== null ? (sc.isAdmis ? 'Validé' : 'Ajourné') : 'En attente'}
+                            </span>
                           </td>
                         </tr>
-                      ) : (
-                        sc.rows.map((row, idx) => (
-                          <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
-                            <td className="px-5 py-3 font-mono font-bold text-blue-600 whitespace-nowrap">{row.matiere.code}</td>
-                            <td className="px-5 py-3 font-bold text-slate-900">{row.matiere.nom}</td>
-                            <td className="px-5 py-3 text-center font-bold text-slate-700 font-mono">{row.matiere.credits || 3}</td>
-                            <td className="px-5 py-3 text-center font-mono font-semibold text-slate-800">
-                              {row.cc !== null ? row.cc.toFixed(1) : '--'}
-                            </td>
-                            <td className="px-5 py-3 text-center font-mono font-semibold text-slate-800">
-                              {row.exam !== null ? row.exam.toFixed(1) : '--'}
-                            </td>
-                            <td className="px-5 py-3 text-center font-mono font-bold text-sm text-slate-900">
-                              {row.finale !== null ? row.finale.toFixed(2) : '--'}
-                            </td>
-                            <td className="px-5 py-3 text-right whitespace-nowrap">
-                              {row.finale !== null ? (
-                                row.isValidated ? (
-                                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                    Validée
-                                  </span>
-                                ) : (
-                                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-red-100 text-red-800 border border-red-200">
-                                    À Rattraper
-                                  </span>
-                                )
-                              ) : (
-                                <span className="text-slate-400 italic">En attente</span>
-                              )}
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ))}
+                      );
+                    })}
 
-          {/* Final Annual LMD Compensation Summary */}
-          {examenViewFilter === 0 && (
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-6 shadow-xs space-y-4">
-              <div className="space-y-1">
-                <h4 className="font-extrabold text-sm text-blue-950 flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5 text-blue-600" />
-                  <span>Synthèse du Bilan Annuel & Compensation LMD</span>
-                </h4>
-                <p className="text-xs text-blue-800">
-                  Calcul combiné des moyennes compensées de <b>Semestre 1</b> et <b>Semestre 2</b> conformément à la réglementation LMD USTTB.
-                </p>
-              </div>
-
-              {/* Horizontal Row with 3 Columns for S1, S2, and Annual Average */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
-                <div className="flex flex-col justify-between bg-white px-4 py-3.5 rounded-xl border border-blue-200/80 shadow-2xs">
-                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Moyenne S1</span>
-                  <span className="text-lg font-black font-mono text-slate-900">
-                    {semestresCalculations[0]?.average !== null && !isNaN(Number(semestresCalculations[0]?.average)) ? Number(semestresCalculations[0].average).toFixed(2) : '--'} <span className="text-xs font-normal text-slate-400">/ 20</span>
-                  </span>
-                </div>
-
-                <div className="flex flex-col justify-between bg-white px-4 py-3.5 rounded-xl border border-blue-200/80 shadow-2xs">
-                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Moyenne S2</span>
-                  <span className="text-lg font-black font-mono text-slate-900">
-                    {semestresCalculations[1]?.average !== null && !isNaN(Number(semestresCalculations[1]?.average)) ? Number(semestresCalculations[1].average).toFixed(2) : '--'} <span className="text-xs font-normal text-slate-400">/ 20</span>
-                  </span>
-                </div>
-
-                <div className="flex flex-col justify-between bg-blue-600 text-white px-4 py-3.5 rounded-xl border border-blue-700 shadow-xs">
-                  <span className="text-[11px] font-extrabold uppercase tracking-wider text-blue-100 block mb-1">Moyenne Annuelle</span>
-                  <span className="text-xl font-black font-mono text-white">
-                    {annualAverage !== null && !isNaN(Number(annualAverage)) ? Number(annualAverage).toFixed(2) : '--'} <span className="text-xs font-semibold text-blue-200">/ 20</span>
-                  </span>
-                </div>
+                    {/* Ligne Bilan Annuel Global */}
+                    <tr className="bg-slate-100 font-extrabold text-slate-900 border-t border-slate-300">
+                      <td colSpan={3} className="px-3 py-2 uppercase tracking-wide text-xs border-r border-slate-300">
+                        TOTAL ANNUEL
+                      </td>
+                      <td className="px-2.5 py-2 text-center font-mono font-black text-sm text-blue-700 border-r border-slate-300 bg-blue-100/70">
+                        {annualAverage !== null ? `${Number(annualAverage).toFixed(2)} / 20` : '--'}
+                      </td>
+                      <td className="px-2.5 py-2 text-center font-mono border-r border-slate-300 text-slate-900 font-bold">
+                        {annualValidatedCredits} / {annualTotalCredits}
+                      </td>
+                      <td className="px-2.5 py-2 text-center font-bold text-slate-900 border-r border-slate-300 text-[11px]">
+                        {annualMention}
+                      </td>
+                      <td className="px-2.5 py-2 text-center">
+                        <span className={`inline-block px-2.5 py-0.5 rounded text-[10px] font-black uppercase ${
+                          isAnnualAdmis ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
+                        }`}>
+                          {annualAverage !== null ? (isAnnualAdmis ? 'Admis(e)' : 'Ajourné(e)') : 'En attente'}
+                        </span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
+
+          {/* Detailed Exam Marks Tables (Relevés sous forme de tableau compact avec colonnes exactes) */}
+          {semestresCalculations
+            .filter(sc => examenViewFilter === 0 || examenViewFilter === sc.semestre.id)
+            .map(sc => {
+              return (
+                <div key={sc.semestre.id} className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
+                  
+                  {/* Table Header Bar */}
+                  <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded bg-blue-600 text-white font-extrabold text-[11px] font-mono">
+                        {sc.semestre.code}
+                      </span>
+                      <span className="font-bold text-xs text-slate-900 uppercase">
+                        Relevé de Notes - {sc.semestre.libelle}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-3 text-xs">
+                      <span className="text-slate-600 text-[11px]">
+                        Moyenne : <b className="text-blue-700 font-mono font-bold">{sc.average !== null ? sc.average.toFixed(2) : '--'}/20</b>
+                      </span>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                        sc.isAdmis
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                          : 'bg-rose-100 text-rose-800 border border-rose-300'
+                      }`}>
+                        {sc.average !== null ? (sc.isAdmis ? 'Admis' : 'Ajourné') : 'En attente'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Structured Table: Matiere, note de classe, note d'examen, moyenne generale, credit, mention, statut */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse min-w-[620px]">
+                      <thead>
+                        <tr className="bg-slate-100 text-[11px] font-bold text-slate-700 uppercase tracking-wider border-b border-slate-200">
+                          <th className="px-3 py-2 border-r border-slate-200">Matière</th>
+                          <th className="px-2.5 py-2 text-center border-r border-slate-200 w-28">Note de classe</th>
+                          <th className="px-2.5 py-2 text-center border-r border-slate-200 w-28">Note d'examen</th>
+                          <th className="px-2.5 py-2 text-center border-r border-slate-200 w-32 bg-blue-50/60 text-blue-900 font-extrabold">Moyenne générale</th>
+                          <th className="px-2.5 py-2 text-center border-r border-slate-200 w-28">Crédit</th>
+                          <th className="px-2.5 py-2 text-center border-r border-slate-200 w-28">Mention</th>
+                          <th className="px-2.5 py-2 text-center w-24">Statut</th>
+                        </tr>
+                      </thead>
+                      <tbody className="text-xs divide-y divide-slate-200">
+                        {sc.rows.length === 0 ? (
+                          <tr>
+                            <td colSpan={7} className="px-3 py-6 text-center text-slate-400 font-medium italic">
+                              Aucune note enregistrée pour le {sc.semestre.libelle}.
+                            </td>
+                          </tr>
+                        ) : (
+                          sc.rows.map((row, idx) => {
+                            const credits = row.matiere.credits || 3;
+                            let mentionMatiere = '--';
+                            if (row.finale !== null) {
+                              if (row.finale >= 16) mentionMatiere = 'Très Bien';
+                              else if (row.finale >= 14) mentionMatiere = 'Bien';
+                              else if (row.finale >= 12) mentionMatiere = 'Assez Bien';
+                              else if (row.finale >= 10) mentionMatiere = 'Passable';
+                              else mentionMatiere = 'Ajourné';
+                            }
+
+                            return (
+                              <tr key={row.matiere.id || idx} className={idx % 2 === 0 ? 'bg-white hover:bg-slate-50/80' : 'bg-slate-50/40 hover:bg-slate-50/80'}>
+                                <td className="px-3 py-1.5 font-semibold text-slate-900 border-r border-slate-200">
+                                  <span className="font-mono text-[10.5px] text-blue-600 font-bold mr-1.5">{row.matiere.code}</span>
+                                  <span>{row.matiere.nom}</span>
+                                </td>
+                                <td className="px-2.5 py-1.5 text-center font-mono text-slate-700 border-r border-slate-200">
+                                  {row.cc !== null ? row.cc.toFixed(2) : '--'}
+                                </td>
+                                <td className="px-2.5 py-1.5 text-center font-mono text-slate-700 border-r border-slate-200">
+                                  {row.exam !== null ? row.exam.toFixed(2) : '--'}
+                                </td>
+                                <td className="px-2.5 py-1.5 text-center font-mono font-bold text-slate-950 border-r border-slate-200 bg-blue-50/30">
+                                  {row.finale !== null ? row.finale.toFixed(2) : '--'}
+                                </td>
+                                <td className="px-2.5 py-1.5 text-center font-bold text-slate-700 font-mono border-r border-slate-200">
+                                  {credits}
+                                </td>
+                                <td className="px-2.5 py-1.5 text-center font-medium text-slate-700 text-[11px] border-r border-slate-200">
+                                  {mentionMatiere}
+                                </td>
+                                <td className="px-2.5 py-1.5 text-center whitespace-nowrap">
+                                  {row.finale !== null ? (
+                                    row.isValidated ? (
+                                      <span className="inline-block px-2 py-0.5 rounded text-[10px] font-black uppercase bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                        Validée
+                                      </span>
+                                    ) : (
+                                      <span className="inline-block px-2 py-0.5 rounded text-[10px] font-black uppercase bg-rose-100 text-rose-800 border border-rose-300">
+                                        À Rattraper
+                                      </span>
+                                    )
+                                  ) : (
+                                    <span className="text-slate-400 italic text-[11px]">En attente</span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+
+                        {/* Totals & Semester Summary Footer Row: TOTAL SEMESTRE */}
+                        <tr className="bg-slate-100 font-bold text-slate-900 border-t-2 border-slate-300">
+                          <td colSpan={3} className="px-3 py-2 uppercase tracking-wide text-xs border-r border-slate-300 font-extrabold">
+                            TOTAL SEMESTRE
+                          </td>
+                          <td className="px-2.5 py-2 text-center font-mono font-black text-sm text-blue-700 border-r border-slate-300 bg-blue-100/70">
+                            {sc.average !== null ? `${sc.average.toFixed(2)}` : '--'}
+                          </td>
+                          <td className="px-2.5 py-2 text-center font-mono border-r border-slate-300 text-slate-900 font-bold">
+                            {sc.validatedCredits} / {sc.totalCredits}
+                          </td>
+                          <td className="px-2.5 py-2 text-center font-bold text-slate-900 border-r border-slate-300 text-[11px]">
+                            {sc.mention}
+                          </td>
+                          <td className="px-2.5 py-2 text-center">
+                            <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                              sc.isAdmis ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
+                            }`}>
+                              {sc.average !== null ? (sc.isAdmis ? 'Admis' : 'Ajourné') : 'En attente'}
+                            </span>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                </div>
+              );
+            })}
 
         </div>
       )}
@@ -979,105 +1059,41 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
               </div>
             </div>
 
-            {/* Block 2: Parcours Académique & Faculté */}
-            <div className="p-5 bg-gray-50/70 rounded-[16px] border border-gray-200 space-y-3">
-              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-gray-200 pb-2 flex items-center gap-1.5">
-                <GraduationCap className="w-4 h-4 text-[#0066FF]" />
-                <span>Affiliation & Faculté</span>
+            {/* Block 2: Coordonnées de Contact (Lecture Seule / Non modifiable par l'élève) */}
+            <div className="p-5 bg-slate-50/80 rounded-[16px] border border-slate-200 space-y-3">
+              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider border-b border-slate-200 pb-2 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Building2 className="w-4 h-4 text-blue-600" />
+                  <span>Coordonnées de Contact</span>
+                </span>
+                <span className="text-[10px] text-slate-500 font-medium bg-slate-200/80 px-2 py-0.5 rounded-md">
+                  Non modifiable
+                </span>
               </h4>
+
               <div className="space-y-2.5 text-xs">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Université :</span>
-                  <span className="font-semibold text-slate-900 text-right">{universite?.nom || 'USTTB'} ({universite?.sigle || 'USTTB'})</span>
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 py-1 border-b border-slate-200/50">
+                  <span className="text-slate-500 font-medium">Adresse Email :</span>
+                  <span className="font-semibold text-slate-900 font-mono text-right">
+                    {etudiant.email || 'mamadou.traore@usttb.edu.ml'}
+                  </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Faculté / UFR :</span>
-                  <span className="font-semibold text-slate-900 text-right">{studentFaculte?.nom || 'Faculté des Sciences'}</span>
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 py-1 border-b border-slate-200/50">
+                  <span className="text-slate-500 font-medium">Téléphone Personnel :</span>
+                  <span className="font-semibold text-slate-900 font-mono text-right">
+                    {etudiant.telephone || '+223 76 12 34 56'}
+                  </span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Doyen Faculté :</span>
-                  <span className="font-medium text-slate-800 text-right">{studentFaculte?.doyen || 'Dr. Mamadou Diallo'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Filière / Domaine :</span>
-                  <span className="font-bold text-[#0066FF] text-right">{studentFiliere?.nom || 'Informatique'} ({studentFiliere?.domaine || 'Sciences'})</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Niveau & Diplôme Visé :</span>
-                  <span className="font-bold text-slate-900 text-right">{studentNiveau?.nom || 'Licence 1'} - {studentNiveau?.diplome_vise || 'Licence Pro'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Classe / Promotion :</span>
-                  <span className="font-bold text-slate-900 text-right">{studentClass?.nom || 'L1-IGL'} (Capacité: {studentClass?.capacite || 40})</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Année Académique :</span>
-                  <span className="font-bold text-slate-900">{activeAnnee?.libelle || '2025-2026'}</span>
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 py-1">
+                  <span className="text-slate-500 font-medium">Adresse Résidence :</span>
+                  <span className="font-semibold text-slate-900 text-right">
+                    {etudiant.adresse || 'Badalabougou, Rue 12, Porte 45'}
+                  </span>
                 </div>
               </div>
             </div>
 
-            {/* Block 3: Coordonnées & Contacts */}
-            <div className="md:col-span-2 p-5 bg-blue-50/40 rounded-[16px] border border-blue-100 space-y-3">
-              <h4 className="text-xs font-bold text-blue-900 uppercase tracking-wider border-b border-blue-200/60 pb-2 flex items-center justify-between">
-                <span className="flex items-center gap-1.5">
-                  <Building2 className="w-4 h-4 text-[#0066FF]" />
-                  <span>Coordonnées de Contact</span>
-                </span>
-                {isSaved && (
-                  <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1">
-                    <CheckCircle className="w-3.5 h-3.5" />
-                    <span>Modifications enregistrées</span>
-                  </span>
-                )}
-              </h4>
-
-              <form onSubmit={handleUpdateProfile} className="space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-                  <div>
-                    <label className="text-[10px] text-gray-500 font-bold uppercase block mb-1">Adresse Email</label>
-                    <input
-                      type="text"
-                      disabled
-                      value={etudiant.email || 'm.traore@usttb.edu.ml'}
-                      className="w-full h-9 px-3 bg-gray-100 border border-gray-200 rounded-lg text-xs font-medium text-gray-600 cursor-not-allowed"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-gray-700 font-bold uppercase block mb-1">Téléphone Personnel</label>
-                    <input
-                      type="text"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="+223 ..."
-                      className="w-full h-9 px-3 bg-white border border-blue-200 rounded-lg text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#0066FF]"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-gray-700 font-bold uppercase block mb-1">Adresse Résidence</label>
-                    <input
-                      type="text"
-                      value={adresse}
-                      onChange={(e) => setAdresse(e.target.value)}
-                      placeholder="Quartier, Ville..."
-                      className="w-full h-9 px-3 bg-white border border-blue-200 rounded-lg text-xs font-medium text-slate-900 focus:outline-none focus:border-[#0066FF]"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end pt-1">
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-[#0066FF] hover:bg-blue-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-xs"
-                  >
-                    <Save className="w-3.5 h-3.5" />
-                    <span>Enregistrer mes coordonnées</span>
-                  </button>
-                </div>
-              </form>
-            </div>
-
-            {/* Block 4: Modification de Mot de Passe */}
+            {/* Block 3: Modification de Mot de Passe */}
             <div className="md:col-span-2 p-5 bg-amber-50/50 rounded-[16px] border border-amber-200/80 space-y-3">
               <h4 className="text-xs font-bold text-amber-900 uppercase tracking-wider border-b border-amber-200 pb-2 flex items-center justify-between">
                 <span className="flex items-center gap-1.5">
