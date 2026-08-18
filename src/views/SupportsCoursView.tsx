@@ -92,15 +92,29 @@ export const SupportsCoursView: React.FC<SupportsCoursViewProps> = ({ currentUse
       const reader = new FileReader();
       reader.onload = (event) => {
         const fileDataUrl = event.target?.result as string || '';
+        const detectedType: SupportCours['type_document'] = 
+          (file.name.endsWith('.ppt') || file.name.endsWith('.pptx')) ? 'Diaporama PPT' :
+          (file.name.endsWith('.doc') || file.name.endsWith('.docx')) ? 'Fiche TP/TD' : 'PDF';
+        
         setFormData(prev => ({
           ...prev,
           fichier_url: fileDataUrl,
           fichier_nom: file.name,
+          type_document: detectedType,
           titre: prev.titre || file.name.replace(/\.[^/.]+$/, '')
         }));
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  const handleMatiereChange = (selectedMatiereId: number) => {
+    const foundMatiere = matieres.find(m => m.id === selectedMatiereId);
+    setFormData(prev => ({
+      ...prev,
+      matiere_id: selectedMatiereId,
+      filiere_id: foundMatiere ? foundMatiere.filiere_id : prev.filiere_id
+    }));
   };
 
   const handleSave = (e: React.FormEvent) => {
@@ -577,13 +591,18 @@ export const SupportsCoursView: React.FC<SupportsCoursViewProps> = ({ currentUse
                 <label className="block font-semibold text-gray-700 mb-1">Matière Associée</label>
                 <select
                   value={formData.matiere_id}
-                  onChange={(e) => setFormData({ ...formData, matiere_id: Number(e.target.value) })}
+                  onChange={(e) => handleMatiereChange(Number(e.target.value))}
                   className="w-full h-[44px] px-3 border border-[#E5E7EB] rounded-[14px] bg-white font-medium"
                 >
                   <option value="0">Aucune / Support Général</option>
-                  {matieres.map(m => (
-                    <option key={m.id} value={m.id}>{m.code} - {m.nom}</option>
-                  ))}
+                  {matieres.map(m => {
+                    const mFil = filieres.find(f => f.id === m.filiere_id);
+                    return (
+                      <option key={m.id} value={m.id}>
+                        {m.code} - {m.nom} {mFil ? `(${mFil.code})` : ''}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
             </div>

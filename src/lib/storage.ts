@@ -384,16 +384,43 @@ export class DB {
   }
 
   static getSupportsCours(): SupportCours[] {
-    return getItem(STORAGE_KEYS.SUPPORTS_COURS, INITIAL_SUPPORTS_COURS);
+    const rawSupports = getItem(STORAGE_KEYS.SUPPORTS_COURS, INITIAL_SUPPORTS_COURS);
+    const matieres = this.getMatieres();
+    
+    // Auto-integrate any attached files directly from matieres if not already registered
+    const existingMatiereIds = new Set(rawSupports.filter(s => s.matiere_id).map(s => Number(s.matiere_id)));
+    const syntheticSupports: SupportCours[] = [];
+
+    matieres.forEach(m => {
+      if ((m.support_fichier_url || m.support_fichier_nom) && !existingMatiereIds.has(Number(m.id))) {
+        syntheticSupports.push({
+          id: 1000 + Number(m.id),
+          titre: m.support_fichier_nom ? `Support - ${m.nom}` : `Cours - ${m.code} ${m.nom}`,
+          matiere_id: m.id,
+          filiere_id: m.filiere_id,
+          type_document: (m.support_fichier_nom?.endsWith('.ppt') || m.support_fichier_nom?.endsWith('.pptx'))
+            ? 'Diaporama PPT'
+            : (m.support_fichier_nom?.endsWith('.doc') || m.support_fichier_nom?.endsWith('.docx'))
+              ? 'Fiche TP/TD'
+              : 'PDF',
+          fichier_url: m.support_fichier_url || 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+          description: `Support de cours officiel associé à la matière ${m.code} (${m.nom}).`,
+          publie_par: m.enseignant_nom || 'Enseignant Titulaire',
+          date_publication: new Date().toISOString().split('T')[0]
+        });
+      }
+    });
+
+    return [...rawSupports, ...syntheticSupports];
   }
 
   static saveSupportCours(item: Omit<SupportCours, 'id'> & { id?: number }): SupportCours {
-    const list = this.getSupportsCours();
+    const list = getItem(STORAGE_KEYS.SUPPORTS_COURS, INITIAL_SUPPORTS_COURS);
     let result: SupportCours;
     if (item.id) {
       const idx = list.findIndex(s => s.id === item.id);
       if (idx !== -1) list[idx] = { ...list[idx], ...item };
-      result = list[idx];
+      result = list[idx] || (item as SupportCours);
     } else {
       const nextId = Math.max(0, ...list.map(s => s.id)) + 1;
       result = { ...item, id: nextId } as SupportCours;
@@ -406,7 +433,8 @@ export class DB {
   }
 
   static deleteSupportCours(id: number): void {
-    setItem(STORAGE_KEYS.SUPPORTS_COURS, this.getSupportsCours().filter(s => s.id !== id));
+    const current = getItem(STORAGE_KEYS.SUPPORTS_COURS, INITIAL_SUPPORTS_COURS);
+    setItem(STORAGE_KEYS.SUPPORTS_COURS, current.filter(s => s.id !== id));
     deleteFromBackendTable('supports_cours', id);
     this.logAccess('SUPPRESSION', `Suppression support de cours ID #${id}`);
   }
@@ -756,6 +784,65 @@ export class DB {
     }
     setItem(STORAGE_KEYS.MATIERES, list);
     saveToBackendTable('matieres', result);
+
+    // Synchronize linked Supports de cours with matiere & filiere
+    const supportsList = getItem(STORAGE_KEYS.SUPPORTS_COURS, INITIAL_SUPPORTS_COURS);
+    let supportsModified = false;
+
+    // Update any existing support linked to this matiere so filiere_id stays synchronized
+    const updatedSupports = supportsList.map(s => {
+      if (Number(s.matiere_id) === Number(result.id)) {
+        supportsModified = true;
+        return {
+          ...s,
+          filiere_id: Number(result.filiere_id)
+        };
+      }
+      return s;
+    });
+
+    if (result.support_fichier_url || result.support_fichier_nom) {
+      const existingSupportIdx = updatedSupports.findIndex(s => Number(s.matiere_id) === Number(result.id));
+      const docType: SupportCours['type_document'] = (result.support_fichier_nom?.endsWith('.ppt') || result.support_fichier_nom?.endsWith('.pptx'))
+        ? 'Diaporama PPT'
+        : (result.support_fichier_nom?.endsWith('.doc') || result.support_fichier_nom?.endsWith('.docx'))
+          ? 'Fiche TP/TD'
+          : 'PDF';
+
+      const fileUrl = result.support_fichier_url || 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';
+      const fileTitle = result.support_fichier_nom ? `Support - ${result.nom}` : `Cours ${result.code} - ${result.nom}`;
+
+      if (existingSupportIdx !== -1) {
+        updatedSupports[existingSupportIdx] = {
+          ...updatedSupports[existingSupportIdx],
+          titre: fileTitle,
+          filiere_id: Number(result.filiere_id),
+          type_document: docType,
+          fichier_url: fileUrl,
+          publie_par: result.enseignant_nom || 'Enseignant Titulaire'
+        };
+      } else {
+        const nextSuppId = Math.max(0, ...updatedSupports.map(s => s.id)) + 1;
+        updatedSupports.push({
+          id: nextSuppId,
+          titre: fileTitle,
+          matiere_id: result.id,
+          filiere_id: Number(result.filiere_id),
+          type_document: docType,
+          fichier_url: fileUrl,
+          description: `Support de cours officiel rattaché à la matière ${result.code} (${result.nom}).`,
+          publie_par: result.enseignant_nom || 'Enseignant Titulaire',
+          date_publication: new Date().toISOString().split('T')[0]
+        });
+      }
+      supportsModified = true;
+    }
+
+    if (supportsModified) {
+      setItem(STORAGE_KEYS.SUPPORTS_COURS, updatedSupports);
+      saveToBackendTable('supports_cours', updatedSupports);
+    }
+
     this.logAccess(item.id ? 'MODIFICATION' : 'CREATION', `${item.id ? 'Modification' : 'Création'} matière "${result.code} - ${result.nom}"`);
     return result;
   }
