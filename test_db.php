@@ -37,7 +37,7 @@ $host     = $env['MYSQL_HOST']     ?? 'localhost';
 $port     = $env['MYSQL_PORT']     ?? '3306';
 $user     = $env['MYSQL_USER']     ?? 'root';
 $password = $env['MYSQL_PASSWORD'] ?? '';
-$database = $env['MYSQL_DATABASE'] ?? 'unigestion_db';
+$database = $env['MYSQL_DATABASE'] ?? 'gestio_scolaire';
 
 $connected = false;
 $error_message = '';

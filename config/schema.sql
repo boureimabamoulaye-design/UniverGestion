@@ -1,11 +1,11 @@
 -- =========================================================
 -- APPLICATION DE GESTION SCOLAIRE UNIVERSITAIRE DU MALI
--- Base de données : universite
+-- Base de données : gestio_scolaire
 -- Compatible MySQL 5.7+ / 8.0+ (WAMP, XAMPP, LAMP)
 -- =========================================================
 
-CREATE DATABASE IF NOT EXISTS `universite` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE `universite`;
+CREATE DATABASE IF NOT EXISTS `gestio_scolaire` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE `gestio_scolaire`;
 
 -- 1. Table: universites
 CREATE TABLE IF NOT EXISTS `universites` (

@@ -45,7 +45,7 @@ const MYSQL_CONFIG = {
   port: parseInt(process.env.MYSQL_PORT || "3306", 10),
   user: process.env.MYSQL_USER || "root",
   password: process.env.MYSQL_PASSWORD ?? "",
-  database: process.env.MYSQL_DATABASE || "universite",
+  database: process.env.MYSQL_DATABASE || "gestio_scolaire",
   waitForConnections: true,
   connectionLimit: 5,
   queueLimit: 0,
@@ -447,7 +447,7 @@ app.get("/api/mysql/export-sql", (req, res) => {
   const db = readDatabase();
   let sql = `-- =========================================================
 -- APPLICATION UNIGESTION MALI - DUMP SQL COMPLET
--- Base de données : universite
+-- Base de données : gestio_scolaire
 -- Compatible MySQL 5.7+ / 8.0+ (WAMP Server / phpMyAdmin / MariaDB)
 -- Généré le : ${new Date().toISOString()}
 -- =========================================================
@@ -457,8 +457,8 @@ SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
 SET time_zone = "+00:00";
 
-CREATE DATABASE IF NOT EXISTS \`universite\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE \`universite\`;
+CREATE DATABASE IF NOT EXISTS \`gestio_scolaire\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE \`gestio_scolaire\`;
 
 -- 1. Table universites
 CREATE TABLE IF NOT EXISTS \`universites\` (
@@ -799,7 +799,7 @@ CREATE TABLE IF NOT EXISTS \`historique_acces\` (
   sql += `SET FOREIGN_KEY_CHECKS = 1;\nCOMMIT;\n`;
 
   res.setHeader("Content-Type", "application/sql; charset=utf-8");
-  res.setHeader("Content-Disposition", 'attachment; filename="universite.sql"');
+  res.setHeader("Content-Disposition", 'attachment; filename="gestio_scolaire.sql"');
   res.send(sql);
 });
 

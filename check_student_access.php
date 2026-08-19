@@ -138,7 +138,7 @@ if (basename(__FILE__) == basename($_SERVER['SCRIPT_FILENAME'])) {
 
     // Chargement de la connexion PDO
     $envFile = __DIR__ . '/.env';
-    $host = 'localhost'; $port = '3306'; $user = 'root'; $pass = ''; $db = 'unigestion_db';
+    $host = 'localhost'; $port = '3306'; $user = 'root'; $pass = ''; $db = 'gestio_scolaire';
     if (file_exists($envFile)) {
         $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
         foreach ($lines as $line) {
