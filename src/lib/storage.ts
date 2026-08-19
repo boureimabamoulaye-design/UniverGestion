@@ -217,8 +217,199 @@ export class DB {
     if (!inMemoryStore[STORAGE_KEYS.HISTORIQUE]) setItemWithoutSync(STORAGE_KEYS.HISTORIQUE, INITIAL_HISTORIQUE);
     if (!inMemoryStore[STORAGE_KEYS.SUPPORTS_COURS]) setItemWithoutSync(STORAGE_KEYS.SUPPORTS_COURS, INITIAL_SUPPORTS_COURS);
 
+    // Run deduplication cleanup across all entities
+    this.cleanAllDuplicates();
+
     // Ensure all registered students have their semester bulletins available
     this.ensureAllStudentsHaveBulletins();
+  }
+
+  static cleanAllDuplicates(): void {
+    // 1. Deduplicate etudiants by id & matricule
+    const rawEtudiants = this.getEtudiants();
+    const seenMatricules = new Set<string>();
+    const seenEtudIds = new Set<number>();
+    const dedupEtudiants: Etudiant[] = [];
+    rawEtudiants.forEach(e => {
+      const matKey = (e.matricule || '').trim().toLowerCase();
+      if (!seenEtudIds.has(e.id) && (!matKey || !seenMatricules.has(matKey))) {
+        seenEtudIds.add(e.id);
+        if (matKey) seenMatricules.add(matKey);
+        dedupEtudiants.push(e);
+      }
+    });
+    if (dedupEtudiants.length !== rawEtudiants.length) {
+      setItemWithoutSync(STORAGE_KEYS.ETUDIANTS, dedupEtudiants);
+    }
+
+    // 2. Deduplicate filieres by code
+    const rawFilieres = this.getFilieres();
+    const seenFiliereCodes = new Set<string>();
+    const dedupFilieres: Filiere[] = [];
+    rawFilieres.forEach(f => {
+      const codeKey = (f.code || '').trim().toLowerCase();
+      if (!seenFiliereCodes.has(codeKey)) {
+        seenFiliereCodes.add(codeKey);
+        dedupFilieres.push(f);
+      }
+    });
+    if (dedupFilieres.length !== rawFilieres.length) {
+      setItemWithoutSync(STORAGE_KEYS.FILIERES, dedupFilieres);
+    }
+
+    // 3. Deduplicate classes by code
+    const rawClasses = this.getClasses();
+    const seenClasseCodes = new Set<string>();
+    const dedupClasses: Classe[] = [];
+    rawClasses.forEach(c => {
+      const codeKey = (c.code || '').trim().toLowerCase();
+      if (!seenClasseCodes.has(codeKey)) {
+        seenClasseCodes.add(codeKey);
+        dedupClasses.push(c);
+      }
+    });
+    if (dedupClasses.length !== rawClasses.length) {
+      setItemWithoutSync(STORAGE_KEYS.CLASSES, dedupClasses);
+    }
+
+    // 4. Deduplicate matieres by code + filiere_id
+    const rawMatieres = this.getMatieres();
+    const seenMatiereKeys = new Set<string>();
+    const dedupMatieres: Matiere[] = [];
+    rawMatieres.forEach(m => {
+      const key = `${(m.code || '').trim().toLowerCase()}_${m.filiere_id || 0}`;
+      if (!seenMatiereKeys.has(key)) {
+        seenMatiereKeys.add(key);
+        dedupMatieres.push(m);
+      }
+    });
+    if (dedupMatieres.length !== rawMatieres.length) {
+      setItemWithoutSync(STORAGE_KEYS.MATIERES, dedupMatieres);
+    }
+
+    // 5. Deduplicate semestres by code
+    const rawSemestres = this.getSemestres();
+    const seenSemestreCodes = new Set<string>();
+    const dedupSemestres: Semestre[] = [];
+    rawSemestres.forEach(s => {
+      const key = (s.code || '').trim().toLowerCase();
+      if (!seenSemestreCodes.has(key)) {
+        seenSemestreCodes.add(key);
+        dedupSemestres.push(s);
+      }
+    });
+    if (dedupSemestres.length !== rawSemestres.length) {
+      setItemWithoutSync(STORAGE_KEYS.SEMESTRES, dedupSemestres);
+    }
+
+    // 6. Deduplicate annees academiques by code
+    const rawAnnees = this.getAnneesAcademiques();
+    const seenAnneeCodes = new Set<string>();
+    const dedupAnnees: AnneeAcademique[] = [];
+    rawAnnees.forEach(a => {
+      const key = (a.code || '').trim().toLowerCase();
+      if (!seenAnneeCodes.has(key)) {
+        seenAnneeCodes.add(key);
+        dedupAnnees.push(a);
+      }
+    });
+    if (dedupAnnees.length !== rawAnnees.length) {
+      setItemWithoutSync(STORAGE_KEYS.ANNEES, dedupAnnees);
+    }
+
+    // 7. Deduplicate enseignants by matricule & email
+    const rawEnseignants = this.getEnseignants();
+    const seenEnsMatricules = new Set<string>();
+    const seenEnsEmails = new Set<string>();
+    const dedupEnseignants: Enseignant[] = [];
+    rawEnseignants.forEach(e => {
+      const matKey = (e.matricule || '').trim().toLowerCase();
+      const emailKey = (e.email || '').trim().toLowerCase();
+      if ((!matKey || !seenEnsMatricules.has(matKey)) && (!emailKey || !seenEnsEmails.has(emailKey))) {
+        if (matKey) seenEnsMatricules.add(matKey);
+        if (emailKey) seenEnsEmails.add(emailKey);
+        dedupEnseignants.push(e);
+      }
+    });
+    if (dedupEnseignants.length !== rawEnseignants.length) {
+      setItemWithoutSync(STORAGE_KEYS.ENSEIGNANTS, dedupEnseignants);
+    }
+
+    // 8. Deduplicate inscriptions by (etudiant_id, annee_academique_id)
+    const rawInscriptions = this.getInscriptions();
+    const seenInscKeys = new Set<string>();
+    const dedupInscriptions: Inscription[] = [];
+    rawInscriptions.forEach(i => {
+      const key = `${i.etudiant_id}_${i.annee_academique_id || 1}`;
+      if (!seenInscKeys.has(key)) {
+        seenInscKeys.add(key);
+        dedupInscriptions.push(i);
+      }
+    });
+    if (dedupInscriptions.length !== rawInscriptions.length) {
+      setItemWithoutSync(STORAGE_KEYS.INSCRIPTIONS, dedupInscriptions);
+    }
+
+    // 9. Deduplicate notes by (etudiant_id, matiere_id, semestre_id, annee_academique_id)
+    const rawNotes = this.getNotes();
+    const seenNoteKeys = new Set<string>();
+    const dedupNotes: Note[] = [];
+    rawNotes.forEach(n => {
+      const key = `${n.etudiant_id}_${n.matiere_id}_${n.semestre_id || 1}_${n.annee_academique_id || 1}`;
+      if (!seenNoteKeys.has(key)) {
+        seenNoteKeys.add(key);
+        dedupNotes.push(n);
+      }
+    });
+    if (dedupNotes.length !== rawNotes.length) {
+      setItemWithoutSync(STORAGE_KEYS.NOTES, dedupNotes);
+    }
+
+    // 10. Deduplicate bulletins by (etudiant_id, semestre_id, annee_academique_id)
+    const rawBulletins = this.getBulletins();
+    const seenBulletinKeys = new Set<string>();
+    const dedupBulletins: Bulletin[] = [];
+    rawBulletins.forEach(b => {
+      const key = `${b.etudiant_id}_${b.semestre_id || 1}_${b.annee_academique_id || 1}`;
+      if (!seenBulletinKeys.has(key)) {
+        seenBulletinKeys.add(key);
+        dedupBulletins.push(b);
+      }
+    });
+    if (dedupBulletins.length !== rawBulletins.length) {
+      setItemWithoutSync(STORAGE_KEYS.BULLETINS, dedupBulletins);
+    }
+
+    // 11. Deduplicate paiements by reference_recu
+    const rawPaiements = this.getPaiements();
+    const seenRecus = new Set<string>();
+    const dedupPaiements: Paiement[] = [];
+    rawPaiements.forEach(p => {
+      const key = (p.reference_recu || '').trim().toLowerCase();
+      if (!key || !seenRecus.has(key)) {
+        if (key) seenRecus.add(key);
+        dedupPaiements.push(p);
+      }
+    });
+    if (dedupPaiements.length !== rawPaiements.length) {
+      setItemWithoutSync(STORAGE_KEYS.PAIEMENTS, dedupPaiements);
+    }
+
+    // 12. Deduplicate utilisateurs/administrateurs by email
+    const rawUsers = this.getUtilisateurs();
+    const seenUserEmails = new Set<string>();
+    const dedupUsers: Utilisateur[] = [];
+    rawUsers.forEach(u => {
+      const key = (u.email || '').trim().toLowerCase();
+      if (!seenUserEmails.has(key)) {
+        seenUserEmails.add(key);
+        dedupUsers.push(u);
+      }
+    });
+    if (dedupUsers.length !== rawUsers.length) {
+      setItemWithoutSync(STORAGE_KEYS.UTILISATEURS, dedupUsers);
+      setItemWithoutSync(STORAGE_KEYS.ADMINISTRATEURS, dedupUsers);
+    }
   }
   // Getters
   static getUniversites(): Universite[] {
@@ -512,10 +703,13 @@ export class DB {
   static saveFiliere(item: Omit<Filiere, 'id'> & { id?: number }): Filiere {
     const list = this.getFilieres();
     let result: Filiere;
-    if (item.id) {
-      const idx = list.findIndex(f => f.id === item.id);
-      if (idx !== -1) list[idx] = { ...list[idx], ...item };
-      result = list[idx];
+    const existingIdx = item.id
+      ? list.findIndex(f => f.id === item.id)
+      : list.findIndex(f => item.code && f.code && f.code.trim().toLowerCase() === item.code.trim().toLowerCase());
+
+    if (existingIdx !== -1) {
+      list[existingIdx] = { ...list[existingIdx], ...item, id: list[existingIdx].id };
+      result = list[existingIdx];
     } else {
       const nextId = Math.max(0, ...list.map(f => f.id)) + 1;
       result = { ...item, id: nextId } as Filiere;
@@ -541,10 +735,13 @@ export class DB {
   static saveSemestre(item: Omit<Semestre, 'id'> & { id?: number }): Semestre {
     const list = this.getSemestres();
     let result: Semestre;
-    if (item.id) {
-      const idx = list.findIndex(s => s.id === item.id);
-      if (idx !== -1) list[idx] = { ...list[idx], ...item };
-      result = list[idx];
+    const existingIdx = item.id
+      ? list.findIndex(s => s.id === item.id)
+      : list.findIndex(s => item.code && s.code && s.code.trim().toLowerCase() === item.code.trim().toLowerCase());
+
+    if (existingIdx !== -1) {
+      list[existingIdx] = { ...list[existingIdx], ...item, id: list[existingIdx].id };
+      result = list[existingIdx];
     } else {
       const nextId = Math.max(0, ...list.map(s => s.id)) + 1;
       result = { ...item, id: nextId } as Semestre;
@@ -595,10 +792,16 @@ export class DB {
   static saveClasse(item: Omit<Classe, 'id'> & { id?: number }): Classe {
     const list = this.getClasses();
     let result: Classe;
-    if (item.id) {
-      const idx = list.findIndex(c => c.id === item.id);
-      if (idx !== -1) list[idx] = { ...list[idx], ...item };
-      result = list[idx];
+    const existingIdx = item.id
+      ? list.findIndex(c => c.id === item.id)
+      : list.findIndex(c => 
+          (item.code && c.code && c.code.trim().toLowerCase() === item.code.trim().toLowerCase()) ||
+          (item.nom && c.nom && c.nom.trim().toLowerCase() === item.nom.trim().toLowerCase() && Number(c.filiere_id) === Number(item.filiere_id))
+        );
+
+    if (existingIdx !== -1) {
+      list[existingIdx] = { ...list[existingIdx], ...item, id: list[existingIdx].id };
+      result = list[existingIdx];
     } else {
       const nextId = Math.max(0, ...list.map(c => c.id)) + 1;
       result = { ...item, id: nextId } as Classe;
@@ -624,10 +827,13 @@ export class DB {
       list = list.map(a => ({ ...a, est_active: false }));
     }
     let result: AnneeAcademique;
-    if (item.id) {
-      const idx = list.findIndex(a => a.id === item.id);
-      if (idx !== -1) list[idx] = { ...list[idx], ...item };
-      result = list[idx];
+    const existingIdx = item.id
+      ? list.findIndex(a => a.id === item.id)
+      : list.findIndex(a => item.code && a.code && a.code.trim().toLowerCase() === item.code.trim().toLowerCase());
+
+    if (existingIdx !== -1) {
+      list[existingIdx] = { ...list[existingIdx], ...item, id: list[existingIdx].id };
+      result = list[existingIdx];
     } else {
       const nextId = Math.max(0, ...list.map(a => a.id)) + 1;
       result = { ...item, id: nextId } as AnneeAcademique;
@@ -693,10 +899,16 @@ export class DB {
     };
 
     let result: Etudiant;
-    if (item.id) {
-      const idx = list.findIndex(e => e.id === item.id);
-      if (idx !== -1) list[idx] = { ...list[idx], ...itemWithFiliere };
-      result = list[idx];
+    const existingIdx = item.id
+      ? list.findIndex(e => e.id === item.id)
+      : list.findIndex(e => 
+          (item.matricule && e.matricule && e.matricule.trim().toLowerCase() === item.matricule.trim().toLowerCase()) ||
+          (item.email && e.email && e.email.trim().toLowerCase() === item.email.trim().toLowerCase())
+        );
+
+    if (existingIdx !== -1) {
+      list[existingIdx] = { ...list[existingIdx], ...itemWithFiliere, id: list[existingIdx].id };
+      result = list[existingIdx];
     } else {
       const nextId = Math.max(0, ...list.map(e => e.id)) + 1;
       // Auto-generate Matricule if missing
@@ -706,15 +918,19 @@ export class DB {
       result = { ...itemWithFiliere, id: nextId, matricule, mot_de_passe: item.mot_de_passe || 'etudiant123', statut: item.statut || 'Inscrit' } as Etudiant;
       list.push(result);
 
-      // Auto-create inscription for current active year
-      this.saveInscription({
-        etudiant_id: result.id,
-        classe_id: result.classe_id,
-        annee_academique_id: activeYear.id,
-        date_inscription: new Date().toISOString().split('T')[0],
-        statut: 'Validée',
-        frais_inscription: 150000
-      });
+      // Auto-create inscription for current active year if not already present
+      const inscriptions = this.getInscriptions();
+      const hasInsc = inscriptions.some(i => Number(i.etudiant_id) === Number(result.id) && Number(i.annee_academique_id) === Number(activeYear.id));
+      if (!hasInsc) {
+        this.saveInscription({
+          etudiant_id: result.id,
+          classe_id: result.classe_id,
+          annee_academique_id: activeYear.id,
+          date_inscription: new Date().toISOString().split('T')[0],
+          statut: 'Validée',
+          frais_inscription: 150000
+        });
+      }
     }
     setItem(STORAGE_KEYS.ETUDIANTS, list);
     saveToBackendTable('etudiants', result);
@@ -736,10 +952,16 @@ export class DB {
   static saveEnseignant(item: Omit<Enseignant, 'id'> & { id?: number }): Enseignant {
     const list = this.getEnseignants();
     let result: Enseignant;
-    if (item.id) {
-      const idx = list.findIndex(e => e.id === item.id);
-      if (idx !== -1) list[idx] = { ...list[idx], ...item };
-      result = list[idx];
+    const existingIdx = item.id
+      ? list.findIndex(e => e.id === item.id)
+      : list.findIndex(e => 
+          (item.matricule && e.matricule && e.matricule.trim().toLowerCase() === item.matricule.trim().toLowerCase()) ||
+          (item.email && e.email && e.email.trim().toLowerCase() === item.email.trim().toLowerCase())
+        );
+
+    if (existingIdx !== -1) {
+      list[existingIdx] = { ...list[existingIdx], ...item, id: list[existingIdx].id };
+      result = list[existingIdx];
     } else {
       const nextId = Math.max(0, ...list.map(e => e.id)) + 1;
       const matricule = item.matricule || `ENS-${new Date().getFullYear()}-${String(nextId).padStart(3, '0')}`;
@@ -773,10 +995,16 @@ export class DB {
     const fullItem = { ...item, ...(enseignant_nom ? { enseignant_nom } : {}) };
 
     let result: Matiere;
-    if (item.id) {
-      const idx = list.findIndex(m => m.id === item.id);
-      if (idx !== -1) list[idx] = { ...list[idx], ...fullItem };
-      result = list[idx];
+    const existingIdx = item.id
+      ? list.findIndex(m => m.id === item.id)
+      : list.findIndex(m => 
+          (item.code && m.code && m.code.trim().toLowerCase() === item.code.trim().toLowerCase() && Number(m.filiere_id) === Number(item.filiere_id)) ||
+          (item.code && m.code && m.code.trim().toLowerCase() === item.code.trim().toLowerCase() && !item.filiere_id)
+        );
+
+    if (existingIdx !== -1) {
+      list[existingIdx] = { ...list[existingIdx], ...fullItem, id: list[existingIdx].id };
+      result = list[existingIdx];
     } else {
       const nextId = Math.max(0, ...list.map(m => m.id)) + 1;
       result = { ...fullItem, id: nextId } as Matiere;
@@ -1007,10 +1235,16 @@ export class DB {
   static saveInscription(item: Omit<Inscription, 'id'> & { id?: number }): Inscription {
     const list = this.getInscriptions();
     let result: Inscription;
-    if (item.id) {
-      const idx = list.findIndex(i => i.id === item.id);
-      if (idx !== -1) list[idx] = { ...list[idx], ...item };
-      result = list[idx];
+    const existingIdx = item.id
+      ? list.findIndex(i => i.id === item.id)
+      : list.findIndex(i => 
+          Number(i.etudiant_id) === Number(item.etudiant_id) && 
+          Number(i.annee_academique_id) === Number(item.annee_academique_id)
+        );
+
+    if (existingIdx !== -1) {
+      list[existingIdx] = { ...list[existingIdx], ...item, id: list[existingIdx].id };
+      result = list[existingIdx];
     } else {
       const nextId = Math.max(0, ...list.map(i => i.id)) + 1;
       result = { ...item, id: nextId } as Inscription;
@@ -1075,10 +1309,18 @@ export class DB {
     };
 
     let result: Note;
-    if (item.id) {
-      const idx = list.findIndex(n => n.id === item.id);
-      if (idx !== -1) list[idx] = { ...list[idx], ...fullNote } as Note;
-      result = list[idx];
+    const existingIdx = item.id
+      ? list.findIndex(n => n.id === item.id)
+      : list.findIndex(n => 
+          Number(n.etudiant_id) === Number(item.etudiant_id) &&
+          Number(n.matiere_id) === Number(item.matiere_id) &&
+          Number(n.semestre_id) === Number(item.semestre_id) &&
+          Number(n.annee_academique_id) === Number(item.annee_academique_id)
+        );
+
+    if (existingIdx !== -1) {
+      list[existingIdx] = { ...list[existingIdx], ...fullNote, id: list[existingIdx].id } as Note;
+      result = list[existingIdx];
     } else {
       const nextId = Math.max(0, ...list.map(n => n.id)) + 1;
       result = { ...fullNote, id: nextId } as Note;
@@ -1368,10 +1610,13 @@ export class DB {
     };
 
     let result: Paiement;
-    if (item.id) {
-      const idx = list.findIndex(p => p.id === item.id);
-      if (idx !== -1) list[idx] = { ...list[idx], ...fullPaiement } as Paiement;
-      result = list[idx];
+    const existingIdx = item.id
+      ? list.findIndex(p => p.id === item.id)
+      : list.findIndex(p => item.reference_recu && p.reference_recu && p.reference_recu.trim().toLowerCase() === item.reference_recu.trim().toLowerCase());
+
+    if (existingIdx !== -1) {
+      list[existingIdx] = { ...list[existingIdx], ...fullPaiement, id: list[existingIdx].id } as Paiement;
+      result = list[existingIdx];
     } else {
       const nextId = Math.max(0, ...list.map(p => p.id)) + 1;
       result = { ...fullPaiement, id: nextId } as Paiement;
@@ -1406,10 +1651,13 @@ export class DB {
   static saveAdministrateur(item: Omit<Administrateur, 'id'> & { id?: number }): Administrateur {
     const list = this.getUtilisateurs();
     let result: Administrateur;
-    if (item.id) {
-      const idx = list.findIndex(u => u.id === item.id);
-      if (idx !== -1) list[idx] = { ...list[idx], ...item };
-      result = list[idx];
+    const existingIdx = item.id
+      ? list.findIndex(u => u.id === item.id)
+      : list.findIndex(u => item.email && u.email && u.email.trim().toLowerCase() === item.email.trim().toLowerCase());
+
+    if (existingIdx !== -1) {
+      list[existingIdx] = { ...list[existingIdx], ...item, id: list[existingIdx].id };
+      result = list[existingIdx];
     } else {
       const nextId = Math.max(0, ...list.map(u => u.id)) + 1;
       result = { ...item, id: nextId } as Administrateur;
