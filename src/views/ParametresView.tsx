@@ -327,7 +327,17 @@ export const ParametresView: React.FC = () => {
             </div>
             <div className="flex items-center justify-between">
               <span className="text-slate-600 font-medium">Fichier d'importation SQL :</span>
-              <span className="font-mono text-[11px] text-slate-700 font-semibold">universite.sql</span>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-[11px] text-slate-700 font-semibold">universite.sql</span>
+                <a
+                  href="/api/mysql/export-sql"
+                  download="universite.sql"
+                  className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-[10px] font-bold flex items-center gap-1 shadow-xs transition-colors"
+                >
+                  <Upload className="w-3 h-3 rotate-180" />
+                  <span>Télécharger universite.sql</span>
+                </a>
+              </div>
             </div>
             <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -346,15 +356,17 @@ export const ParametresView: React.FC = () => {
                   </span>
                 )}
               </div>
-              <button
-                type="button"
-                onClick={checkMySqlStatus}
-                disabled={dbStatus?.testing}
-                className="px-3 py-1.5 bg-white hover:bg-blue-50 border border-slate-300 hover:border-blue-400 rounded-lg text-[11px] font-bold text-slate-700 hover:text-blue-700 flex items-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <RefreshCw className={`w-3 h-3 ${dbStatus?.testing ? 'animate-spin' : ''}`} />
-                <span>Tester la Connexion WAMP</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={checkMySqlStatus}
+                  disabled={dbStatus?.testing}
+                  className="px-3 py-1.5 bg-white hover:bg-blue-50 border border-slate-300 hover:border-blue-400 rounded-lg text-[11px] font-bold text-slate-700 hover:text-blue-700 flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <RefreshCw className={`w-3 h-3 ${dbStatus?.testing ? 'animate-spin' : ''}`} />
+                  <span>Tester la Connexion WAMP</span>
+                </button>
+              </div>
             </div>
             {dbStatus?.message && (
               <div className={`p-2.5 rounded-lg text-[11px] font-medium ${dbStatus.connected ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-slate-100 text-slate-700 border border-slate-200'}`}>

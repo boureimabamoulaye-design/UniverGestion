@@ -442,6 +442,368 @@ app.post("/api/mysql/test-connection", async (req, res) => {
   }
 });
 
+// Dynamic SQL Exporter for WAMP / phpMyAdmin
+app.get("/api/mysql/export-sql", (req, res) => {
+  const db = readDatabase();
+  let sql = `-- =========================================================
+-- APPLICATION UNIGESTION MALI - DUMP SQL COMPLET
+-- Base de données : universite
+-- Compatible MySQL 5.7+ / 8.0+ (WAMP Server / phpMyAdmin / MariaDB)
+-- Généré le : ${new Date().toISOString()}
+-- =========================================================
+
+SET FOREIGN_KEY_CHECKS = 0;
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+START TRANSACTION;
+SET time_zone = "+00:00";
+
+CREATE DATABASE IF NOT EXISTS \`universite\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE \`universite\`;
+
+-- 1. Table universites
+CREATE TABLE IF NOT EXISTS \`universites\` (
+  \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+  \`code\` VARCHAR(20) NOT NULL UNIQUE,
+  \`nom\` VARCHAR(255) NOT NULL,
+  \`sigle\` VARCHAR(50) NOT NULL,
+  \`adresse\` VARCHAR(255) DEFAULT NULL,
+  \`ville\` VARCHAR(100) DEFAULT 'Bamako',
+  \`pays\` VARCHAR(100) DEFAULT 'Mali',
+  \`telephone\` VARCHAR(30) DEFAULT NULL,
+  \`email\` VARCHAR(100) DEFAULT NULL,
+  \`logo_url\` TEXT DEFAULT NULL,
+  \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 2. Table facultes
+CREATE TABLE IF NOT EXISTS \`facultes\` (
+  \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+  \`universite_id\` INT NOT NULL DEFAULT 1,
+  \`code\` VARCHAR(20) NOT NULL UNIQUE,
+  \`nom\` VARCHAR(255) NOT NULL,
+  \`doyen\` VARCHAR(150) DEFAULT NULL,
+  \`description\` TEXT DEFAULT NULL,
+  \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 3. Table filieres
+CREATE TABLE IF NOT EXISTS \`filieres\` (
+  \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+  \`faculte_id\` INT NOT NULL DEFAULT 1,
+  \`code\` VARCHAR(20) NOT NULL UNIQUE,
+  \`nom\` VARCHAR(255) NOT NULL,
+  \`description\` TEXT DEFAULT NULL,
+  \`domaine\` VARCHAR(100) DEFAULT NULL,
+  \`diplome\` VARCHAR(50) DEFAULT 'Licence',
+  \`frais_scolarite\` DECIMAL(12,2) DEFAULT 350000.00,
+  \`duree_annees\` INT DEFAULT 3,
+  \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 4. Table niveaux
+CREATE TABLE IF NOT EXISTS \`niveaux\` (
+  \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+  \`filiere_id\` INT NOT NULL,
+  \`code\` VARCHAR(20) NOT NULL,
+  \`nom\` VARCHAR(100) NOT NULL,
+  \`diplome_vise\` VARCHAR(100) DEFAULT 'Licence',
+  \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 5. Table annees_academiques
+CREATE TABLE IF NOT EXISTS \`annees_academiques\` (
+  \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+  \`code\` VARCHAR(20) NOT NULL UNIQUE,
+  \`libelle\` VARCHAR(100) NOT NULL,
+  \`date_debut\` DATE NOT NULL,
+  \`date_fin\` DATE NOT NULL,
+  \`est_active\` TINYINT(1) DEFAULT 0,
+  \`est_archivee\` TINYINT(1) DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 6. Table classes
+CREATE TABLE IF NOT EXISTS \`classes\` (
+  \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+  \`filiere_id\` INT NOT NULL,
+  \`niveau_id\` INT DEFAULT NULL,
+  \`annee_academique_id\` INT DEFAULT NULL,
+  \`code\` VARCHAR(50) NOT NULL UNIQUE,
+  \`nom\` VARCHAR(150) NOT NULL,
+  \`niveau\` VARCHAR(20) DEFAULT 'L1',
+  \`capacite\` INT DEFAULT 60,
+  \`capacite_max\` INT DEFAULT 60,
+  \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 7. Table enseignants
+CREATE TABLE IF NOT EXISTS \`enseignants\` (
+  \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+  \`matricule\` VARCHAR(50) NOT NULL UNIQUE,
+  \`nom\` VARCHAR(100) NOT NULL,
+  \`prenom\` VARCHAR(100) NOT NULL,
+  \`titre\` VARCHAR(100) DEFAULT 'Docteur',
+  \`grade\` VARCHAR(100) DEFAULT NULL,
+  \`email\` VARCHAR(100) NOT NULL,
+  \`telephone\` VARCHAR(30) DEFAULT NULL,
+  \`specialite\` VARCHAR(150) DEFAULT NULL,
+  \`universite_id\` INT NOT NULL DEFAULT 1,
+  \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 8. Table etudiants
+CREATE TABLE IF NOT EXISTS \`etudiants\` (
+  \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+  \`matricule\` VARCHAR(50) NOT NULL UNIQUE,
+  \`nom\` VARCHAR(100) NOT NULL,
+  \`prenom\` VARCHAR(100) NOT NULL,
+  \`date_naissance\` DATE DEFAULT NULL,
+  \`lieu_naissance\` VARCHAR(100) DEFAULT 'Bamako',
+  \`sexe\` ENUM('M', 'F') NOT NULL DEFAULT 'M',
+  \`genre\` ENUM('M', 'F') DEFAULT 'M',
+  \`nationalite\` VARCHAR(50) DEFAULT 'Mali',
+  \`email\` VARCHAR(100) DEFAULT NULL,
+  \`telephone\` VARCHAR(30) DEFAULT NULL,
+  \`adresse\` VARCHAR(255) DEFAULT NULL,
+  \`classe_id\` INT NOT NULL,
+  \`filiere_id\` INT DEFAULT NULL,
+  \`statut\` VARCHAR(50) DEFAULT 'Inscrit',
+  \`est_bloque\` TINYINT(1) DEFAULT 0,
+  \`statut_compte\` VARCHAR(20) DEFAULT 'Actif',
+  \`tuteur_nom\` VARCHAR(100) DEFAULT NULL,
+  \`tuteur_prenom\` VARCHAR(100) DEFAULT NULL,
+  \`tuteur_telephone\` VARCHAR(30) DEFAULT NULL,
+  \`date_inscription\` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  \`mot_de_passe\` VARCHAR(255) NOT NULL DEFAULT 'etudiant123',
+  \`photo_url\` LONGTEXT DEFAULT NULL,
+  \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 9. Table semestres
+CREATE TABLE IF NOT EXISTS \`semestres\` (
+  \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+  \`code\` VARCHAR(20) NOT NULL,
+  \`libelle\` VARCHAR(50) NOT NULL,
+  \`niveau_id\` INT DEFAULT NULL,
+  \`ordre\` INT DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 10. Table matieres
+CREATE TABLE IF NOT EXISTS \`matieres\` (
+  \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+  \`code\` VARCHAR(20) NOT NULL UNIQUE,
+  \`nom\` VARCHAR(150) NOT NULL,
+  \`filiere_id\` INT NOT NULL,
+  \`niveau_id\` INT DEFAULT NULL,
+  \`semestre_id\` INT DEFAULT 1,
+  \`semestre\` INT DEFAULT 1,
+  \`enseignant_id\` INT DEFAULT NULL,
+  \`enseignant_nom\` VARCHAR(150) DEFAULT NULL,
+  \`credits\` INT DEFAULT 3,
+  \`credits_ectcs\` INT DEFAULT 3,
+  \`coefficient\` INT DEFAULT 1,
+  \`ue_type\` VARCHAR(50) DEFAULT 'Majeure',
+  \`support_fichier_nom\` VARCHAR(255) DEFAULT NULL,
+  \`support_fichier_url\` LONGTEXT DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 11. Table inscriptions
+CREATE TABLE IF NOT EXISTS \`inscriptions\` (
+  \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+  \`etudiant_id\` INT NOT NULL,
+  \`classe_id\` INT NOT NULL,
+  \`filiere_id\` INT DEFAULT NULL,
+  \`annee_academique_id\` INT DEFAULT 1,
+  \`annee_academique\` VARCHAR(50) DEFAULT '2024-2025',
+  \`date_inscription\` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  \`statut\` VARCHAR(50) DEFAULT 'Validée',
+  \`frais_inscription\` DECIMAL(12,2) DEFAULT 150000.00,
+  \`type_inscription\` VARCHAR(50) DEFAULT 'Inscrire',
+  \`statut_paiement\` VARCHAR(50) DEFAULT 'Payé',
+  \`statut_validation\` VARCHAR(50) DEFAULT 'Validé'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 12. Table paiements
+CREATE TABLE IF NOT EXISTS \`paiements\` (
+  \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+  \`etudiant_id\` INT NOT NULL,
+  \`annee_academique_id\` INT DEFAULT 1,
+  \`filiere_id\` INT DEFAULT NULL,
+  \`filiere_code\` VARCHAR(20) DEFAULT NULL,
+  \`filiere_nom\` VARCHAR(150) DEFAULT NULL,
+  \`classe_id\` INT DEFAULT NULL,
+  \`classe_nom\` VARCHAR(100) DEFAULT NULL,
+  \`annee_libelle\` VARCHAR(50) DEFAULT '2024 - 2025',
+  \`type_frais\` VARCHAR(50) DEFAULT 'Scolarité',
+  \`montant\` DECIMAL(12,2) NOT NULL,
+  \`montant_paye\` DECIMAL(12,2) NOT NULL,
+  \`reste_a_payer\` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  \`mode_paiement\` VARCHAR(50) DEFAULT 'Orange Money',
+  \`methode\` VARCHAR(50) DEFAULT 'Orange Money',
+  \`reference_recu\` VARCHAR(100) NOT NULL UNIQUE,
+  \`reference_transaction\` VARCHAR(100) DEFAULT NULL,
+  \`date_paiement\` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  \`statut\` VARCHAR(50) DEFAULT 'Complet',
+  \`remarque\` TEXT DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 13. Table notes
+CREATE TABLE IF NOT EXISTS \`notes\` (
+  \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+  \`etudiant_id\` INT NOT NULL,
+  \`matiere_id\` INT NOT NULL,
+  \`semestre_id\` INT DEFAULT 1,
+  \`annee_academique_id\` INT DEFAULT 1,
+  \`annee_academique\` VARCHAR(20) DEFAULT '2024-2025',
+  \`note_cc\` DECIMAL(4,2) DEFAULT 0.00,
+  \`note_examen\` DECIMAL(4,2) DEFAULT 0.00,
+  \`note_finale\` DECIMAL(4,2) DEFAULT 0.00,
+  \`moyenne\` DECIMAL(4,2) DEFAULT 0.00,
+  \`appreciation\` VARCHAR(100) DEFAULT NULL,
+  \`modifie_par\` VARCHAR(100) DEFAULT NULL,
+  \`updated_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 14. Table absences
+CREATE TABLE IF NOT EXISTS \`absences\` (
+  \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+  \`etudiant_id\` INT NOT NULL,
+  \`matiere_id\` INT NOT NULL,
+  \`date_absence\` DATE NOT NULL,
+  \`heures\` INT DEFAULT 2,
+  \`justifiee\` TINYINT(1) DEFAULT 0,
+  \`motif\` TEXT DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 15. Table bulletins
+CREATE TABLE IF NOT EXISTS \`bulletins\` (
+  \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+  \`etudiant_id\` INT NOT NULL,
+  \`classe_id\` INT NOT NULL,
+  \`semestre_id\` INT DEFAULT 1,
+  \`annee_academique_id\` INT DEFAULT 1,
+  \`moyenne\` DECIMAL(4,2) NOT NULL,
+  \`total_credits\` INT DEFAULT 0,
+  \`decision\` VARCHAR(50) DEFAULT 'Admis',
+  \`mention\` VARCHAR(50) DEFAULT 'Passable',
+  \`rang\` INT DEFAULT 1,
+  \`date_generation\` DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 16. Table utilisateurs
+CREATE TABLE IF NOT EXISTS \`utilisateurs\` (
+  \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+  \`nom\` VARCHAR(100) NOT NULL,
+  \`prenom\` VARCHAR(100) NOT NULL,
+  \`email\` VARCHAR(100) NOT NULL UNIQUE,
+  \`mot_de_passe\` VARCHAR(255) NOT NULL,
+  \`role\` VARCHAR(50) DEFAULT 'Administrateur',
+  \`universite_id\` INT NOT NULL DEFAULT 1,
+  \`dernier_acces\` DATETIME DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 17. Table administrateurs
+CREATE TABLE IF NOT EXISTS \`administrateurs\` (
+  \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+  \`utilisateur_id\` INT NOT NULL DEFAULT 1,
+  \`nom\` VARCHAR(100) NOT NULL,
+  \`prenom\` VARCHAR(100) NOT NULL,
+  \`email\` VARCHAR(100) NOT NULL,
+  \`telephone\` VARCHAR(30) DEFAULT NULL,
+  \`role_admin\` VARCHAR(50) DEFAULT 'Super Admin'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 18. Table supports_cours
+CREATE TABLE IF NOT EXISTS \`supports_cours\` (
+  \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+  \`titre\` VARCHAR(255) NOT NULL,
+  \`matiere_id\` INT DEFAULT NULL,
+  \`filiere_id\` INT DEFAULT NULL,
+  \`type_document\` VARCHAR(50) DEFAULT 'PDF',
+  \`fichier_url\` LONGTEXT DEFAULT NULL,
+  \`description\` TEXT DEFAULT NULL,
+  \`publie_par\` VARCHAR(150) DEFAULT 'Enseignant Titulaire',
+  \`date_publication\` DATE DEFAULT NULL,
+  \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 19. Table notifications
+CREATE TABLE IF NOT EXISTS \`notifications\` (
+  \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+  \`destinateur_type\` VARCHAR(20) DEFAULT 'ALL',
+  \`destinateur_id\` INT DEFAULT NULL,
+  \`titre\` VARCHAR(255) NOT NULL,
+  \`message\` TEXT NOT NULL,
+  \`type_alerte\` VARCHAR(20) DEFAULT 'INFO',
+  \`lu\` TINYINT(1) DEFAULT 0,
+  \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 20. Table historique_acces
+CREATE TABLE IF NOT EXISTS \`historique_acces\` (
+  \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+  \`utilisateur_id\` INT DEFAULT NULL,
+  \`etudiant_id\` INT DEFAULT NULL,
+  \`ip_adresse\` VARCHAR(50) DEFAULT '127.0.0.1',
+  \`event_type\` VARCHAR(50) NOT NULL,
+  \`description\` TEXT NOT NULL,
+  \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+\n`;
+
+  // Escape helper
+  const esc = (val: any) => {
+    if (val === null || val === undefined) return 'NULL';
+    if (typeof val === 'number') return String(val);
+    if (typeof val === 'boolean') return val ? '1' : '0';
+    if (typeof val === 'object') return `'${JSON.stringify(val).replace(/'/g, "''")}'`;
+    return `'${String(val).replace(/'/g, "''").replace(/\\/g, "\\\\")}'`;
+  };
+
+  const tablesToExport = [
+    { name: 'universites', key: 'unigestion_universites' },
+    { name: 'facultes', key: 'unigestion_facultes' },
+    { name: 'filieres', key: 'unigestion_filieres' },
+    { name: 'niveaux', key: 'unigestion_niveaux' },
+    { name: 'annees_academiques', key: 'unigestion_annees' },
+    { name: 'classes', key: 'unigestion_classes' },
+    { name: 'enseignants', key: 'unigestion_enseignants' },
+    { name: 'semestres', key: 'unigestion_semestres' },
+    { name: 'matieres', key: 'unigestion_matieres' },
+    { name: 'etudiants', key: 'unigestion_etudiants' },
+    { name: 'inscriptions', key: 'unigestion_inscriptions' },
+    { name: 'paiements', key: 'unigestion_paiements' },
+    { name: 'notes', key: 'unigestion_notes' },
+    { name: 'absences', key: 'unigestion_absences' },
+    { name: 'bulletins', key: 'unigestion_bulletins' },
+    { name: 'utilisateurs', key: 'unigestion_utilisateurs' },
+    { name: 'administrateurs', key: 'unigestion_administrateurs' },
+    { name: 'supports_cours', key: 'unigestion_supports_cours' },
+    { name: 'notifications', key: 'unigestion_notifications' },
+    { name: 'historique_acces', key: 'unigestion_historique' }
+  ];
+
+  for (const t of tablesToExport) {
+    const rows = db[t.key] || db[t.name] || [];
+    if (Array.isArray(rows) && rows.length > 0) {
+      sql += `-- Données pour la table ${t.name}\n`;
+      for (const row of rows) {
+        if (!row || typeof row !== 'object') continue;
+        const keys = Object.keys(row).filter(k => row[k] !== undefined);
+        const values = keys.map(k => esc(row[k]));
+        sql += `INSERT INTO \`${t.name}\` (\`${keys.join('`, `')}\`) VALUES (${values.join(', ')}) ON DUPLICATE KEY UPDATE id=id;\n`;
+      }
+      sql += `\n`;
+    }
+  }
+
+  sql += `SET FOREIGN_KEY_CHECKS = 1;\nCOMMIT;\n`;
+
+  res.setHeader("Content-Type", "application/sql; charset=utf-8");
+  res.setHeader("Content-Disposition", 'attachment; filename="universite.sql"');
+  res.send(sql);
+});
+
+
 // =========================================================
 // BACKEND SECURITY ACCESS CONTROL & STUDENT CURSUS VALIDATION
 // =========================================================
