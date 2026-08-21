@@ -127,6 +127,9 @@ export interface Matiere {
   ue_type?: 'Majeure' | 'Mineure';
   support_fichier_url?: string;
   support_fichier_nom?: string;
+  support_titre?: string;
+  support_description?: string;
+  support_type_document?: 'PDF' | 'Diaporama PPT' | 'Fiche TP/TD' | 'Devoir / Exercice' | string;
 }
 
 export interface Inscription {

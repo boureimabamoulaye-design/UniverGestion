@@ -26,6 +26,9 @@ export const MatieresView: React.FC = () => {
     enseignant_nom: '',
     ue_type: 'Majeure' as 'Majeure' | 'Mineure',
     credits: 3,
+    support_titre: '',
+    support_type_document: 'PDF' as 'PDF' | 'Diaporama PPT' | 'Fiche TP/TD' | 'Devoir / Exercice',
+    support_description: '',
     support_fichier_nom: '',
     support_fichier_url: ''
   });
@@ -43,6 +46,9 @@ export const MatieresView: React.FC = () => {
         enseignant_nom: defaultEnsNom,
         ue_type: item.ue_type || 'Majeure',
         credits: item.credits || 3,
+        support_titre: item.support_titre || '',
+        support_type_document: (item.support_type_document as any) || 'PDF',
+        support_description: item.support_description || '',
         support_fichier_nom: item.support_fichier_nom || '',
         support_fichier_url: item.support_fichier_url || ''
       });
@@ -56,6 +62,9 @@ export const MatieresView: React.FC = () => {
         enseignant_nom: '',
         ue_type: 'Majeure',
         credits: 3,
+        support_titre: '',
+        support_type_document: 'PDF',
+        support_description: '',
         support_fichier_nom: '',
         support_fichier_url: ''
       });
@@ -66,13 +75,19 @@ export const MatieresView: React.FC = () => {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      const isPpt = file.name.endsWith('.ppt') || file.name.endsWith('.pptx');
+      const isDoc = file.name.endsWith('.doc') || file.name.endsWith('.docx');
+      const detectedType = isPpt ? 'Diaporama PPT' : (isDoc ? 'Fiche TP/TD' : 'PDF');
+
       const reader = new FileReader();
       reader.onload = (event) => {
         const fileDataUrl = event.target?.result as string || '';
         setFormData(prev => ({
           ...prev,
           support_fichier_nom: file.name,
-          support_fichier_url: fileDataUrl
+          support_fichier_url: fileDataUrl,
+          support_type_document: prev.support_type_document || detectedType,
+          support_titre: prev.support_titre || `Polycopié : ${file.name.replace(/\.[^/.]+$/, "")}`
         }));
       };
       reader.readAsDataURL(file);
@@ -221,22 +236,29 @@ export const MatieresView: React.FC = () => {
                     <td className="px-6 py-4">
                       {hasSupport ? (
                         <div className="flex flex-col items-start gap-1">
-                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-[11px] font-bold max-w-[200px]">
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-[11px] font-bold max-w-[220px]">
                             <FileText className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                            <span className="truncate" title={item.support_fichier_nom || 'Support disponible'}>
-                              {item.support_fichier_nom || 'Support PDF/Doc'}
+                            <span className="truncate" title={item.support_titre || item.support_fichier_nom || 'Support disponible'}>
+                              {item.support_titre || item.support_fichier_nom || 'Support disponible'}
                             </span>
                           </div>
-                          {item.support_fichier_url && (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenSupportFile(item.support_fichier_url)}
-                              className="inline-flex items-center gap-1 text-[10px] font-bold text-[#0066FF] hover:underline"
-                            >
-                              <ExternalLink className="w-3 h-3" />
-                              <span>Consulter / Ouvrir</span>
-                            </button>
-                          )}
+                          <div className="flex items-center gap-2">
+                            {item.support_type_document && (
+                              <span className="text-[10px] text-emerald-700 bg-emerald-100/60 px-1.5 py-0.2 rounded font-medium">
+                                {item.support_type_document}
+                              </span>
+                            )}
+                            {item.support_fichier_url && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenSupportFile(item.support_fichier_url)}
+                                className="inline-flex items-center gap-1 text-[10px] font-bold text-[#0066FF] hover:underline"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                                <span>Aperçu</span>
+                              </button>
+                            )}
+                          </div>
                         </div>
                       ) : (
                         <button
@@ -374,24 +396,63 @@ export const MatieresView: React.FC = () => {
             />
           </div>
 
-          {/* Section Upload Support de Cours depuis Galerie / Appareil */}
-          <div className="p-4 bg-slate-50 border border-slate-200 rounded-[18px] space-y-2.5">
+          {/* Section Support de Cours Rattaché */}
+          <div className="p-4 bg-slate-50 border border-slate-200 rounded-[18px] space-y-3">
             <div className="flex items-center justify-between">
               <label className="block font-bold text-slate-800 flex items-center gap-1.5">
                 <BookOpen className="w-4 h-4 text-[#0066FF]" />
-                <span>Support de Cours (Fichier Pédagogique rattaché à la filière)</span>
+                <span>Support de Cours & Polycopié (Espace Étudiant)</span>
               </label>
               {formData.filiere_id && (
-                <span className="text-[10px] font-bold text-[#0066FF] bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                <span className="text-[10px] font-bold text-[#0066FF] bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200">
                   Visible pour : {filieres.find(f => f.id === Number(formData.filiere_id))?.code || 'Filière'}
                 </span>
               )}
             </div>
 
             <p className="text-[11px] text-gray-500">
-              Importez un support depuis votre appareil ou galerie. Il sera automatiquement lié à cette matière et disponible pour tous les étudiants de cette filière.
+              Rattachez un polycopié, diaporama ou support pédagogique. Dès l'enregistrement, il sera <strong>automatiquement visible et téléchargeable</strong> dans l'Espace Étudiant pour tous les inscrits de cette filière.
             </p>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1">Titre du Support</label>
+                <input
+                  type="text"
+                  value={formData.support_titre}
+                  onChange={(e) => setFormData({ ...formData, support_titre: e.target.value })}
+                  placeholder="Ex: Polycopié Chapitres 1 à 6"
+                  className="w-full h-[40px] px-3 bg-white border border-[#E5E7EB] rounded-[12px] focus:outline-none focus:border-[#0066FF]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1">Type de Document</label>
+                <select
+                  value={formData.support_type_document}
+                  onChange={(e) => setFormData({ ...formData, support_type_document: e.target.value as any })}
+                  className="w-full h-[40px] px-3 bg-white border border-[#E5E7EB] rounded-[12px] focus:outline-none focus:border-[#0066FF] font-medium"
+                >
+                  <option value="PDF">Document PDF</option>
+                  <option value="Diaporama PPT">Diaporama PPT / Présentation</option>
+                  <option value="Fiche TP/TD">Fiche TP / TD / Exercices</option>
+                  <option value="Devoir / Exercice">Devoir / Évaluation continue</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block font-semibold text-gray-700 mb-1">Description / Recommandations aux étudiants</label>
+              <textarea
+                rows={2}
+                value={formData.support_description}
+                onChange={(e) => setFormData({ ...formData, support_description: e.target.value })}
+                placeholder="Ex: Polycopié de référence à lire avant chaque séance de travaux dirigés..."
+                className="w-full p-2.5 bg-white border border-[#E5E7EB] rounded-[12px] focus:outline-none focus:border-[#0066FF] text-xs resize-none"
+              />
+            </div>
+
+            {/* File Upload & File link */}
             <input
               ref={fileInputRef}
               type="file"
@@ -400,30 +461,45 @@ export const MatieresView: React.FC = () => {
               onChange={handleFileSelect}
             />
             
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-1">
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="h-[42px] px-4 bg-white border border-[#0066FF] text-[#0066FF] hover:bg-blue-50 rounded-[12px] font-bold flex items-center justify-center gap-2 transition-colors text-xs shadow-2xs"
-              >
-                <Upload className="w-4 h-4" />
-                <span>Sélectionner dans l'appareil / galerie</span>
-              </button>
+            <div className="space-y-2 pt-1">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="h-[42px] px-4 bg-white border border-[#0066FF] text-[#0066FF] hover:bg-blue-50 rounded-[12px] font-bold flex items-center justify-center gap-2 transition-colors text-xs shadow-2xs shrink-0"
+                >
+                  <Upload className="w-4 h-4" />
+                  <span>Choisir un fichier (appareil / galerie)</span>
+                </button>
 
-              {formData.support_fichier_nom && (
-                <div className="px-3.5 py-2 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-[12px] flex items-center justify-between gap-2 font-medium text-xs flex-1">
-                  <div className="flex items-center gap-2 truncate">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                    <span className="truncate font-semibold">{formData.support_fichier_nom}</span>
+                {formData.support_fichier_nom && (
+                  <div className="px-3.5 py-2 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-[12px] flex items-center justify-between gap-2 font-medium text-xs flex-1">
+                    <div className="flex items-center gap-2 truncate">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                      <span className="truncate font-semibold">{formData.support_fichier_nom}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setFormData(p => ({ ...p, support_fichier_nom: '', support_fichier_url: '' }))}
+                      className="text-gray-400 hover:text-red-500 p-1"
+                      title="Retirer ce fichier"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setFormData(p => ({ ...p, support_fichier_nom: '', support_fichier_url: '' }))}
-                    className="text-gray-400 hover:text-red-500 p-1"
-                    title="Retirer ce fichier"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
+                )}
+              </div>
+
+              {!formData.support_fichier_nom && (
+                <div className="pt-1">
+                  <span className="text-[10px] text-gray-400 block mb-1">Ou saisir l'URL directe d'un document / drive en ligne :</span>
+                  <input
+                    type="url"
+                    value={formData.support_fichier_url}
+                    onChange={(e) => setFormData({ ...formData, support_fichier_url: e.target.value, support_fichier_nom: formData.support_fichier_nom || 'Support Web' })}
+                    placeholder="https://..."
+                    className="w-full h-[38px] px-3 bg-white border border-[#E5E7EB] rounded-[10px] text-xs focus:outline-none focus:border-[#0066FF]"
+                  />
                 </div>
               )}
             </div>

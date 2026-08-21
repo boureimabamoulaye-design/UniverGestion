@@ -1060,36 +1060,31 @@ export class DB {
     const supportsList = getItem(STORAGE_KEYS.SUPPORTS_COURS, INITIAL_SUPPORTS_COURS);
     let supportsModified = false;
 
-    // Update any existing support linked to this matiere so filiere_id stays synchronized
-    const updatedSupports = supportsList.map(s => {
-      if (Number(s.matiere_id) === Number(result.id)) {
-        supportsModified = true;
-        return {
-          ...s,
-          filiere_id: Number(result.filiere_id)
-        };
-      }
-      return s;
-    });
+    // Filter or update existing supports linked to this matiere
+    const updatedSupports = [...supportsList];
+    const existingSupportIdx = updatedSupports.findIndex(s => Number(s.matiere_id) === Number(result.id));
 
     if (result.support_fichier_url || result.support_fichier_nom) {
-      const existingSupportIdx = updatedSupports.findIndex(s => Number(s.matiere_id) === Number(result.id));
-      const docType: SupportCours['type_document'] = (result.support_fichier_nom?.endsWith('.ppt') || result.support_fichier_nom?.endsWith('.pptx'))
-        ? 'Diaporama PPT'
-        : (result.support_fichier_nom?.endsWith('.doc') || result.support_fichier_nom?.endsWith('.docx'))
-          ? 'Fiche TP/TD'
-          : 'PDF';
+      const docType: SupportCours['type_document'] = (result.support_type_document as any) ||
+        ((result.support_fichier_nom?.endsWith('.ppt') || result.support_fichier_nom?.endsWith('.pptx'))
+          ? 'Diaporama PPT'
+          : (result.support_fichier_nom?.endsWith('.doc') || result.support_fichier_nom?.endsWith('.docx'))
+            ? 'Fiche TP/TD'
+            : 'PDF');
 
       const fileUrl = result.support_fichier_url || 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';
-      const fileTitle = result.support_fichier_nom ? `Support - ${result.nom}` : `Cours ${result.code} - ${result.nom}`;
+      const fileTitle = result.support_titre || result.support_fichier_nom || `Support de cours : ${result.nom}`;
+      const desc = result.support_description || `Support de cours et polycopié officiel associé à la matière ${result.code} (${result.nom}).`;
 
       if (existingSupportIdx !== -1) {
         updatedSupports[existingSupportIdx] = {
           ...updatedSupports[existingSupportIdx],
           titre: fileTitle,
+          matiere_id: result.id,
           filiere_id: Number(result.filiere_id),
           type_document: docType,
           fichier_url: fileUrl,
+          description: desc,
           publie_par: result.enseignant_nom || 'Enseignant Titulaire'
         };
       } else {
@@ -1101,11 +1096,15 @@ export class DB {
           filiere_id: Number(result.filiere_id),
           type_document: docType,
           fichier_url: fileUrl,
-          description: `Support de cours officiel rattaché à la matière ${result.code} (${result.nom}).`,
+          description: desc,
           publie_par: result.enseignant_nom || 'Enseignant Titulaire',
           date_publication: new Date().toISOString().split('T')[0]
         });
       }
+      supportsModified = true;
+    } else if (existingSupportIdx !== -1) {
+      // If user cleared the support file on this matiere, remove the linked support document
+      updatedSupports.splice(existingSupportIdx, 1);
       supportsModified = true;
     }
 

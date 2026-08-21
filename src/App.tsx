@@ -24,7 +24,6 @@ import { AnneesAcademiquesView } from './views/AnneesAcademiquesView';
 import { UtilisateursView } from './views/UtilisateursView';
 import { EtudiantPortalView } from './views/EtudiantPortalView';
 import { CorbeilleView } from './views/CorbeilleView';
-import { SupportsCoursView } from './views/SupportsCoursView';
 import { ProfilAdminView } from './views/ProfilAdminView';
 import { ParametresView } from './views/ParametresView';
 import { HistoriqueView } from './views/HistoriqueView';
@@ -149,10 +148,6 @@ export default function App() {
 
               {activeTab === 'profil_admin' && isStaffOrAdmin && (
                 <ProfilAdminView currentUser={currentUser} />
-              )}
-
-              {activeTab === 'supports_cours' && isStaffOrAdmin && (
-                <SupportsCoursView currentUser={currentUser} />
               )}
 
               {!isStaffOrAdmin && (

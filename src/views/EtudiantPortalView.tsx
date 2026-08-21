@@ -256,16 +256,17 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
       if ((m.support_fichier_nom || m.support_fichier_url) && !attached.some(s => s.fichier_url === m.support_fichier_url || s.titre.includes(m.support_fichier_nom || ''))) {
         attached.unshift({
           id: 8000 + Number(m.id),
-          titre: m.support_fichier_nom || `Polycopié de cours : ${m.nom}`,
+          titre: m.support_titre || m.support_fichier_nom || `Support de cours : ${m.nom}`,
           matiere_id: m.id,
           filiere_id: m.filiere_id,
-          type_document: (m.support_fichier_nom?.endsWith('.ppt') || m.support_fichier_nom?.endsWith('.pptx'))
-            ? 'Diaporama PPT'
-            : (m.support_fichier_nom?.endsWith('.doc') || m.support_fichier_nom?.endsWith('.docx'))
-              ? 'Fiche TP/TD'
-              : 'PDF',
+          type_document: (m.support_type_document as any) ||
+            ((m.support_fichier_nom?.endsWith('.ppt') || m.support_fichier_nom?.endsWith('.pptx'))
+              ? 'Diaporama PPT'
+              : (m.support_fichier_nom?.endsWith('.doc') || m.support_fichier_nom?.endsWith('.docx'))
+                ? 'Fiche TP/TD'
+                : 'PDF'),
           fichier_url: m.support_fichier_url || 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-          description: `Document et cours officiel transmis par l'enseignant pour la matière ${m.code} - ${m.nom}.`,
+          description: m.support_description || `Document et cours officiel transmis par l'enseignant pour la matière ${m.code} - ${m.nom}.`,
           publie_par: m.enseignant_nom || (ensObj ? `${ensObj.prenom} ${ensObj.nom}` : 'Enseignant Titulaire'),
           date_publication: '2025-10-15'
         });

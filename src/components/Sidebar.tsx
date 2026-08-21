@@ -84,7 +84,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'etudiants', label: 'Étudiants', icon: GraduationCap },
     { id: 'enseignants', label: 'Enseignants', icon: UserCheck },
     { id: 'matieres', label: 'Matières', icon: FileText },
-    { id: 'supports_cours', label: 'Supports de cours', icon: BookOpen },
     { id: 'semestres', label: 'Semestres', icon: Calendar },
     { id: 'inscriptions', label: 'Inscriptions', icon: UserPlus },
     { id: 'notes', label: 'Saisie des Notes', icon: Award },
