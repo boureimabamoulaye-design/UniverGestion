@@ -290,7 +290,8 @@ async function syncDataToMySQL(dbData: Record<string, any>) {
       "administrateurs",
       "notifications",
       "historique_acces",
-      "supports_cours"
+      "supports_cours",
+      "corbeille"
     ];
 
     for (const tbl of syncOrder) {
@@ -748,6 +749,19 @@ CREATE TABLE IF NOT EXISTS \`historique_acces\` (
   \`description\` TEXT NOT NULL,
   \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 21. Table corbeille
+CREATE TABLE IF NOT EXISTS \`corbeille\` (
+  \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+  \`type_element\` VARCHAR(50) NOT NULL,
+  \`element_id\` INT NOT NULL,
+  \`titre\` VARCHAR(255) NOT NULL,
+  \`details\` TEXT DEFAULT NULL,
+  \`donnees_json\` LONGTEXT NOT NULL,
+  \`supprime_par\` VARCHAR(100) DEFAULT 'Administrateur',
+  \`supprime_le\` VARCHAR(50) DEFAULT NULL,
+  \`created_at\` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 \n`;
 
   // Escape helper
@@ -779,7 +793,8 @@ CREATE TABLE IF NOT EXISTS \`historique_acces\` (
     { name: 'administrateurs', key: 'unigestion_administrateurs' },
     { name: 'supports_cours', key: 'unigestion_supports_cours' },
     { name: 'notifications', key: 'unigestion_notifications' },
-    { name: 'historique_acces', key: 'unigestion_historique' }
+    { name: 'historique_acces', key: 'unigestion_historique' },
+    { name: 'corbeille', key: 'unigestion_corbeille' }
   ];
 
   for (const t of tablesToExport) {

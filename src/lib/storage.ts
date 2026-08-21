@@ -480,6 +480,9 @@ export class DB {
         const filieres = getArr('unigestion_filieres', 'filieres');
         if (filieres) setItemWithoutSync(STORAGE_KEYS.FILIERES, filieres);
 
+        const niveaux = getArr('unigestion_niveaux', 'niveaux');
+        if (niveaux) setItemWithoutSync(STORAGE_KEYS.NIVEAUX, niveaux);
+
         const classes = getArr('unigestion_classes', 'classes');
         if (classes) setItemWithoutSync(STORAGE_KEYS.CLASSES, classes);
 
@@ -492,7 +495,7 @@ export class DB {
         const semestres = getArr('unigestion_semestres', 'semestres');
         if (semestres) setItemWithoutSync(STORAGE_KEYS.SEMESTRES, semestres);
 
-        const annees = getArr('unigestion_annees', 'annees');
+        const annees = getArr('unigestion_annees', 'annees_academiques') || getArr('unigestion_annees', 'annees');
         if (annees) setItemWithoutSync(STORAGE_KEYS.ANNEES, annees);
 
         const administrateurs = getArr('unigestion_administrateurs', 'administrateurs') || getArr('unigestion_utilisateurs', 'utilisateurs');
@@ -503,6 +506,12 @@ export class DB {
 
         const absences = getArr('unigestion_absences', 'absences');
         if (absences) setItemWithoutSync(STORAGE_KEYS.ABSENCES, absences);
+
+        const notifications = getArr('unigestion_notifications', 'notifications');
+        if (notifications) setItemWithoutSync(STORAGE_KEYS.NOTIFICATIONS, notifications);
+
+        const historique = getArr('unigestion_historique', 'historique_acces') || getArr('unigestion_historique', 'historique');
+        if (historique) setItemWithoutSync(STORAGE_KEYS.HISTORIQUE, historique);
 
         const corbeille = getArr('unigestion_corbeille', 'corbeille');
         if (corbeille) setItemWithoutSync(STORAGE_KEYS.CORBEILLE, corbeille);
