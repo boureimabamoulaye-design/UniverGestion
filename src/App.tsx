@@ -151,11 +151,11 @@ export default function App() {
                 <ProfilAdminView currentUser={currentUser} />
               )}
 
-              {activeTab === 'supports_cours' && (
+              {activeTab === 'supports_cours' && isStaffOrAdmin && (
                 <SupportsCoursView currentUser={currentUser} />
               )}
 
-              {!isStaffOrAdmin && activeTab !== 'supports_cours' && (
+              {!isStaffOrAdmin && (
                 <EtudiantPortalView user={currentUser} activeTab={activeTab} setActiveTab={handleTabChange} />
               )}
 

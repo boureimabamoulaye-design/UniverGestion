@@ -642,25 +642,113 @@ export const INITIAL_PAIEMENTS: Paiement[] = [
 export const INITIAL_SUPPORTS_COURS: SupportCours[] = [
   {
     id: 1,
-    titre: 'Support de cours Algorithmique & Programmation C',
+    titre: 'Polycopié de cours : Algorithmique & Programmation en Langage C',
     matiere_id: 1,
     filiere_id: 1,
     type_document: 'PDF',
     fichier_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-    description: 'Bases de l\'algorithmique, boucles, fonctions et pointeurs C.',
+    description: 'Bases de l\'algorithmique, variables, structures conditionnelles, boucles, fonctions et gestion des pointeurs.',
     publie_par: 'Dr. Sékou Konaté',
     date_publication: '2025-10-15'
   },
   {
     id: 2,
-    titre: 'Guide pratique des requêtes SQL & Modélisation BDD',
+    titre: 'Fiche de Travaux Pratiques TP N°1 : Tableaux et Pointeurs en C',
+    matiere_id: 1,
+    filiere_id: 1,
+    type_document: 'Fiche TP/TD',
+    fichier_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    description: 'Exercices pratiques sur l\'allocation dynamique de mémoire, tableaux multidimensionnels et structures.',
+    publie_par: 'Dr. Sékou Konaté',
+    date_publication: '2025-10-22'
+  },
+  {
+    id: 3,
+    titre: 'Guide pratique : Modélisation Entité-Association et Requêtes SQL',
     matiere_id: 2,
     filiere_id: 1,
     type_document: 'PDF',
     fichier_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
-    description: 'Création de tables, requêtes SELECT, JOIN et sous-requêtes SQL.',
+    description: 'Schéma relationnel, formes normales (1NF, 2NF, 3NF), requêtes SELECT, jointures et sous-requêtes imbriquées.',
     publie_par: 'Dr. Sékou Konaté',
     date_publication: '2025-10-20'
+  },
+  {
+    id: 4,
+    titre: 'Série d\'exercices corrigés : Algèbre Linéaire & Logique des Prédicats',
+    matiere_id: 3,
+    filiere_id: 1,
+    type_document: 'Devoir / Exercice',
+    fichier_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    description: 'Ensembles, relations d\'équivalence, calcul matriciel et systèmes linéaires appliqués à l\'informatique.',
+    publie_par: 'Prof. Mariam Coulibaly',
+    date_publication: '2025-10-25'
+  },
+  {
+    id: 5,
+    titre: 'Technical English Guide for Software Engineers & IT Vocabulary',
+    matiere_id: 4,
+    filiere_id: 1,
+    type_document: 'PDF',
+    fichier_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    description: 'Vocabulaire technique informatique, rédaction de documentation logicielle et communication professionnelle en anglais.',
+    publie_par: 'Dr. Ibrahim Sangaré',
+    date_publication: '2025-11-02'
+  },
+  {
+    id: 6,
+    titre: 'Support de cours : Programmation Orientée Objet (POO) & Java SE',
+    matiere_id: 5,
+    filiere_id: 1,
+    type_document: 'PDF',
+    fichier_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    description: 'Classes, encapsulation, héritage, polymorphisme, interfaces et gestion des exceptions en Java.',
+    publie_par: 'Dr. Sékou Konaté',
+    date_publication: '2026-02-10'
+  },
+  {
+    id: 7,
+    titre: 'Diaporama : Architecture Réseaux & Modèle OSI / TCP-IP',
+    matiere_id: 6,
+    filiere_id: 1,
+    type_document: 'Diaporama PPT',
+    fichier_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    description: 'Présentation des protocoles réseaux, adressage IPv4/IPv6, routage et commutation Cisco.',
+    publie_par: 'Dr. Sékou Konaté',
+    date_publication: '2026-02-15'
+  },
+  {
+    id: 8,
+    titre: 'Manuel de Comptabilité Générale selon le Système Comptable SYSCOHADA',
+    matiere_id: 9,
+    filiere_id: 2,
+    type_document: 'PDF',
+    fichier_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    description: 'Principes comptables OHADA, plan des comptes, journal, grand livre, balance et états financiers de synthèse.',
+    publie_par: 'Prof. Mariam Coulibaly',
+    date_publication: '2025-10-18'
+  },
+  {
+    id: 9,
+    titre: 'Cours de Microéconomie : Théorie du Consommateur et du Producteur',
+    matiere_id: 10,
+    filiere_id: 2,
+    type_document: 'PDF',
+    fichier_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    description: 'Fonctions d\'utilité, courbes d\'indifférence, maximisation du profit et équilibre sur les marchés concurrentiels.',
+    publie_par: 'Prof. Mariam Coulibaly',
+    date_publication: '2025-10-28'
+  },
+  {
+    id: 10,
+    titre: 'Introduction Générale à l\'Étude du Droit & Droit des Obligations',
+    matiere_id: 17,
+    filiere_id: 3,
+    type_document: 'PDF',
+    fichier_url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    description: 'Sources du droit, hiérarchie des normes, formation et validité des contrats en droit des affaires.',
+    publie_par: 'Dr. Ibrahim Sangaré',
+    date_publication: '2025-10-16'
   }
 ];
 

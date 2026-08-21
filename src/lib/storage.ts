@@ -639,6 +639,40 @@ export class DB {
     this.logAccess('SUPPRESSION', `Suppression support de cours ID #${id}`);
   }
 
+  static getStudentAuthorizedSupports(etudiantId: number): SupportCours[] {
+    const allSupports = this.getSupportsCours();
+    const etudiants = this.getEtudiants();
+    const student = etudiants.find(e => Number(e.id) === Number(etudiantId));
+    if (!student) return allSupports;
+
+    const enrollment = this.getStudentActiveEnrollment(student.id);
+    const targetFiliereId = enrollment?.filiere?.id || student.filiere_id;
+    const allMatieres = this.getMatieres();
+    
+    // Matieres for this student's filiere / class
+    const studentMatiereIds = new Set(
+      allMatieres
+        .filter(m => !targetFiliereId || Number(m.filiere_id) === Number(targetFiliereId))
+        .map(m => Number(m.id))
+    );
+
+    return allSupports.filter(support => {
+      // If attached to a specific course of the student
+      if (support.matiere_id && studentMatiereIds.has(Number(support.matiere_id))) {
+        return true;
+      }
+      // If filiere matches student's filiere
+      if (support.filiere_id && targetFiliereId && Number(support.filiere_id) === Number(targetFiliereId)) {
+        return true;
+      }
+      // If no filiere or matiere specified, general document
+      if (!support.filiere_id && !support.matiere_id) {
+        return true;
+      }
+      return false;
+    });
+  }
+
   // Active Academic Year helper
   static getActiveAnneeAcademique(): AnneeAcademique {
     const annees = this.getAnneesAcademiques();
@@ -1208,19 +1242,6 @@ export class DB {
     const enrollment = this.getStudentActiveEnrollment(etudiantId);
     if (!enrollment.hasActiveEnrollment || !enrollment.filiereId) return [];
     return this.getMatieres().filter(m => Number(m.filiere_id) === Number(enrollment.filiereId));
-  }
-
-  static getStudentAuthorizedSupports(etudiantId: number): SupportCours[] {
-    const enrollment = this.getStudentActiveEnrollment(etudiantId);
-    if (!enrollment.hasActiveEnrollment || !enrollment.filiereId) return [];
-    const matieres = this.getStudentAuthorizedMatieres(etudiantId);
-    const matiereIds = new Set(matieres.map(m => Number(m.id)));
-
-    return this.getSupportsCours().filter(s => {
-      const matchFiliere = !s.filiere_id || Number(s.filiere_id) === Number(enrollment.filiereId);
-      const matchMatiere = !s.matiere_id || matiereIds.has(Number(s.matiere_id));
-      return matchFiliere && matchMatiere;
-    });
   }
 
   static getStudentAuthorizedNotes(etudiantId: number): Note[] {

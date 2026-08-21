@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { AuthUser, Paiement, Etudiant } from '../types/database';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { AuthUser, Paiement, Etudiant, SupportCours, Matiere } from '../types/database';
 import { DB } from '../lib/storage';
 import {
   GraduationCap,
@@ -19,7 +19,16 @@ import {
   DollarSign,
   Download,
   Lock,
-  RefreshCw
+  RefreshCw,
+  BookOpen,
+  Search,
+  FolderOpen,
+  ExternalLink,
+  Layers,
+  Sparkles,
+  ChevronRight,
+  Info,
+  Clock
 } from 'lucide-react';
 import { Modal } from '../components/Modal';
 
@@ -130,7 +139,6 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
   const paiements = DB.getPaiements().filter(p => Number(p.etudiant_id) === Number(etudiant.id));
   const absences = DB.getAbsences().filter(a => Number(a.etudiant_id) === Number(etudiant.id) && authorizedMatiereIds.has(Number(a.matiere_id)));
   const studentInscriptions = DB.getInscriptions().filter(i => Number(i.etudiant_id) === Number(etudiant.id));
-  const supportsCours = DB.getStudentAuthorizedSupports(etudiant.id);
   const studentBulletins = DB.getStudentAuthorizedBulletins(etudiant.id);
 
   // States
@@ -206,9 +214,95 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
 
   const [viewingReceipt, setViewingReceipt] = useState<Paiement | null>(null);
 
-  // Current selected tab state helper
-  const validStudentTabs = ['profil_etudiant', 'examen', 'paiements', 'absences'];
+  // Current selected tab state helper - Supports de cours directly integrated
+  const validStudentTabs = ['profil_etudiant', 'supports_cours', 'examen', 'paiements', 'absences'];
   const currentTab = validStudentTabs.includes(activeTab) ? activeTab : 'profil_etudiant';
+
+  // State for Course Materials (Supports de cours) connected directly to student's subjects
+  const supportsCours = useMemo(() => DB.getStudentAuthorizedSupports(etudiant.id), [etudiant.id, dbTick]);
+  const [courseSearch, setCourseSearch] = useState('');
+  const [courseSemestreFilter, setCourseSemestreFilter] = useState<'all' | number>('all');
+  const [viewingSupportModal, setViewingSupportModal] = useState<{ support: SupportCours; matiere?: Matiere } | null>(null);
+  const [downloadToast, setDownloadToast] = useState<string | null>(null);
+
+  const handleDownloadSupport = (support: SupportCours, mat?: Matiere) => {
+    const url = support.fichier_url || 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';
+    const link = document.createElement('a');
+    link.href = url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.download = `${(support.titre || 'Support_Cours').replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setDownloadToast(`Téléchargement de "${support.titre}" lancé avec succès.`);
+    setTimeout(() => setDownloadToast(null), 4000);
+  };
+
+  // Map student matieres with their attached supports
+  const studentMatieresWithSupports = useMemo(() => {
+    const targetFiliereId = studentFiliere?.id || etudiant.filiere_id;
+    const targetMatieres = matieres.filter(m => !targetFiliereId || Number(m.filiere_id) === Number(targetFiliereId));
+
+    return targetMatieres.map(m => {
+      const semObj = semestres.find(s => Number(s.id) === Number(m.semestre_id));
+      const ensObj = enseignants.find(e => Number(e.id) === Number(m.enseignant_id));
+      
+      // Directly attached supports from supports_cours table
+      const attached = supportsCours.filter(s => Number(s.matiere_id) === Number(m.id));
+      
+      // If matiere has support_fichier_nom or support_fichier_url that is not yet in attached
+      if ((m.support_fichier_nom || m.support_fichier_url) && !attached.some(s => s.fichier_url === m.support_fichier_url || s.titre.includes(m.support_fichier_nom || ''))) {
+        attached.unshift({
+          id: 8000 + Number(m.id),
+          titre: m.support_fichier_nom || `Polycopié de cours : ${m.nom}`,
+          matiere_id: m.id,
+          filiere_id: m.filiere_id,
+          type_document: (m.support_fichier_nom?.endsWith('.ppt') || m.support_fichier_nom?.endsWith('.pptx'))
+            ? 'Diaporama PPT'
+            : (m.support_fichier_nom?.endsWith('.doc') || m.support_fichier_nom?.endsWith('.docx'))
+              ? 'Fiche TP/TD'
+              : 'PDF',
+          fichier_url: m.support_fichier_url || 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+          description: `Document et cours officiel transmis par l'enseignant pour la matière ${m.code} - ${m.nom}.`,
+          publie_par: m.enseignant_nom || (ensObj ? `${ensObj.prenom} ${ensObj.nom}` : 'Enseignant Titulaire'),
+          date_publication: '2025-10-15'
+        });
+      }
+
+      return {
+        matiere: m,
+        semestre: semObj,
+        enseignant: ensObj,
+        supports: attached
+      };
+    });
+  }, [matieres, semestres, enseignants, supportsCours, studentFiliere?.id, etudiant.filiere_id]);
+
+  const filteredMatieresWithSupports = useMemo(() => {
+    return studentMatieresWithSupports.filter(item => {
+      // Semester filter
+      if (courseSemestreFilter !== 'all' && Number(item.matiere.semestre_id) !== Number(courseSemestreFilter)) {
+        return false;
+      }
+      // Search filter
+      if (courseSearch.trim()) {
+        const query = courseSearch.toLowerCase();
+        const matchCode = item.matiere.code.toLowerCase().includes(query);
+        const matchNom = item.matiere.nom.toLowerCase().includes(query);
+        const matchUE = item.matiere.ue_nom?.toLowerCase().includes(query) || false;
+        const matchEns = item.enseignant ? `${item.enseignant.prenom} ${item.enseignant.nom}`.toLowerCase().includes(query) : false;
+        const matchDoc = item.supports.some(s => s.titre.toLowerCase().includes(query) || (s.description && s.description.toLowerCase().includes(query)));
+        return matchCode || matchNom || matchUE || matchEns || matchDoc;
+      }
+      return true;
+    });
+  }, [studentMatieresWithSupports, courseSemestreFilter, courseSearch]);
+
+  const totalStudentSupportsCount = useMemo(() => {
+    return studentMatieresWithSupports.reduce((acc, curr) => acc + curr.supports.length, 0);
+  }, [studentMatieresWithSupports]);
 
   const getMention = (avg: number | null) => {
     if (avg === null) return 'En attente';
@@ -533,6 +627,298 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
 
+      {/* Top Student Navigation Tab Bar */}
+      <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center gap-2">
+        {[
+          { id: 'profil_etudiant', label: 'Mon Profil', icon: GraduationCap },
+          { id: 'supports_cours', label: 'Mes Matières & Supports', icon: BookOpen, badge: totalStudentSupportsCount },
+          { id: 'examen', label: 'Examen & Relevés', icon: Award },
+          { id: 'paiements', label: 'Mes Paiements', icon: CreditCard },
+          { id: 'absences', label: 'Suivi des Absences', icon: AlertCircle, badge: absences.length > 0 ? absences.length : undefined },
+        ].map((tab) => {
+          const Icon = tab.icon;
+          const isActive = currentTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab && setActiveTab(tab.id as any)}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                isActive
+                  ? 'bg-blue-600 text-white shadow-2xs'
+                  : 'bg-slate-50 hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200/80'
+              }`}
+            >
+              <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-500'}`} />
+              <span>{tab.label}</span>
+              {typeof tab.badge === 'number' && (
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                  isActive ? 'bg-white text-blue-700' : 'bg-blue-100 text-blue-800'
+                }`}>
+                  {tab.badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* TAB SUPPORTS DE COURS DIRECTEMENT CONNECTÉS AUX MATIÈRES */}
+      {currentTab === 'supports_cours' && (
+        <div className="space-y-6 animate-in fade-in duration-300">
+          
+          {/* Top Banner & Control Bar */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 md:p-6 space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+              <div>
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl border border-blue-100">
+                    <BookOpen className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h2 className="font-extrabold text-lg text-slate-900 flex items-center gap-2">
+                      <span>Supports de Cours & Polycopiés</span>
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
+                        {totalStudentSupportsCount} document{totalStudentSupportsCount > 1 ? 's' : ''}
+                      </span>
+                    </h2>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Filière : <b className="text-slate-800">{studentFiliere?.nom || 'Informatique'}</b> • Classe : <b className="text-slate-800">{studentClass?.code || 'L1'}</b> ({matieres.length} matières inscrites)
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Semester Filter Tabs */}
+              <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setCourseSemestreFilter('all')}
+                  className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
+                    courseSemestreFilter === 'all'
+                      ? 'bg-white text-blue-700 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Tous les semestres ({studentMatieresWithSupports.length})
+                </button>
+                {activeSemestres.map(s => {
+                  const countForSem = studentMatieresWithSupports.filter(m => Number(m.matiere.semestre_id) === Number(s.id)).length;
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => setCourseSemestreFilter(s.id)}
+                      className={`px-3 py-1.5 rounded-lg font-bold transition-all ${
+                        courseSemestreFilter === s.id
+                          ? 'bg-white text-blue-700 shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      {s.code || s.libelle} ({countForSem})
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Search Input Bar */}
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={courseSearch}
+                onChange={(e) => setCourseSearch(e.target.value)}
+                placeholder="Rechercher une matière, un code (ex: INF101, SQL), un enseignant ou un document..."
+                className="w-full h-11 pl-10 pr-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:bg-white transition-all"
+              />
+              {courseSearch && (
+                <button
+                  type="button"
+                  onClick={() => setCourseSearch('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-slate-600"
+                >
+                  Effacer
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Subjects and Course Materials List */}
+          {filteredMatieresWithSupports.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-3">
+              <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 mx-auto">
+                <Search className="w-6 h-6" />
+              </div>
+              <h3 className="font-bold text-sm text-slate-900">Aucune matière ou support trouvé</h3>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                Aucun résultat ne correspond à votre recherche "{courseSearch}". Essayez un autre terme ou réinitialisez les filtres.
+              </p>
+              <button
+                type="button"
+                onClick={() => { setCourseSearch(''); setCourseSemestreFilter('all'); }}
+                className="px-4 py-2 bg-blue-50 text-blue-700 font-bold text-xs rounded-xl hover:bg-blue-100 transition-colors"
+              >
+                Réinitialiser les filtres
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredMatieresWithSupports.map(({ matiere: mat, semestre: sem, enseignant: ens, supports: matSupports }) => {
+                const ensName = ens ? `${ens.prenom} ${ens.nom}` : mat.enseignant_nom || 'Enseignant Titulaire';
+
+                return (
+                  <div
+                    key={mat.id}
+                    className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden transition-all hover:border-slate-300"
+                  >
+                    {/* Subject Header Bar */}
+                    <div className="p-4 sm:p-5 bg-gradient-to-r from-slate-50 to-white border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-start sm:items-center gap-3">
+                        <div className="px-2.5 py-1.5 bg-blue-600 text-white rounded-xl font-mono font-black text-xs shadow-2xs">
+                          {mat.code}
+                        </div>
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="font-extrabold text-sm sm:text-base text-slate-900">
+                              {mat.nom}
+                            </h3>
+                            {sem && (
+                              <span className="px-2 py-0.5 rounded-md bg-slate-200/80 text-slate-700 text-[10px] font-extrabold font-mono">
+                                {sem.code || sem.libelle}
+                              </span>
+                            )}
+                            <span className="px-2 py-0.5 rounded-md bg-blue-50 border border-blue-200 text-blue-700 text-[10px] font-bold">
+                              {mat.credits || 3} Crédits
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 mt-0.5 flex flex-wrap items-center gap-x-2">
+                            <span>{mat.ue_nom || 'Unité d\'Enseignement'}</span>
+                            <span>•</span>
+                            <span>Enseignant : <b className="text-slate-700">{ensName}</b></span>
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2.5 py-1 rounded-xl text-[11px] font-bold ${
+                          matSupports.length > 0
+                            ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                            : 'bg-slate-100 text-slate-500 border border-slate-200'
+                        }`}>
+                          {matSupports.length} support{matSupports.length > 1 ? 's' : ''} disponible{matSupports.length > 1 ? 's' : ''}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Course Documents List */}
+                    <div className="p-4 sm:p-5">
+                      {matSupports.length === 0 ? (
+                        <div className="p-4 bg-slate-50/70 rounded-xl border border-dashed border-slate-200 flex items-center justify-between gap-3 text-xs text-slate-500">
+                          <div className="flex items-center gap-2">
+                            <Info className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                            <span>Aucun support de cours n'a encore été téléversé par l'enseignant pour cette matière.</span>
+                          </div>
+                          <span className="text-[10px] text-slate-400 font-mono">En attente de publication</span>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {matSupports.map((doc) => {
+                            const isPPT = doc.type_document === 'Diaporama PPT';
+                            const isTP = doc.type_document === 'Fiche TP/TD';
+                            const isDevoir = doc.type_document === 'Devoir / Exercice';
+
+                            const badgeColor = isPPT
+                              ? 'bg-amber-50 text-amber-800 border-amber-200'
+                              : isTP
+                                ? 'bg-indigo-50 text-indigo-800 border-indigo-200'
+                                : isDevoir
+                                  ? 'bg-purple-50 text-purple-800 border-purple-200'
+                                  : 'bg-rose-50 text-rose-800 border-rose-200';
+
+                            return (
+                              <div
+                                key={doc.id}
+                                className="p-4 bg-slate-50/60 hover:bg-blue-50/30 rounded-xl border border-slate-200 transition-all flex flex-col justify-between gap-3 group"
+                              >
+                                <div className="space-y-2">
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="flex items-center gap-2">
+                                      <div className={`p-2 rounded-lg ${
+                                        isPPT ? 'bg-amber-100 text-amber-700' :
+                                        isTP ? 'bg-indigo-100 text-indigo-700' :
+                                        isDevoir ? 'bg-purple-100 text-purple-700' :
+                                        'bg-rose-100 text-rose-700'
+                                      }`}>
+                                        <FileText className="w-4 h-4" />
+                                      </div>
+                                      <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase border ${badgeColor}`}>
+                                        {doc.type_document || 'PDF'}
+                                      </span>
+                                    </div>
+
+                                    {doc.date_publication && (
+                                      <span className="text-[10px] text-slate-400 flex items-center gap-1 font-mono">
+                                        <Clock className="w-3 h-3" />
+                                        {doc.date_publication}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <div>
+                                    <h4 className="font-bold text-xs sm:text-sm text-slate-900 group-hover:text-blue-700 transition-colors leading-snug">
+                                      {doc.titre}
+                                    </h4>
+                                    {doc.description && (
+                                      <p className="text-[11px] text-slate-600 mt-1 line-clamp-2 leading-relaxed">
+                                        {doc.description}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between gap-2">
+                                  <span className="text-[10px] text-slate-500 truncate max-w-[140px]">
+                                    Par : <b>{doc.publie_par || ensName}</b>
+                                  </span>
+
+                                  <div className="flex items-center gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => setViewingSupportModal({ support: doc, matiere: mat })}
+                                      className="px-2.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-colors shadow-2xs"
+                                      title="Lire et prévisualiser le document"
+                                    >
+                                      <Eye className="w-3.5 h-3.5 text-slate-500" />
+                                      <span>Aperçu</span>
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDownloadSupport(doc, mat)}
+                                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1.5 transition-colors shadow-2xs"
+                                      title="Télécharger le fichier sur votre appareil"
+                                    >
+                                      <Download className="w-3.5 h-3.5" />
+                                      <span>Télécharger</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+        </div>
+      )}
+
       {/* TAB EXAMEN & RELEVÉ DE NOTES */}
       {currentTab === 'examen' && (
         <div className="space-y-6 animate-in fade-in duration-300">
@@ -775,8 +1161,30 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
                             return (
                               <tr key={row.matiere.id || idx} className={idx % 2 === 0 ? 'bg-white hover:bg-slate-50/80' : 'bg-slate-50/40 hover:bg-slate-50/80'}>
                                 <td className="px-3 py-1.5 font-semibold text-slate-900 border-r border-slate-200">
-                                  <span className="font-mono text-[10.5px] text-blue-600 font-bold mr-1.5">{row.matiere.code}</span>
-                                  <span>{row.matiere.nom}</span>
+                                  <div className="flex flex-wrap items-center justify-between gap-1.5">
+                                    <div>
+                                      <span className="font-mono text-[10.5px] text-blue-600 font-bold mr-1.5">{row.matiere.code}</span>
+                                      <span>{row.matiere.nom}</span>
+                                    </div>
+                                    {(() => {
+                                      const matSupports = supportsCours.filter(s => Number(s.matiere_id) === Number(row.matiere.id));
+                                      if (matSupports.length === 0) return null;
+                                      return (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            if (setActiveTab) setActiveTab('supports_cours');
+                                            setCourseSearch(row.matiere.code);
+                                          }}
+                                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors cursor-pointer"
+                                          title={`Accéder aux ${matSupports.length} support(s) de cours pour ${row.matiere.nom}`}
+                                        >
+                                          <BookOpen className="w-3 h-3 text-blue-600" />
+                                          <span>Supports ({matSupports.length})</span>
+                                        </button>
+                                      );
+                                    })()}
+                                  </div>
                                 </td>
                                 <td className="px-2.5 py-1.5 text-center font-mono text-slate-700 border-r border-slate-200">
                                   {row.cc !== null ? row.cc.toFixed(2) : '--'}
@@ -1154,6 +1562,30 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
               </form>
             </div>
 
+            {/* Block 4: Accès Direct aux Supports de Cours */}
+            <div className="md:col-span-2 p-5 bg-blue-50/60 rounded-[16px] border border-blue-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-blue-600 text-white rounded-xl shadow-xs">
+                  <BookOpen className="w-6 h-6" />
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-sm text-slate-900">Mes Supports de Cours & Matières</h4>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    <b>{totalStudentSupportsCount} supports</b> disponibles répartis sur vos <b>{matieres.length} matières</b> inscrites.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab && setActiveTab('supports_cours')}
+                className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl flex items-center gap-2 transition-all shadow-xs flex-shrink-0"
+              >
+                <span>Accéder aux cours & supports</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+
           </div>
 
         </div>
@@ -1250,6 +1682,107 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
             </button>
           </div>
         </Modal>
+      )}
+
+      {/* Modal Aperçu & Consultation de Document */}
+      {viewingSupportModal && (
+        <Modal
+          isOpen={!!viewingSupportModal}
+          onClose={() => setViewingSupportModal(null)}
+          title={`Document de cours : ${viewingSupportModal.support.titre}`}
+          maxWidth="max-w-3xl"
+        >
+          <div className="space-y-4 p-2">
+            {/* Header document card */}
+            <div className="p-4 bg-slate-900 text-white rounded-xl space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="px-2.5 py-0.5 rounded-md bg-blue-600 text-white font-mono font-bold text-xs">
+                  {viewingSupportModal.matiere?.code || 'COURS'}
+                </span>
+                <span className="text-xs font-medium text-slate-300">
+                  {viewingSupportModal.support.type_document || 'PDF'} • Publié le {viewingSupportModal.support.date_publication || '2025-10-15'}
+                </span>
+              </div>
+              <h3 className="font-extrabold text-base sm:text-lg">
+                {viewingSupportModal.support.titre}
+              </h3>
+              <p className="text-xs text-slate-300">
+                Matière : <b>{viewingSupportModal.matiere?.nom || 'Matière'}</b> • Auteur : <b>{viewingSupportModal.support.publie_par || 'Enseignant Titulaire'}</b>
+              </p>
+            </div>
+
+            {/* Document Previewer Frame & Content */}
+            <div className="p-6 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
+              <div className="space-y-2">
+                <h4 className="font-bold text-xs text-slate-700 uppercase tracking-wider">Résumé et Contenu Pédagogique :</h4>
+                <p className="text-xs text-slate-800 leading-relaxed bg-white p-3.5 rounded-lg border border-slate-200">
+                  {viewingSupportModal.support.description || 'Document officiel de cours mis à disposition des étudiants inscrits dans l\'unité d\'enseignement.'}
+                </p>
+              </div>
+
+              <div className="p-4 bg-blue-50/80 rounded-xl border border-blue-200 space-y-2">
+                <h4 className="font-bold text-xs text-blue-900 flex items-center gap-1.5">
+                  <BookOpen className="w-4 h-4 text-blue-700" />
+                  <span>Grandes Lignes & Chapitres Couverts</span>
+                </h4>
+                <ul className="text-xs text-slate-700 space-y-1.5 list-disc pl-5">
+                  <li>Chapitre 1 : Fondements théoriques, concepts clés et définitions de base</li>
+                  <li>Chapitre 2 : Méthodologie, modélisation et cas d'usage pratiques</li>
+                  <li>Chapitre 3 : Applications concrètes, exercices d'approfondissement et synthèses</li>
+                  <li>Annexes : Lexique des termes techniques et références bibliographiques</li>
+                </ul>
+              </div>
+
+              <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-800 flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                <span>Ce document est validé par le Conseil Pédagogique pour l'année universitaire en cours.</span>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setViewingSupportModal(null)}
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors"
+              >
+                Fermer l'aperçu
+              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-colors shadow-2xs"
+                >
+                  <Printer className="w-3.5 h-3.5 text-slate-600" />
+                  <span>Imprimer</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleDownloadSupport(viewingSupportModal.support, viewingSupportModal.matiere);
+                  }}
+                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs flex items-center gap-2 transition-all shadow-xs"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Télécharger le Fichier</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Real-time Download Toast Feedback */}
+      {downloadToast && (
+        <div className="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-xl border border-slate-700 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-3 duration-300 max-w-md">
+          <div className="p-2 bg-emerald-500/20 text-emerald-400 rounded-xl">
+            <CheckCircle className="w-4 h-4" />
+          </div>
+          <p className="text-xs font-semibold">{downloadToast}</p>
+        </div>
       )}
 
     </div>
