@@ -1817,24 +1817,59 @@ app.put("/api/tables/:tableName/:id", async (req, res) => {
 // DELETE /api/tables/:tableName/:id - Delete a row by ID in MySQL
 app.delete("/api/tables/:tableName/:id", async (req, res) => {
   const { tableName, id } = req.params;
+  const numId = Number(id);
   const storageKey = TABLE_KEY_MAP[tableName] || `unigestion_${tableName}`;
   const db = readDatabase();
   let rows = db[storageKey] || db[tableName] || [];
   
-  const filtered = rows.filter((r: any) => Number(r.id) !== Number(id));
+  const filtered = rows.filter((r: any) => Number(r.id) !== numId);
   db[storageKey] = filtered;
   db[tableName] = filtered;
   saveDatabase(db);
 
-  // MySQL direct delete
+  // MySQL direct delete with cascading cleanup
   if (await isMySqlAvailable()) {
     try {
       const pool = getMySqlPool();
-      await pool.query("DELETE FROM ?? WHERE id = ?", [tableName, Number(id)]);
-    } catch {}
+      await pool.query("SET FOREIGN_KEY_CHECKS = 0");
+
+      if (tableName === 'etudiants') {
+        await pool.query("DELETE FROM inscriptions WHERE etudiant_id = ?", [numId]);
+        await pool.query("DELETE FROM notes WHERE etudiant_id = ?", [numId]);
+        await pool.query("DELETE FROM absences WHERE etudiant_id = ?", [numId]);
+        await pool.query("DELETE FROM paiements WHERE etudiant_id = ?", [numId]);
+        await pool.query("DELETE FROM bulletins WHERE etudiant_id = ?", [numId]);
+      } else if (tableName === 'classes') {
+        await pool.query("DELETE FROM inscriptions WHERE classe_id = ?", [numId]);
+        await pool.query("DELETE FROM bulletins WHERE classe_id = ?", [numId]);
+      } else if (tableName === 'matieres') {
+        await pool.query("DELETE FROM notes WHERE matiere_id = ?", [numId]);
+        await pool.query("DELETE FROM absences WHERE matiere_id = ?", [numId]);
+        await pool.query("DELETE FROM supports_cours WHERE matiere_id = ?", [numId]);
+      } else if (tableName === 'filieres') {
+        await pool.query("DELETE FROM classes WHERE filiere_id = ?", [numId]);
+        await pool.query("DELETE FROM matieres WHERE filiere_id = ?", [numId]);
+        await pool.query("DELETE FROM niveaux WHERE filiere_id = ?", [numId]);
+        await pool.query("DELETE FROM supports_cours WHERE filiere_id = ?", [numId]);
+      } else if (tableName === 'facultes') {
+        await pool.query("DELETE FROM filieres WHERE faculte_id = ?", [numId]);
+      } else if (tableName === 'universites') {
+        await pool.query("DELETE FROM facultes WHERE universite_id = ?", [numId]);
+      } else if (tableName === 'annees_academiques') {
+        await pool.query("DELETE FROM inscriptions WHERE annee_academique_id = ?", [numId]);
+        await pool.query("DELETE FROM notes WHERE annee_academique_id = ?", [numId]);
+        await pool.query("DELETE FROM bulletins WHERE annee_academique_id = ?", [numId]);
+        await pool.query("DELETE FROM paiements WHERE annee_academique_id = ?", [numId]);
+      }
+
+      await pool.query("DELETE FROM ?? WHERE id = ?", [tableName, numId]);
+      await pool.query("SET FOREIGN_KEY_CHECKS = 1");
+    } catch (e: any) {
+      console.error(`MySQL DELETE error on ${tableName} ID #${numId}:`, e?.message);
+    }
   }
   
-  res.json({ success: true, table: tableName, message: `Enregistrement ID #${id} supprimé avec succès de la table ${tableName} dans MySQL.` });
+  res.json({ success: true, table: tableName, message: `Enregistrement ID #${numId} supprimé avec succès de la table ${tableName} dans MySQL.` });
 });
 
 // GET ALL DATA FOR REALTIME FRONTEND SYNC
