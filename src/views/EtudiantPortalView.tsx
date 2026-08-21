@@ -628,42 +628,6 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
 
-      {/* Top Student Navigation Tab Bar */}
-      <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center gap-2">
-        {[
-          { id: 'profil_etudiant', label: 'Mon Profil', icon: GraduationCap },
-          { id: 'supports_cours', label: 'Mes Matières & Supports', icon: BookOpen, badge: totalStudentSupportsCount },
-          { id: 'examen', label: 'Examen & Relevés', icon: Award },
-          { id: 'paiements', label: 'Mes Paiements', icon: CreditCard },
-          { id: 'absences', label: 'Suivi des Absences', icon: AlertCircle, badge: absences.length > 0 ? absences.length : undefined },
-        ].map((tab) => {
-          const Icon = tab.icon;
-          const isActive = currentTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab && setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                isActive
-                  ? 'bg-blue-600 text-white shadow-2xs'
-                  : 'bg-slate-50 hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200/80'
-              }`}
-            >
-              <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-500'}`} />
-              <span>{tab.label}</span>
-              {typeof tab.badge === 'number' && (
-                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
-                  isActive ? 'bg-white text-blue-700' : 'bg-blue-100 text-blue-800'
-                }`}>
-                  {tab.badge}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
       {/* TAB SUPPORTS DE COURS DIRECTEMENT CONNECTÉS AUX MATIÈRES */}
       {currentTab === 'supports_cours' && (
         <div className="space-y-6 animate-in fade-in duration-300">
