@@ -213,6 +213,9 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
   };
 
   const [viewingReceipt, setViewingReceipt] = useState<Paiement | null>(null);
+  const [isQuitusModalOpen, setIsQuitusModalOpen] = useState(false);
+  const [paymentSearch, setPaymentSearch] = useState('');
+  const [paymentModeFilter, setPaymentModeFilter] = useState('ALL');
 
   // Current selected tab state helper - Supports de cours directly integrated
   const validStudentTabs = ['profil_etudiant', 'supports_cours', 'examen', 'paiements', 'absences'];
@@ -440,7 +443,7 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
 
   // Gather student's inscriptions & training fees (Frais de formation) across all registered filières
   const fraisFormationList = (() => {
-    const list: { filiereCode: string; montant: number; reduction: number; montantDu: number; annee: string }[] = [];
+    const list: { filiereCode: string; filiereNom: string; montant: number; reduction: number; montantDu: number; annee: string }[] = [];
     const seenClasses = new Set<number>();
 
     studentInscriptions.forEach(insc => {
@@ -448,11 +451,13 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
       const cls = classes.find(c => Number(c.id) === Number(insc.classe_id));
       const fil = filieres.find(f => Number(f.id) === Number(cls?.filiere_id));
       const code = fil?.code || cls?.code || 'IG1';
-      const montant = insc.frais_inscription || (code === 'IG1' ? 550000 : code === 'IG2' ? 450000 : 500000);
+      const nom = fil?.nom || cls?.nom || 'Informatique de Gestion';
+      const montant = insc.frais_inscription || fil?.frais_scolarite || (code === 'IG1' ? 550000 : code === 'IG2' ? 450000 : 500000);
       const reduction = 0;
       const anneeObj = annees.find(a => Number(a.id) === Number(insc.annee_academique_id));
       list.push({
         filiereCode: code,
+        filiereNom: nom,
         montant,
         reduction,
         montantDu: montant - reduction,
@@ -464,10 +469,12 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
       const cls = studentClass;
       const fil = studentFiliere;
       const code = fil?.code || cls?.code || 'IG1';
-      const montant = code === 'IG1' ? 550000 : code === 'IG2' ? 450000 : 500000;
+      const nom = fil?.nom || cls?.nom || 'Informatique de Gestion';
+      const montant = fil?.frais_scolarite || (code === 'IG1' ? 550000 : code === 'IG2' ? 450000 : 500000);
       const reduction = 0;
       list.push({
         filiereCode: code,
+        filiereNom: nom,
         montant,
         reduction,
         montantDu: montant - reduction,
@@ -478,9 +485,10 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
     if (list.length === 0) {
       list.push({
         filiereCode: studentFiliere?.code || 'IG1',
-        montant: 550000,
+        filiereNom: studentFiliere?.nom || 'Informatique de Gestion',
+        montant: studentFiliere?.frais_scolarite || 550000,
         reduction: 0,
-        montantDu: 550000,
+        montantDu: studentFiliere?.frais_scolarite || 550000,
         annee: activeAnnee?.code.replace('-', ' - ') || '2025 - 2026'
       });
     }
@@ -491,6 +499,26 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
   const totalFraisDusSum = fraisFormationList.reduce((sum, item) => sum + item.montantDu, 0);
   const totalMontantPaye = paiements.reduce((acc, p) => acc + (p.montant_paye || 0), 0);
   const soldeRestant = Math.max(0, totalFraisDusSum - totalMontantPaye);
+  const tauxReglement = totalFraisDusSum > 0 ? Math.min(100, Math.round((totalMontantPaye / totalFraisDusSum) * 100)) : 100;
+  const isCompteSolde = soldeRestant <= 0 && totalMontantPaye > 0;
+
+  // Filtered payments list for the student
+  const filteredPaiements = useMemo(() => {
+    return paiements.filter(p => {
+      if (paymentModeFilter !== 'ALL' && p.mode_paiement !== paymentModeFilter) {
+        return false;
+      }
+      if (paymentSearch.trim()) {
+        const q = paymentSearch.toLowerCase();
+        const refMatch = p.reference_recu?.toLowerCase().includes(q);
+        const typeMatch = p.type_frais?.toLowerCase().includes(q);
+        const modeMatch = p.mode_paiement?.toLowerCase().includes(q);
+        const remMatch = p.remarque?.toLowerCase().includes(q);
+        if (!refMatch && !typeMatch && !modeMatch && !remMatch) return false;
+      }
+      return true;
+    });
+  }, [paiements, paymentModeFilter, paymentSearch]);
 
   const paiementsFiliereList = paiements.map((p, idx) => {
     let filiereCode = p.filiere_code;
@@ -513,7 +541,10 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
       filiereCode,
       montantPaye: p.montant_paye,
       datePaiement: p.date_paiement,
-      anneeText
+      anneeText,
+      modePaiement: p.mode_paiement,
+      reference: p.reference_recu,
+      typeFrais: p.type_frais
     };
   });
 
@@ -1223,141 +1254,290 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
       {currentTab === 'paiements' && (
         <div className="space-y-6 animate-in fade-in duration-300">
           
+          {/* Financial KPI Summary Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            
+            {/* Total Frais Dus */}
+            <div className="bg-white p-5 rounded-[18px] border border-slate-200 shadow-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Frais Scolaires Totaux</span>
+                <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
+                  <Building2 className="w-4 h-4" />
+                </div>
+              </div>
+              <div>
+                <p className="text-xl sm:text-2xl font-black text-slate-900 font-mono">
+                  {totalFraisDusSum.toLocaleString()} <span className="text-xs font-semibold text-slate-500">FCFA</span>
+                </p>
+                <p className="text-[11px] text-slate-500 mt-0.5">Année académique en cours</p>
+              </div>
+            </div>
+
+            {/* Total Réglé */}
+            <div className="bg-white p-5 rounded-[18px] border border-slate-200 shadow-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">Total Réglé & Encaissé</span>
+                <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl">
+                  <CheckCircle className="w-4 h-4" />
+                </div>
+              </div>
+              <div>
+                <p className="text-xl sm:text-2xl font-black text-emerald-600 font-mono">
+                  {totalMontantPaye.toLocaleString()} <span className="text-xs font-semibold text-emerald-700">FCFA</span>
+                </p>
+                <p className="text-[11px] text-emerald-600/80 mt-0.5">{paiements.length} versement(s) comptabilisé(s)</p>
+              </div>
+            </div>
+
+            {/* Reste à Payer */}
+            <div className="bg-white p-5 rounded-[18px] border border-slate-200 shadow-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-amber-600 uppercase tracking-wider">Solde Restant Dû</span>
+                <div className="p-2 bg-amber-50 text-amber-600 rounded-xl">
+                  <Clock className="w-4 h-4" />
+                </div>
+              </div>
+              <div>
+                <p className={`text-xl sm:text-2xl font-black font-mono ${soldeRestant <= 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                  {soldeRestant.toLocaleString()} <span className="text-xs font-semibold text-slate-500">FCFA</span>
+                </p>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  {soldeRestant <= 0 ? "Frais de formation 100% soldés" : "Échéance en attente de versement"}
+                </p>
+              </div>
+            </div>
+
+            {/* Taux de Recouvrement / Quitus */}
+            <div className="bg-white p-5 rounded-[18px] border border-slate-200 shadow-xs flex flex-col justify-between space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">Taux de Règlement</span>
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                  tauxReglement >= 100 ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
+                }`}>
+                  {tauxReglement}%
+                </span>
+              </div>
+
+              {/* Progress Bar */}
+              <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    tauxReglement >= 100 ? 'bg-emerald-500' : 'bg-blue-600'
+                  }`}
+                  style={{ width: `${Math.min(100, Math.max(0, tauxReglement))}%` }}
+                />
+              </div>
+
+              {/* Quitus button */}
+              <button
+                type="button"
+                onClick={() => setIsQuitusModalOpen(true)}
+                className={`w-full py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-2xs ${
+                  soldeRestant <= 0
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                }`}
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>{soldeRestant <= 0 ? "Quitus de Scolarité Officiel" : "Situation Financière"}</span>
+              </button>
+            </div>
+
+          </div>
+
+          {/* Grille Détails Frais & Versements */}
           <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-            <div className="px-5 py-4 bg-slate-50 border-b border-slate-200">
-              <h3 className="font-bold text-base text-slate-900 flex items-center gap-2">
+            <div className="px-5 py-4 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+              <h3 className="font-bold text-sm sm:text-base text-slate-900 flex items-center gap-2">
                 <CreditCard className="w-5 h-5 text-blue-600" />
                 <span>Frais de formation et état de paiement</span>
               </h3>
+              <span className="text-xs text-slate-500 font-medium">
+                Année Académique : <b>{activeAnnee?.code.replace('-', ' - ') || '2025 - 2026'}</b>
+              </span>
             </div>
 
             <div className="p-4 sm:p-6 space-y-6">
               {/* Block 1: Frais de formation */}
-              <div className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50/30">
-                <div className="px-4 py-2.5 bg-slate-100/90 border-b border-slate-200 font-bold text-xs text-slate-800">
-                  Frais de formation
+              <div className="border border-slate-200 rounded-xl overflow-hidden bg-slate-50/30">
+                <div className="px-4 py-2.5 bg-slate-100/90 border-b border-slate-200 font-bold text-xs text-slate-800 flex items-center justify-between">
+                  <span>Frais de formation fixés</span>
+                  <span className="text-[10px] text-slate-500">Tarification officielle</span>
                 </div>
                 
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs border-collapse min-w-[500px]">
                     <thead>
                       <tr className="border-b border-slate-200 bg-white font-bold text-slate-900">
-                        <th className="px-4 py-2.5 w-1/4">Filière</th>
-                        <th className="px-4 py-2.5 w-1/4">Montant</th>
-                        <th className="px-4 py-2.5 w-1/4">Réduction</th>
-                        <th className="px-4 py-2.5 w-1/4">Montant dû</th>
+                        <th className="px-4 py-2.5 w-2/5">Filière / Programme</th>
+                        <th className="px-4 py-2.5 w-1/5">Montant Annuel</th>
+                        <th className="px-4 py-2.5 w-1/5">Exonération / Bourse</th>
+                        <th className="px-4 py-2.5 w-1/5 text-right">Montant dû</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 bg-white">
                       {fraisFormationList.map((item, idx) => (
                         <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="px-4 py-2.5 font-bold text-slate-900">{item.filiereCode}</td>
-                          <td className="px-4 py-2.5 font-bold text-slate-900">{item.montant.toLocaleString()} FCFA</td>
-                          <td className="px-4 py-2.5 font-bold text-rose-500">{item.reduction.toLocaleString()} FCFA</td>
-                          <td className="px-4 py-2.5 font-extrabold text-emerald-600">{item.montantDu.toLocaleString()} FCFA</td>
+                          <td className="px-4 py-2.5">
+                            <span className="font-bold text-slate-900">{item.filiereCode}</span>
+                            <span className="text-slate-500 text-[11px] block">{item.filiereNom}</span>
+                          </td>
+                          <td className="px-4 py-2.5 font-bold text-slate-900 font-mono">{item.montant.toLocaleString()} FCFA</td>
+                          <td className="px-4 py-2.5 font-bold text-rose-500 font-mono">{item.reduction.toLocaleString()} FCFA</td>
+                          <td className="px-4 py-2.5 font-extrabold text-emerald-600 font-mono text-right">{item.montantDu.toLocaleString()} FCFA</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
 
-                <div className="px-4 py-2 border-t border-slate-200 bg-slate-50 text-[11px] font-medium text-slate-600">
-                  Année : {activeAnnee?.code.replace('-', ' - ') || '2025 - 2026'}
+                <div className="px-4 py-2.5 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-xs">
+                  <span className="font-medium text-slate-600">Total Frais de Formation dus :</span>
+                  <span className="font-extrabold text-slate-900 font-mono text-sm">{totalFraisDusSum.toLocaleString()} FCFA</span>
                 </div>
               </div>
 
-              {/* Block 2: Paiement */}
-              <div className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50/30">
-                <div className="px-4 py-2.5 bg-slate-100/90 border-b border-slate-200 font-bold text-xs text-slate-800">
-                  Paiement
+              {/* Block 2: Paiement Récapitulatif */}
+              <div className="border border-slate-200 rounded-xl overflow-hidden bg-slate-50/30">
+                <div className="px-4 py-2.5 bg-slate-100/90 border-b border-slate-200 font-bold text-xs text-slate-800 flex items-center justify-between">
+                  <span>Paiements enregistrés par l'administration</span>
+                  <span className="text-[10px] text-slate-500">{paiements.length} transaction(s)</span>
                 </div>
 
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs border-collapse min-w-[500px]">
                     <thead>
                       <tr className="border-b border-slate-200 bg-white font-bold text-slate-900">
-                        <th className="px-4 py-2.5 w-1/4">Filière</th>
-                        <th className="px-4 py-2.5 w-1/4">Montant</th>
-                        <th className="px-4 py-2.5 w-1/4">Date</th>
-                        <th className="px-4 py-2.5 w-1/4">Année</th>
+                        <th className="px-4 py-2.5">Filière</th>
+                        <th className="px-4 py-2.5">Réf. Reçu</th>
+                        <th className="px-4 py-2.5">Montant Versé</th>
+                        <th className="px-4 py-2.5">Mode</th>
+                        <th className="px-4 py-2.5">Date</th>
+                        <th className="px-4 py-2.5 text-right">Année</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 bg-white">
                       {paiementsFiliereList.length === 0 ? (
                         <tr>
-                          <td colSpan={4} className="px-4 py-4 text-center text-slate-400">
-                            Aucun règlement enregistré.
+                          <td colSpan={6} className="px-4 py-6 text-center text-slate-400">
+                            Aucun règlement enregistré sur votre dossier pour le moment.
                           </td>
                         </tr>
                       ) : (
                         paiementsFiliereList.map((item, idx) => (
                           <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
                             <td className="px-4 py-2.5 font-bold text-slate-900">{item.filiereCode}</td>
-                            <td className="px-4 py-2.5 font-bold text-slate-900">{item.montantPaye.toLocaleString()} CFA</td>
+                            <td className="px-4 py-2.5 font-mono text-blue-700 font-semibold">{item.reference || '--'}</td>
+                            <td className="px-4 py-2.5 font-bold text-emerald-600 font-mono">{item.montantPaye.toLocaleString()} CFA</td>
+                            <td className="px-4 py-2.5 font-medium text-slate-700">{item.modePaiement || 'Espèces'}</td>
                             <td className="px-4 py-2.5 font-medium text-slate-700">{item.datePaiement}</td>
-                            <td className="px-4 py-2.5 font-medium text-slate-700">{item.anneeText}</td>
+                            <td className="px-4 py-2.5 font-medium text-slate-700 text-right">{item.anneeText}</td>
                           </tr>
                         ))
                       )}
                     </tbody>
                   </table>
                 </div>
+
+                <div className="px-4 py-2.5 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-xs">
+                  <span className="font-medium text-slate-600">Total Encaissé & Validé :</span>
+                  <span className="font-extrabold text-emerald-600 font-mono text-sm">{totalMontantPaye.toLocaleString()} FCFA</span>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Payments Table - Detailed Receipt Log */}
-          <div className="bg-white rounded-[16px] sm:rounded-[20px] border border-[#E5E7EB] shadow-xs overflow-hidden">
-            <div className="p-3.5 sm:p-4 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
-              <span className="font-bold text-xs text-[#1A1A1A] uppercase">Règlements & Reçus Officiels ({paiements.length})</span>
+          {/* Payments Table - Detailed Receipt Log with Search & Filter */}
+          <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-200 shadow-xs overflow-hidden space-y-4 p-4 sm:p-6">
+            
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+              <div>
+                <h4 className="font-bold text-sm sm:text-base text-slate-900 uppercase tracking-tight">
+                  Historique Détaillé des Reçus de Caisse ({filteredPaiements.length})
+                </h4>
+                <p className="text-xs text-slate-500">
+                  Consultez et imprimez les reçus officiels délivrés par le service de comptabilité
+                </p>
+              </div>
+
+              {/* Search & Mode Filters */}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={paymentSearch}
+                    onChange={(e) => setPaymentSearch(e.target.value)}
+                    placeholder="Rechercher par réf, type..."
+                    className="h-9 pl-8 pr-3 text-xs border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 w-44 sm:w-56"
+                  />
+                </div>
+
+                <select
+                  value={paymentModeFilter}
+                  onChange={(e) => setPaymentModeFilter(e.target.value)}
+                  className="h-9 px-3 text-xs border border-slate-200 rounded-xl bg-slate-50 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="ALL">Tous les modes</option>
+                  <option value="Orange Money">Orange Money</option>
+                  <option value="Wave">Wave</option>
+                  <option value="Moov Money">Moov Money</option>
+                  <option value="Espèces">Espèces</option>
+                  <option value="Virement">Virement</option>
+                  <option value="Chèque">Chèque</option>
+                </select>
+              </div>
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse min-w-[640px]">
+              <table className="w-full text-left border-collapse min-w-[700px]">
                 <thead>
-                  <tr className="bg-gray-50 text-[11px] font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
-                    <th className="px-4 sm:px-6 py-3.5">Réf. Reçu</th>
-                    <th className="px-4 sm:px-6 py-3.5">Type de Frais</th>
-                    <th className="px-4 sm:px-6 py-3.5 text-emerald-600">Montant Encaissé</th>
-                    <th className="px-4 sm:px-6 py-3.5">Mode de Règlement</th>
-                    <th className="px-4 sm:px-6 py-3.5">Date de Règlement</th>
-                    <th className="px-4 sm:px-6 py-3.5">Statut</th>
-                    <th className="px-4 sm:px-6 py-3.5 text-right">Action Reçu</th>
+                  <tr className="bg-slate-50 text-[11px] font-bold text-slate-600 uppercase tracking-wider border-b border-slate-200">
+                    <th className="px-4 py-3">Réf. Reçu</th>
+                    <th className="px-4 py-3">Type de Frais</th>
+                    <th className="px-4 py-3 text-emerald-700">Montant Encaissé</th>
+                    <th className="px-4 py-3">Mode de Règlement</th>
+                    <th className="px-4 py-3">Date de Règlement</th>
+                    <th className="px-4 py-3">Statut</th>
+                    <th className="px-4 py-3 text-right">Reçu Officiel</th>
                   </tr>
                 </thead>
-                <tbody className="text-xs divide-y divide-gray-100">
-                  {paiements.length === 0 ? (
+                <tbody className="text-xs divide-y divide-slate-100">
+                  {filteredPaiements.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-4 sm:px-6 py-8 text-center text-gray-400">
-                        Aucun paiement enregistré pour votre dossier par l'administration pour le moment.
+                      <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
+                        {paiements.length === 0
+                          ? "Aucun paiement enregistré pour votre dossier par l'administration pour le moment."
+                          : "Aucun paiement ne correspond à vos critères de recherche."}
                       </td>
                     </tr>
                   ) : (
-                    paiements.map((item) => (
-                      <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
-                        <td className="px-4 sm:px-6 py-3.5 font-mono font-bold text-gray-800 whitespace-nowrap">{item.reference_recu}</td>
-                        <td className="px-4 sm:px-6 py-3.5 font-semibold text-[#1A1A1A]">{item.type_frais}</td>
-                        <td className="px-4 sm:px-6 py-3.5 font-bold text-emerald-600 font-mono text-sm whitespace-nowrap">
+                    filteredPaiements.map((item) => (
+                      <tr key={item.id} className="hover:bg-blue-50/40 transition-colors">
+                        <td className="px-4 py-3 font-mono font-bold text-blue-700 whitespace-nowrap">{item.reference_recu}</td>
+                        <td className="px-4 py-3 font-semibold text-slate-900">{item.type_frais}</td>
+                        <td className="px-4 py-3 font-bold text-emerald-600 font-mono text-sm whitespace-nowrap">
                           {item.montant_paye.toLocaleString()} FCFA
                         </td>
-                        <td className="px-4 sm:px-6 py-3.5 text-gray-600 whitespace-nowrap">{item.mode_paiement}</td>
-                        <td className="px-4 sm:px-6 py-3.5 text-gray-500 whitespace-nowrap">{item.date_paiement}</td>
-                        <td className="px-4 sm:px-6 py-3.5 whitespace-nowrap">
+                        <td className="px-4 py-3 text-slate-700 whitespace-nowrap font-medium">{item.mode_paiement}</td>
+                        <td className="px-4 py-3 text-slate-600 whitespace-nowrap font-mono">{item.date_paiement}</td>
+                        <td className="px-4 py-3 whitespace-nowrap">
                           <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                            item.statut === 'Complet'
+                            item.statut === 'Complet' || (item.reste_a_payer !== undefined && item.reste_a_payer <= 0)
                               ? 'bg-emerald-100 text-emerald-800'
                               : 'bg-amber-100 text-amber-800'
                           }`}>
-                            {item.statut}
+                            {item.statut || 'Complet'}
                           </span>
                         </td>
-                        <td className="px-4 sm:px-6 py-3.5 text-right whitespace-nowrap">
-                          <button type="button"
+                        <td className="px-4 py-3 text-right whitespace-nowrap">
+                          <button
+                            type="button"
                             onClick={() => setViewingReceipt(item)}
-                            className="px-2.5 py-1.5 bg-[#0066FF] hover:bg-blue-700 text-white rounded-[8px] sm:rounded-[10px] text-xs font-bold flex items-center gap-1.5 ml-auto transition-colors shadow-xs"
+                            className="px-3 py-1.5 bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white rounded-xl text-xs font-bold flex items-center gap-1.5 ml-auto transition-all shadow-2xs border border-blue-200 hover:border-blue-600"
                           >
                             <Printer className="w-3.5 h-3.5" />
-                            <span>Voir Reçu</span>
+                            <span>Imprimer Reçu</span>
                           </button>
                         </td>
                       </tr>
@@ -1592,59 +1772,176 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
         </div>
       )}
 
-      {/* Modal Reçu de Paiement */}
+      {/* Modal Reçu de Paiement Officiel */}
       {viewingReceipt && (
         <Modal
           isOpen={!!viewingReceipt}
           onClose={() => setViewingReceipt(null)}
-          title="Reçu de Caisse Officiel"
-          maxWidth="max-w-md"
+          title="Reçu de Paiement Officiel"
+          maxWidth="max-w-xl"
         >
-          <div className="space-y-4 text-xs p-2">
-            <div className="p-4 bg-slate-900 text-white rounded-[14px] text-center space-y-1">
-              <p className="text-[10px] font-mono text-blue-400 font-bold uppercase">
-                {universite?.nom || 'USTTB - UNIVERSITÉ DE BAMAKO'}
-              </p>
-              <p className="text-base font-extrabold">REÇU DE PAIEMENT N° {viewingReceipt.reference_recu}</p>
-              <p className="text-[10px] text-slate-300">Service de Recouvrement & Comptabilité</p>
+          <div className="space-y-5 text-xs text-[#1A1A1A] p-6 bg-white rounded-[16px] border border-gray-200">
+            <div className="flex items-center justify-between border-b pb-4">
+              <div>
+                <h3 className="font-bold text-[#0066FF] uppercase text-sm sm:text-base">
+                  {universite?.nom || 'USTTB - UNIVERSITÉ DE BAMAKO'}
+                </h3>
+                <p className="text-[10px] text-gray-500">Service de la Comptabilité et du Recouvrement</p>
+              </div>
+              <div className="text-right">
+                <span className="font-mono font-bold text-gray-800 text-sm block">{viewingReceipt.reference_recu}</span>
+                <span className="text-[10px] text-gray-400 font-mono">Date : {viewingReceipt.date_paiement}</span>
+              </div>
             </div>
 
-            <div className="space-y-2 divide-y divide-gray-100 font-medium">
-              <div className="flex justify-between py-1.5">
-                <span className="text-gray-500">Étudiant :</span>
-                <span className="font-bold text-[#1A1A1A]">{etudiant.nom.toUpperCase()} {etudiant.prenom}</span>
+            {(() => {
+              const anneeObj = annees.find(a => a.id === viewingReceipt.annee_academique_id);
+              const anneeText = viewingReceipt.annee_libelle || (anneeObj ? anneeObj.code.replace('-', ' - ') : '2025 - 2026');
+              return (
+                <div className="space-y-3 bg-gray-50 p-4 rounded-[14px]">
+                  <p><span className="font-bold text-slate-700">Étudiant :</span> {etudiant.nom.toUpperCase()} {etudiant.prenom} (<span className="font-mono font-bold">{etudiant.matricule}</span>)</p>
+                  <p><span className="font-bold text-slate-700">Filière / Classe :</span> {viewingReceipt.filiere_code || studentFiliere?.code || 'IG1'} - {studentClass?.nom || studentFiliere?.nom || 'Informatique'}</p>
+                  <p><span className="font-bold text-slate-700">Année Académique :</span> {anneeText}</p>
+                  <p><span className="font-bold text-slate-700">Objet du Règlement :</span> {viewingReceipt.type_frais}</p>
+                  <p><span className="font-bold text-slate-700">Mode de Règlement :</span> {viewingReceipt.mode_paiement}</p>
+                  {viewingReceipt.remarque && (
+                    <p><span className="font-bold text-slate-700">Observation :</span> {viewingReceipt.remarque}</p>
+                  )}
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200">
+                    <span className="font-bold text-slate-800 text-sm">Montant Encaissé :</span>
+                    <span className="text-base font-black text-emerald-600 font-mono">
+                      {viewingReceipt.montant_paye.toLocaleString()} FCFA
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
+
+            <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setViewingReceipt(null)}
+                className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 font-semibold rounded-xl text-xs transition-colors"
+              >
+                Fermer
+              </button>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="px-5 py-2.5 bg-[#0066FF] hover:bg-blue-700 text-white font-bold rounded-xl text-xs flex items-center gap-2 transition-all shadow-xs"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Imprimer le Reçu Officiel</span>
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Modal Quitus Financier & Attestation de Non-Redevance */}
+      {isQuitusModalOpen && (
+        <Modal
+          isOpen={isQuitusModalOpen}
+          onClose={() => setIsQuitusModalOpen(false)}
+          title="Quitus de Scolarité & Situation Financière"
+          maxWidth="max-w-xl"
+        >
+          <div className="space-y-6 text-xs text-slate-900 p-6 bg-white rounded-2xl border border-slate-200">
+            {/* Header document */}
+            <div className="flex items-center justify-between border-b pb-4">
+              <div>
+                <h3 className="font-black text-blue-700 uppercase text-sm sm:text-base">
+                  {universite?.nom || 'USTTB - UNIVERSITÉ DE BAMAKO'}
+                </h3>
+                <p className="text-[10px] text-slate-500">Direction des Affaires Financières & Comptabilité</p>
               </div>
-              <div className="flex justify-between py-1.5">
-                <span className="text-gray-500">Matricule :</span>
-                <span className="font-mono font-bold text-slate-900">{etudiant.matricule}</span>
-              </div>
-              <div className="flex justify-between py-1.5">
-                <span className="text-gray-500">Type de Règlement :</span>
-                <span className="font-bold text-[#0066FF]">{viewingReceipt.type_frais}</span>
-              </div>
-              <div className="flex justify-between py-1.5">
-                <span className="text-gray-500">Mode de Paiement :</span>
-                <span className="font-bold text-gray-800">{viewingReceipt.mode_paiement}</span>
-              </div>
-              <div className="flex justify-between py-1.5">
-                <span className="text-gray-500">Date d'Encaissement :</span>
-                <span className="font-bold text-gray-800">{viewingReceipt.date_paiement}</span>
-              </div>
-              <div className="flex justify-between py-2 text-sm">
-                <span className="font-bold text-gray-800">Montant Payé :</span>
-                <span className="font-black text-emerald-600 font-mono">
-                  {viewingReceipt.montant_paye.toLocaleString()} FCFA
+              <div className="text-right">
+                <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
+                  soldeRestant <= 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                }`}>
+                  {soldeRestant <= 0 ? 'Compte Soldé' : 'Solde Débiteur'}
+                </span>
+                <span className="text-[10px] text-slate-400 block mt-1 font-mono">
+                  {new Date().toLocaleDateString('fr-FR')}
                 </span>
               </div>
             </div>
 
-            <button type="button"
-              onClick={() => window.print()}
-              className="w-full h-[44px] bg-[#0066FF] hover:bg-blue-700 text-white font-bold rounded-[14px] flex items-center justify-center gap-2 transition-colors mt-4"
-            >
-              <Printer className="w-4 h-4" />
-              <span>Imprimer le Reçu</span>
-            </button>
+            {/* Content Certificate */}
+            <div className="p-5 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
+              <div className="text-center space-y-1 py-1">
+                <h4 className="text-sm font-extrabold uppercase text-slate-900 tracking-wide">
+                  ATTESTATION DE RÈGLEMENT DES FRAIS SCOLAIRES
+                </h4>
+                <p className="text-[11px] text-slate-500 font-medium">
+                  Année Universitaire : <b>{activeAnnee?.code.replace('-', ' - ') || '2025 - 2026'}</b>
+                </p>
+              </div>
+
+              <div className="space-y-2 text-xs divide-y divide-slate-200/80">
+                <div className="flex justify-between py-1.5">
+                  <span className="text-slate-500">Étudiant :</span>
+                  <span className="font-bold text-slate-900">{etudiant.nom.toUpperCase()} {etudiant.prenom}</span>
+                </div>
+                <div className="flex justify-between py-1.5">
+                  <span className="text-slate-500">Numéro Matricule :</span>
+                  <span className="font-mono font-bold text-slate-900">{etudiant.matricule}</span>
+                </div>
+                <div className="flex justify-between py-1.5">
+                  <span className="text-slate-500">Filière / Niveau :</span>
+                  <span className="font-bold text-blue-700">{studentFiliere?.nom || 'Informatique'} ({studentFiliere?.code || 'IG1'})</span>
+                </div>
+                <div className="flex justify-between py-1.5">
+                  <span className="text-slate-500">Total Frais Annuels :</span>
+                  <span className="font-mono font-bold text-slate-900">{totalFraisDusSum.toLocaleString()} FCFA</span>
+                </div>
+                <div className="flex justify-between py-1.5">
+                  <span className="text-slate-500">Montant Total Encaissé :</span>
+                  <span className="font-mono font-bold text-emerald-600">{totalMontantPaye.toLocaleString()} FCFA</span>
+                </div>
+                <div className="flex justify-between py-2 text-sm bg-white p-2.5 rounded-xl border border-slate-200 mt-2">
+                  <span className="font-bold text-slate-800">Solde Restant Dû :</span>
+                  <span className={`font-black font-mono ${soldeRestant <= 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                    {soldeRestant.toLocaleString()} FCFA
+                  </span>
+                </div>
+              </div>
+
+              {soldeRestant <= 0 ? (
+                <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-800 flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                  <span>
+                    L'étudiant est en règle avec l'administration comptable. Il est autorisé à se présenter à l'ensemble des épreuves d'examens et sessions universitaires.
+                  </span>
+                </div>
+              ) : (
+                <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-800 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                  <span>
+                    Un reliquat de <b>{soldeRestant.toLocaleString()} FCFA</b> reste à régulariser auprès de la caisse comptable avant la fin de l'échéance fixée.
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-between pt-2">
+              <button
+                type="button"
+                onClick={() => setIsQuitusModalOpen(false)}
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 font-semibold rounded-xl text-xs transition-colors"
+              >
+                Fermer
+              </button>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs flex items-center gap-2 transition-all shadow-xs"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Imprimer le Quitus / Attestation</span>
+              </button>
+            </div>
           </div>
         </Modal>
       )}
