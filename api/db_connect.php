@@ -48,7 +48,7 @@ $envData = loadDatabaseEnvVars(__DIR__ . '/../.env');
 
 $dbHost = getenv('MYSQL_HOST') ?: ($envData['MYSQL_HOST'] ?? 'localhost');
 $dbPort = getenv('MYSQL_PORT') ?: ($envData['MYSQL_PORT'] ?? '3306');
-$dbName = getenv('MYSQL_DATABASE') ?: ($envData['MYSQL_DATABASE'] ?? 'gestio_scolaire');
+$dbName = getenv('MYSQL_DATABASE') ?: ($envData['MYSQL_DATABASE'] ?? 'universite');
 $dbUser = getenv('MYSQL_USER') ?: ($envData['MYSQL_USER'] ?? 'root');
 $dbPass = getenv('MYSQL_PASSWORD') !== false ? getenv('MYSQL_PASSWORD') : ($envData['MYSQL_PASSWORD'] ?? '');
 

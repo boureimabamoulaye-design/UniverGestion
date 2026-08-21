@@ -1,10 +1,10 @@
 -- =========================================================
 -- UNIGESTION MALI - GESTION SCOLAIRE UNIVERSITAIRE COMPLÈTE
--- Base de données : gestio_scolaire (WAMP / XAMPP / LAMP)
+-- Base de données : universite (WAMP / XAMPP / LAMP)
 -- =========================================================
 
-CREATE DATABASE IF NOT EXISTS `gestio_scolaire` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE `gestio_scolaire`;
+CREATE DATABASE IF NOT EXISTS `universite` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE `universite`;
 
 SET FOREIGN_KEY_CHECKS = 0;
 

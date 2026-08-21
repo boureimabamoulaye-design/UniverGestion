@@ -21,7 +21,7 @@ if (file_exists($envPath) && is_readable($envPath)) {
 
 defined('DB_HOST') or define('DB_HOST', getenv('MYSQL_HOST') ?: ($envVars['MYSQL_HOST'] ?? 'localhost'));
 defined('DB_PORT') or define('DB_PORT', getenv('MYSQL_PORT') ?: ($envVars['MYSQL_PORT'] ?? '3306'));
-defined('DB_NAME') or define('DB_NAME', getenv('MYSQL_DATABASE') ?: ($envVars['MYSQL_DATABASE'] ?? 'gestio_scolaire'));
+defined('DB_NAME') or define('DB_NAME', getenv('MYSQL_DATABASE') ?: ($envVars['MYSQL_DATABASE'] ?? 'universite'));
 defined('DB_USER') or define('DB_USER', getenv('MYSQL_USER') ?: ($envVars['MYSQL_USER'] ?? 'root'));
 defined('DB_PASS') or define('DB_PASS', getenv('MYSQL_PASSWORD') !== false ? getenv('MYSQL_PASSWORD') : ($envVars['MYSQL_PASSWORD'] ?? ''));
 defined('DB_CHARSET') or define('DB_CHARSET', 'utf8mb4');

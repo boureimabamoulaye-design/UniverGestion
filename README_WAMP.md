@@ -1,6 +1,6 @@
 # Guide de Démarrage Rapide : MySQL + WAMP Server + VS Code
 
-Ce projet est configuré pour fonctionner **exclusivement avec votre base de données locale MySQL via WAMP Server et phpMyAdmin** sur la base **`gestio_scolaire`**.
+Ce projet est configuré pour fonctionner **exclusivement avec votre unique base de données locale MySQL via WAMP Server et phpMyAdmin** sur la base **`universite`**.
 
 ---
 
@@ -13,8 +13,8 @@ Ce projet est configuré pour fonctionner **exclusivement avec votre base de don
 ## 2. Base de Données dans phpMyAdmin
 1. Ouvrez votre navigateur et allez sur **[http://localhost/phpmyadmin](http://localhost/phpmyadmin)**.
 2. Identifiez-vous (par défaut : utilisateur `root`, mot de passe vide).
-3. Si la base **`gestio_scolaire`** existe déjà, elle est utilisée directement sans écraser vos données existantes.
-4. Si vous souhaitez importer la structure initiale complète, importez le fichier **`gestio_scolaire.sql`** (ou `/config/schema.sql`).
+3. Si la base **`universite`** existe déjà, elle est utilisée directement sans écraser vos données existantes.
+4. Si vous souhaitez importer la structure initiale complète, importez le fichier **`universite.sql`** (ou `/config/schema.sql`).
 
 ---
 
@@ -27,7 +27,7 @@ MYSQL_HOST=localhost
 MYSQL_PORT=3306
 MYSQL_USER=root
 MYSQL_PASSWORD=
-MYSQL_DATABASE=gestio_scolaire
+MYSQL_DATABASE=universite
 ```
 
 *(Si votre WAMP utilise le port MySQL alternatif `3308`, changez simplement `MYSQL_PORT=3308` dans ce fichier `.env`).*
@@ -56,10 +56,10 @@ MYSQL_DATABASE=gestio_scolaire
 * **Mot de passe** : `admin123`
 
 ### Espace Étudiant :
-* **Matricule** : `2024-USTTB-001` (ou tout étudiant enregistré dans la base `gestio_scolaire`)
+* **Matricule** : `2026-MAT-101` (ou tout étudiant enregistré dans la base `universite`)
 * **Mot de passe** : `etudiant123`
 
 ---
 
 ## 6. Vérification de la Connexion MySQL
-Toutes les opérations (connexion admin/étudiant, création/modification/suppression d'étudiants, filières, matières, saisie des notes, calcul des moyennes, bulletins, années académiques, semestres, classes, inscriptions, paiements) s'exécutent et se synchronisent directement avec **MySQL WAMP (`gestio_scolaire`)**.
+Toutes les opérations (connexion admin/étudiant, création/modification/suppression d'étudiants, filières, matières, saisie des notes, calcul des moyennes, bulletins, années académiques, semestres, classes, inscriptions, paiements) s'exécutent et se synchronisent directement avec **MySQL WAMP (`universite`)**.

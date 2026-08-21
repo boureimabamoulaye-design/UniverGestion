@@ -1,11 +1,11 @@
 -- =========================================================
 -- UNIGESTION MALI - GESTION SCOLAIRE UNIVERSITAIRE COMPLÈTE
--- Base de données : gestio_scolaire / universite
+-- Base de données : universite
 -- Compatible MySQL 5.7+ / 8.0+ / MariaDB (WAMP, XAMPP, LAMP)
 -- =========================================================
 
-CREATE DATABASE IF NOT EXISTS `gestio_scolaire` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE `gestio_scolaire`;
+CREATE DATABASE IF NOT EXISTS `universite` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE `universite`;
 
 SET FOREIGN_KEY_CHECKS = 0;
 
