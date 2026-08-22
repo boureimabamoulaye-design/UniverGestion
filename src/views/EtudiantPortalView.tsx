@@ -337,9 +337,9 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
   // Tab mode for Examen tab: semester ID (1 for S1, 2 for S2) or 0 = Bilan Annuel
   const [examenViewFilter, setExamenViewFilter] = useState<number>(1);
 
-  // Per-semester detailed calculations
+  // Per-semester detailed calculations (each semester has its own specific subjects)
   const semestresCalculations = activeSemestres.map(sem => {
-    // Matieres for this semester & filiere
+    // Matieres belonging strictly to this semester & filiere
     const semMatieres = matieres.filter(m => 
       Number(m.semestre_id) === Number(sem.id) && 
       (!m.filiere_id || Number(m.filiere_id) === Number(studentFiliere?.id) || Number(m.filiere_id) === Number(etudiant.filiere_id))
@@ -348,16 +348,8 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
       Number(n.semestre_id) === Number(sem.id) &&
       (!n.annee_academique_id || Number(n.annee_academique_id) === Number(selectedAnneeId))
     );
-    const noteMatiereIds = new Set(semNotes.map(n => Number(n.matiere_id)));
-    const extraMatieresWithNotes = matieres.filter(m => noteMatiereIds.has(Number(m.id)) && !semMatieres.some(sm => Number(sm.id) === Number(m.id)));
 
-    let applicableMatieres = [...semMatieres, ...extraMatieresWithNotes];
-    if (applicableMatieres.length === 0) {
-      applicableMatieres = matieres.filter(m => Number(m.semestre_id) === Number(sem.id));
-    }
-    if (applicableMatieres.length === 0 && matieres.length > 0) {
-      applicableMatieres = matieres.filter(m => !m.filiere_id || Number(m.filiere_id) === Number(studentFiliere?.id) || Number(m.filiere_id) === Number(etudiant.filiere_id));
-    }
+    const applicableMatieres = semMatieres;
 
     let semTotalPoints = 0;
     let semTotalCredits = 0;

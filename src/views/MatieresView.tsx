@@ -3,7 +3,7 @@ import { DB } from '../lib/storage';
 import { Matiere } from '../types/database';
 import { Modal } from '../components/Modal';
 import { ConfirmModal } from '../components/ConfirmModal';
-import { FileText, Plus, Search, Upload, Download, CheckCircle2, X, ExternalLink, BookOpen, Layers } from 'lucide-react';
+import { FileText, Plus, Search, Upload, CheckCircle2, X, ExternalLink, BookOpen, Layers, Calendar } from 'lucide-react';
 
 export const MatieresView: React.FC = () => {
   const [list, setList] = useState<Matiere[]>(DB.getMatieres());
@@ -16,6 +16,7 @@ export const MatieresView: React.FC = () => {
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [search, setSearch] = useState('');
   const [selectedFiliereFilter, setSelectedFiliereFilter] = useState<string>('all');
+  const [selectedSemestreFilter, setSelectedSemestreFilter] = useState<string>('all');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
@@ -42,7 +43,7 @@ export const MatieresView: React.FC = () => {
         code: item.code,
         nom: item.nom,
         filiere_id: item.filiere_id,
-        semestre_id: item.semestre_id,
+        semestre_id: item.semestre_id || semestres[0]?.id || 1,
         enseignant_nom: defaultEnsNom,
         ue_type: item.ue_type || 'Majeure',
         credits: item.credits || 3,
@@ -54,11 +55,15 @@ export const MatieresView: React.FC = () => {
       });
     } else {
       setEditingItem(null);
+      // Auto-select based on active filters if set
+      const defaultFiliereId = selectedFiliereFilter !== 'all' ? Number(selectedFiliereFilter) : (filieres[0]?.id || 1);
+      const defaultSemestreId = selectedSemestreFilter !== 'all' ? Number(selectedSemestreFilter) : (semestres[0]?.id || 1);
+
       setFormData({
         code: '',
         nom: '',
-        filiere_id: filieres[0]?.id || 1,
-        semestre_id: semestres[0]?.id || 1,
+        filiere_id: defaultFiliereId,
+        semestre_id: defaultSemestreId,
         enseignant_nom: '',
         ue_type: 'Majeure',
         credits: 3,
@@ -139,8 +144,12 @@ export const MatieresView: React.FC = () => {
     const matchesSearch = m.nom.toLowerCase().includes(search.toLowerCase()) ||
       m.code.toLowerCase().includes(search.toLowerCase());
     const matchesFiliere = selectedFiliereFilter === 'all' || Number(m.filiere_id) === Number(selectedFiliereFilter);
-    return matchesSearch && matchesFiliere;
+    const matchesSemestre = selectedSemestreFilter === 'all' || Number(m.semestre_id) === Number(selectedSemestreFilter);
+    return matchesSearch && matchesFiliere && matchesSemestre;
   });
+
+  // Calculate semester distribution stats for active filiere
+  const filiereMatieres = list.filter(m => selectedFiliereFilter === 'all' || Number(m.filiere_id) === Number(selectedFiliereFilter));
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -148,8 +157,8 @@ export const MatieresView: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-[#1A1A1A]">Gestion des Matières & Supports de Cours</h2>
-          <p className="text-xs text-gray-500 mt-1">Modules, crédits ECTS, enseignants et fichiers pédagogiques rattachés par filière.</p>
+          <h2 className="text-xl font-bold text-[#1A1A1A]">Gestion des Matières & Programmes Semestriels</h2>
+          <p className="text-xs text-gray-500 mt-1">Chaque semestre regroupe ses propres matières, crédits ECTS et supports pédagogiques rattachés.</p>
         </div>
         <button
           type="button"
@@ -161,7 +170,62 @@ export const MatieresView: React.FC = () => {
         </button>
       </div>
 
-      {/* Filter */}
+      {/* Semester Scoping Informative Banner & Quick Semester Tabs */}
+      <div className="bg-gradient-to-r from-blue-50/80 to-indigo-50/80 border border-blue-200/80 rounded-[18px] p-4 space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-[#0066FF] text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0">
+              <Calendar className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="font-bold text-xs text-slate-900">Organisation Pédagogique Semestre par Semestre</h3>
+              <p className="text-[11px] text-slate-600">Filtrer ou ajouter les matières spécifiques à chaque semestre du parcours.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setSelectedSemestreFilter('all')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                selectedSemestreFilter === 'all'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              Tous les semestres ({filiereMatieres.length})
+            </button>
+            {semestres.map(s => {
+              const count = filiereMatieres.filter(m => Number(m.semestre_id) === Number(s.id)).length;
+              const totalCredits = filiereMatieres
+                .filter(m => Number(m.semestre_id) === Number(s.id))
+                .reduce((acc, curr) => acc + (curr.credits || 0), 0);
+              const isActive = selectedSemestreFilter === String(s.id);
+
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => setSelectedSemestreFilter(String(s.id))}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    isActive
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+                  }`}
+                >
+                  <span>{s.libelle}</span>
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                    isActive ? 'bg-blue-700 text-blue-100' : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {count} mat. ({totalCredits} ECTS)
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Filter & Search */}
       <div className="bg-white p-4 rounded-[20px] border border-[#E5E7EB] shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
         <div className="relative flex-1">
           <input
@@ -174,15 +238,28 @@ export const MatieresView: React.FC = () => {
           <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
         </div>
 
-        <div className="w-full sm:w-64">
+        <div className="w-full sm:w-56">
           <select
             value={selectedFiliereFilter}
             onChange={(e) => setSelectedFiliereFilter(e.target.value)}
-            className="w-full h-[44px] bg-[#F9FAFB] border border-[#E5E7EB] rounded-[14px] px-3.5 text-xs font-bold text-slate-700 focus:outline-none focus:border-[#0066FF] cursor-pointer"
+            className="w-full h-[44px] bg-[#F9FAFB] border border-[#E5E7EB] rounded-[14px] px-3 text-xs font-bold text-slate-700 focus:outline-none focus:border-[#0066FF] cursor-pointer"
           >
             <option value="all">Toutes les Filières</option>
             {filieres.map(f => (
               <option key={f.id} value={f.id}>{f.code} - {f.nom}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="w-full sm:w-52">
+          <select
+            value={selectedSemestreFilter}
+            onChange={(e) => setSelectedSemestreFilter(e.target.value)}
+            className="w-full h-[44px] bg-[#F9FAFB] border border-[#E5E7EB] rounded-[14px] px-3 text-xs font-bold text-slate-700 focus:outline-none focus:border-[#0066FF] cursor-pointer"
+          >
+            <option value="all">Tous les Semestres</option>
+            {semestres.map(s => (
+              <option key={s.id} value={s.id}>{s.libelle} ({s.code})</option>
             ))}
           </select>
         </div>
@@ -196,105 +273,128 @@ export const MatieresView: React.FC = () => {
               <tr className="bg-gray-50 text-[11px] font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
                 <th className="px-6 py-4">Code</th>
                 <th className="px-6 py-4">Nom de la Matière / UE</th>
-                <th className="px-6 py-4">Filière / Semestre</th>
-                <th className="px-6 py-4">Enseignant</th>
-                <th className="px-6 py-4">Support de Cours Rattaché</th>
+                <th className="px-6 py-4">Semestre Dédié</th>
+                <th className="px-6 py-4">Filière</th>
+                <th className="px-6 py-4">Enseignant Titulaire</th>
+                <th className="px-6 py-4">Support de Cours</th>
                 <th className="px-6 py-4 text-center">Crédits (ECTS)</th>
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="text-xs divide-y divide-gray-100">
-              {filtered.map((item) => {
-                const fil = filieres.find(f => f.id === item.filiere_id);
-                const sem = semestres.find(s => s.id === item.semestre_id);
-                const ens = enseignants.find(e => e.id === item.enseignant_id);
-                const displayTeacher = item.enseignant_nom || (ens ? `${ens.titre} ${ens.prenom} ${ens.nom}` : 'Non assigné');
-                const isMineure = item.ue_type === 'Mineure';
-                const hasSupport = !!(item.support_fichier_nom || item.support_fichier_url);
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-6 py-12 text-center text-gray-400 font-medium">
+                    Aucune matière trouvée pour cette sélection de semestre et filière.
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((item) => {
+                  const fil = filieres.find(f => f.id === item.filiere_id);
+                  const sem = semestres.find(s => s.id === item.semestre_id);
+                  const ens = enseignants.find(e => e.id === item.enseignant_id);
+                  const displayTeacher = item.enseignant_nom || (ens ? `${ens.titre} ${ens.prenom} ${ens.nom}` : 'Non assigné');
+                  const isMineure = item.ue_type === 'Mineure';
+                  const hasSupport = !!(item.support_fichier_nom || item.support_fichier_url);
 
-                return (
-                  <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="px-6 py-4 font-mono font-bold text-[#0066FF]">{item.code}</td>
-                    <td className="px-6 py-4 font-semibold text-[#1A1A1A] max-w-[200px]">
-                      <div>{item.nom}</div>
-                      <span className={`inline-block mt-1 px-2 py-0.5 text-[10px] font-bold rounded-md border ${
-                        isMineure
-                          ? 'bg-purple-50 text-purple-700 border-purple-200'
-                          : 'bg-blue-50 text-[#0066FF] border-blue-200'
-                      }`}>
-                        UE {item.ue_type || 'Majeure'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-gray-600">
-                      <span className="font-bold block text-slate-900">{fil?.code || 'Filière'}</span>
-                      <span className="text-[11px] text-gray-500">{fil?.nom}</span>
-                      <span className="text-[10px] text-blue-600 block mt-0.5 font-medium">{sem?.libelle || 'Semestre 1'}</span>
-                    </td>
-                    <td className="px-6 py-4 text-gray-700 font-medium">
-                      {displayTeacher}
-                    </td>
-                    <td className="px-6 py-4">
-                      {hasSupport ? (
-                        <div className="flex flex-col items-start gap-1">
-                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-[11px] font-bold max-w-[220px]">
-                            <FileText className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                            <span className="truncate" title={item.support_titre || item.support_fichier_nom || 'Support disponible'}>
-                              {item.support_titre || item.support_fichier_nom || 'Support disponible'}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {item.support_type_document && (
-                              <span className="text-[10px] text-emerald-700 bg-emerald-100/60 px-1.5 py-0.2 rounded font-medium">
-                                {item.support_type_document}
+                  const isS1 = item.semestre_id === 1 || sem?.code === 'S1';
+                  const isS2 = item.semestre_id === 2 || sem?.code === 'S2';
+
+                  return (
+                    <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="px-6 py-4 font-mono font-bold text-[#0066FF]">{item.code}</td>
+                      <td className="px-6 py-4 font-semibold text-[#1A1A1A] max-w-[200px]">
+                        <div>{item.nom}</div>
+                        <span className={`inline-block mt-1 px-2 py-0.5 text-[10px] font-bold rounded-md border ${
+                          isMineure
+                            ? 'bg-purple-50 text-purple-700 border-purple-200'
+                            : 'bg-blue-50 text-[#0066FF] border-blue-200'
+                        }`}>
+                          UE {item.ue_type || 'Majeure'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-bold text-xs border ${
+                          isS1
+                            ? 'bg-blue-50 text-blue-800 border-blue-200'
+                            : isS2
+                              ? 'bg-indigo-50 text-indigo-800 border-indigo-200'
+                              : 'bg-purple-50 text-purple-800 border-purple-200'
+                        }`}>
+                          <Calendar className="w-3.5 h-3.5 opacity-70" />
+                          <span>{sem?.libelle || `Semestre ${item.semestre_id || 1}`}</span>
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-gray-600">
+                        <span className="font-bold block text-slate-900">{fil?.code || 'Filière'}</span>
+                        <span className="text-[11px] text-gray-500">{fil?.nom}</span>
+                      </td>
+                      <td className="px-6 py-4 text-gray-700 font-medium">
+                        {displayTeacher}
+                      </td>
+                      <td className="px-6 py-4">
+                        {hasSupport ? (
+                          <div className="flex flex-col items-start gap-1">
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-[11px] font-bold max-w-[220px]">
+                              <FileText className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                              <span className="truncate" title={item.support_titre || item.support_fichier_nom || 'Support disponible'}>
+                                {item.support_titre || item.support_fichier_nom || 'Support disponible'}
                               </span>
-                            )}
-                            {item.support_fichier_url && (
-                              <button
-                                type="button"
-                                onClick={() => handleOpenSupportFile(item.support_fichier_url)}
-                                className="inline-flex items-center gap-1 text-[10px] font-bold text-[#0066FF] hover:underline"
-                              >
-                                <ExternalLink className="w-3 h-3" />
-                                <span>Aperçu</span>
-                              </button>
-                            )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {item.support_type_document && (
+                                <span className="text-[10px] text-emerald-700 bg-emerald-100/60 px-1.5 py-0.2 rounded font-medium">
+                                  {item.support_type_document}
+                                </span>
+                              )}
+                              {item.support_fichier_url && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenSupportFile(item.support_fichier_url)}
+                                  className="inline-flex items-center gap-1 text-[10px] font-bold text-[#0066FF] hover:underline"
+                                >
+                                  <ExternalLink className="w-3 h-3" />
+                                  <span>Aperçu</span>
+                                </button>
+                              )}
+                            </div>
                           </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenModal(item)}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-200 text-slate-500 hover:text-[#0066FF] rounded-lg text-[11px] font-medium transition-colors"
+                          >
+                            <Upload className="w-3 h-3" />
+                            <span>+ Joindre un support</span>
+                          </button>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span className="font-bold text-emerald-600 px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-md">{item.credits} Crédits ECTS</span>
+                      </td>
+                      <td className="px-6 py-4 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-2 whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenModal(item)}
+                            className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-[10px] text-xs font-semibold shrink-0"
+                          >
+                            Modifier
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(item.id)}
+                            className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-[10px] text-xs font-semibold shrink-0"
+                          >
+                            Supprimer
+                          </button>
                         </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleOpenModal(item)}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-200 text-slate-500 hover:text-[#0066FF] rounded-lg text-[11px] font-medium transition-colors"
-                        >
-                          <Upload className="w-3 h-3" />
-                          <span>+ Joindre un support</span>
-                        </button>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <span className="font-bold text-emerald-600 px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-md">{item.credits} Crédits ECTS</span>
-                    </td>
-                    <td className="px-6 py-4 text-right whitespace-nowrap">
-                      <div className="flex items-center justify-end gap-2 whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenModal(item)}
-                          className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-[10px] text-xs font-semibold shrink-0"
-                        >
-                          Modifier
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(item.id)}
-                          className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-[10px] text-xs font-semibold shrink-0"
-                        >
-                          Supprimer
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
@@ -304,7 +404,7 @@ export const MatieresView: React.FC = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingItem ? 'Modifier la Matière & Support de Cours' : 'Ajouter une Matière & Support de Cours'}
+        title={editingItem ? 'Modifier la Matière & Programme' : 'Ajouter une Matière à un Semestre'}
       >
         <form onSubmit={handleSave} className="space-y-4 text-xs">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -315,7 +415,7 @@ export const MatieresView: React.FC = () => {
                 value={formData.code}
                 onChange={(e) => setFormData({ ...formData, code: e.target.value })}
                 placeholder="Ex: INF101"
-                className="w-full h-[44px] px-3 border border-[#E5E7EB] rounded-[14px]"
+                className="w-full h-[44px] px-3 border border-[#E5E7EB] rounded-[14px] font-mono font-bold text-slate-800"
                 required
               />
             </div>
@@ -329,6 +429,33 @@ export const MatieresView: React.FC = () => {
                 className="w-full h-[44px] px-3 border border-[#E5E7EB] rounded-[14px]"
                 required
               />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block font-semibold text-gray-700 mb-1">Filière Rattachée *</label>
+              <select
+                value={formData.filiere_id}
+                onChange={(e) => setFormData({ ...formData, filiere_id: Number(e.target.value) })}
+                className="w-full h-[44px] px-3 border border-[#E5E7EB] rounded-[14px] bg-white focus:outline-none focus:border-[#0066FF] font-semibold text-slate-800"
+              >
+                {filieres.map(f => (
+                  <option key={f.id} value={f.id}>{f.code} - {f.nom}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block font-semibold text-gray-700 mb-1">Semestre d'Appartenance *</label>
+              <select
+                value={formData.semestre_id}
+                onChange={(e) => setFormData({ ...formData, semestre_id: Number(e.target.value) })}
+                className="w-full h-[44px] px-3 border border-[#0066FF] bg-blue-50/50 rounded-[14px] focus:outline-none font-bold text-blue-900"
+              >
+                {semestres.map(s => (
+                  <option key={s.id} value={s.id}>{s.libelle} ({s.code})</option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -352,36 +479,9 @@ export const MatieresView: React.FC = () => {
                 max={30}
                 value={formData.credits}
                 onChange={(e) => setFormData({ ...formData, credits: Number(e.target.value) })}
-                className="w-full h-[44px] px-3 border border-[#E5E7EB] rounded-[14px] focus:outline-none focus:border-[#0066FF]"
+                className="w-full h-[44px] px-3 border border-[#E5E7EB] rounded-[14px] focus:outline-none focus:border-[#0066FF] font-bold text-slate-800"
                 required
               />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block font-semibold text-gray-700 mb-1">Filière Rattachée *</label>
-              <select
-                value={formData.filiere_id}
-                onChange={(e) => setFormData({ ...formData, filiere_id: Number(e.target.value) })}
-                className="w-full h-[44px] px-3 border border-[#E5E7EB] rounded-[14px] bg-white focus:outline-none focus:border-[#0066FF] font-semibold text-slate-800"
-              >
-                {filieres.map(f => (
-                  <option key={f.id} value={f.id}>{f.code} - {f.nom}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block font-semibold text-gray-700 mb-1">Semestre *</label>
-              <select
-                value={formData.semestre_id}
-                onChange={(e) => setFormData({ ...formData, semestre_id: Number(e.target.value) })}
-                className="w-full h-[44px] px-3 border border-[#E5E7EB] rounded-[14px] bg-white focus:outline-none focus:border-[#0066FF]"
-              >
-                {semestres.map(s => (
-                  <option key={s.id} value={s.id}>{s.libelle}</option>
-                ))}
-              </select>
             </div>
           </div>
 
@@ -405,13 +505,13 @@ export const MatieresView: React.FC = () => {
               </label>
               {formData.filiere_id && (
                 <span className="text-[10px] font-bold text-[#0066FF] bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200">
-                  Visible pour : {filieres.find(f => f.id === Number(formData.filiere_id))?.code || 'Filière'}
+                  Visible pour : {filieres.find(f => f.id === Number(formData.filiere_id))?.code || 'Filière'} - {semestres.find(s => s.id === Number(formData.semestre_id))?.libelle || 'Semestre'}
                 </span>
               )}
             </div>
 
             <p className="text-[11px] text-gray-500">
-              Rattachez un polycopié, diaporama ou support pédagogique. Dès l'enregistrement, il sera <strong>automatiquement visible et téléchargeable</strong> dans l'Espace Étudiant pour tous les inscrits de cette filière.
+              Rattachez un polycopié, diaporama ou support pédagogique. Dès l'enregistrement, il sera <strong>automatiquement visible et téléchargeable</strong> dans l'Espace Étudiant pour tous les inscrits de cette filière et de ce semestre.
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
@@ -535,4 +635,5 @@ export const MatieresView: React.FC = () => {
     </div>
   );
 };
+
 

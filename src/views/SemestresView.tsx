@@ -8,6 +8,7 @@ import { Calendar, Plus, Search, Pencil, Trash2 } from 'lucide-react';
 export const SemestresView: React.FC = () => {
   const [list, setList] = useState<Semestre[]>(DB.getSemestres());
   const niveaux = DB.getNiveaux();
+  const matieres = DB.getMatieres();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Semestre | null>(null);
@@ -134,6 +135,7 @@ export const SemestresView: React.FC = () => {
               <tr className="bg-gray-50 text-[11px] font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
                 <th className="px-6 py-4">Code</th>
                 <th className="px-6 py-4">Libellé</th>
+                <th className="px-6 py-4">Matières Rattachées</th>
                 <th className="px-6 py-4">Portée / Filières</th>
                 <th className="px-6 py-4 text-center">Ordre Chronologique</th>
                 <th className="px-6 py-4 text-right">Actions</th>
@@ -142,10 +144,18 @@ export const SemestresView: React.FC = () => {
             <tbody className="text-xs divide-y divide-gray-100">
               {filtered.length > 0 ? (
                 filtered.map((item) => {
+                  const semMatieres = matieres.filter(m => Number(m.semestre_id) === Number(item.id));
+                  const totalCredits = semMatieres.reduce((acc, m) => acc + (m.credits || 0), 0);
+
                   return (
                     <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
                       <td className="px-6 py-4 font-mono font-bold text-[#0066FF]">{item.code}</td>
                       <td className="px-6 py-4 font-semibold text-[#1A1A1A]">{item.libelle}</td>
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-800 rounded-lg font-bold text-xs border border-blue-200">
+                          {semMatieres.length} matière{semMatieres.length > 1 ? 's' : ''} ({totalCredits} ECTS)
+                        </span>
+                      </td>
                       <td className="px-6 py-4 text-gray-600">
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-md font-semibold text-xs border border-emerald-200">
                           Toutes les filières
@@ -175,7 +185,7 @@ export const SemestresView: React.FC = () => {
                 })
               ) : (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-gray-400">
+                  <td colSpan={6} className="px-6 py-8 text-center text-gray-400">
                     Aucun semestre trouvé.
                   </td>
                 </tr>

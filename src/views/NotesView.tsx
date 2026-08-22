@@ -219,15 +219,11 @@ export const NotesView: React.FC = () => {
   const currentFiliere = filieres.find(f => f.id === Number(selectedFiliere));
   const currentSemestre = semestres.find(s => s.id === Number(selectedSemestre));
 
-  // Subjects corresponding to Filiere and Semestre
+  // Subjects corresponding strictly to Filiere and Semestre (each semester has its own subjects)
   const semesterMatieres = useMemo(() => {
-    const list = matieres.filter(
-      m => m.filiere_id === Number(selectedFiliere) && m.semestre_id === Number(selectedSemestre)
+    return matieres.filter(
+      m => Number(m.filiere_id) === Number(selectedFiliere) && Number(m.semestre_id) === Number(selectedSemestre)
     );
-    if (list.length > 0) return list;
-    // Fallback if no exact match: subjects of that filiere
-    const listFiliere = matieres.filter(m => m.filiere_id === Number(selectedFiliere));
-    return listFiliere.length > 0 ? listFiliere : matieres;
   }, [matieres, selectedFiliere, selectedSemestre]);
 
   // Ensure activeMatiereId is valid
