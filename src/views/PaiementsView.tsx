@@ -299,49 +299,6 @@ export const PaiementsView: React.FC = () => {
         </button>
       </div>
 
-      {/* KPI Financial Overview Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
-            <Wallet className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-[11px] font-bold uppercase text-slate-500 tracking-wider">Total Encaissé</p>
-            <p className="text-lg font-black text-slate-900 font-mono">{stats.totalEncaisse.toLocaleString()} FCFA</p>
-          </div>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-blue-50 text-[#0066FF] flex items-center justify-center font-bold">
-            <CreditCard className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-[11px] font-bold uppercase text-slate-500 tracking-wider">Reçus Délivrés</p>
-            <p className="text-lg font-black text-slate-900 font-mono">{stats.totalCount} règlements</p>
-          </div>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
-            <Smartphone className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-[11px] font-bold uppercase text-slate-500 tracking-wider">Mobile Money (OM/Wave)</p>
-            <p className="text-lg font-black text-slate-900 font-mono">{stats.mobileMoneyCount} transactions</p>
-          </div>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
-            <ShieldCheck className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-[11px] font-bold uppercase text-slate-500 tracking-wider">Étudiants Ayant Réglé</p>
-            <p className="text-lg font-black text-slate-900 font-mono">{stats.uniqueStudents} dossiers</p>
-          </div>
-        </div>
-      </div>
-
       {/* Error Notification Banner */}
       {errorBanner && (
         <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-bold flex items-center justify-between animate-in fade-in">

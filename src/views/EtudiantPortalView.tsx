@@ -1148,31 +1148,8 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
 
                             return (
                               <tr key={row.matiere.id || idx} className={idx % 2 === 0 ? 'bg-white hover:bg-slate-50/80' : 'bg-slate-50/40 hover:bg-slate-50/80'}>
-                                <td className="px-3 py-1.5 font-semibold text-slate-900 border-r border-slate-200">
-                                  <div className="flex flex-wrap items-center justify-between gap-1.5">
-                                    <div>
-                                      <span className="font-mono text-[10.5px] text-blue-600 font-bold mr-1.5">{row.matiere.code}</span>
-                                      <span>{row.matiere.nom}</span>
-                                    </div>
-                                    {(() => {
-                                      const matSupports = supportsCours.filter(s => Number(s.matiere_id) === Number(row.matiere.id));
-                                      if (matSupports.length === 0) return null;
-                                      return (
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            if (setActiveTab) setActiveTab('supports_cours');
-                                            setCourseSearch(row.matiere.code);
-                                          }}
-                                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors cursor-pointer"
-                                          title={`Accéder aux ${matSupports.length} support(s) de cours pour ${row.matiere.nom}`}
-                                        >
-                                          <BookOpen className="w-3 h-3 text-blue-600" />
-                                          <span>Supports ({matSupports.length})</span>
-                                        </button>
-                                      );
-                                    })()}
-                                  </div>
+                                <td className="px-3 py-2 font-medium text-slate-900 border-r border-slate-200">
+                                  {row.matiere.nom}
                                 </td>
                                 <td className="px-2.5 py-1.5 text-center font-mono text-slate-700 border-r border-slate-200">
                                   {row.cc !== null ? row.cc.toFixed(2) : '--'}
@@ -1245,98 +1222,6 @@ export const EtudiantPortalView: React.FC<EtudiantPortalViewProps> = ({
       {/* TAB 2: MES PAIEMENTS & FRAIS DE FORMATION */}
       {currentTab === 'paiements' && (
         <div className="space-y-6 animate-in fade-in duration-300">
-          
-          {/* Financial KPI Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            
-            {/* Total Frais Dus */}
-            <div className="bg-white p-5 rounded-[18px] border border-slate-200 shadow-xs space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Frais Scolaires Totaux</span>
-                <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
-                  <Building2 className="w-4 h-4" />
-                </div>
-              </div>
-              <div>
-                <p className="text-xl sm:text-2xl font-black text-slate-900 font-mono">
-                  {totalFraisDusSum.toLocaleString()} <span className="text-xs font-semibold text-slate-500">FCFA</span>
-                </p>
-                <p className="text-[11px] text-slate-500 mt-0.5">Année académique en cours</p>
-              </div>
-            </div>
-
-            {/* Total Réglé */}
-            <div className="bg-white p-5 rounded-[18px] border border-slate-200 shadow-xs space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">Total Réglé & Encaissé</span>
-                <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl">
-                  <CheckCircle className="w-4 h-4" />
-                </div>
-              </div>
-              <div>
-                <p className="text-xl sm:text-2xl font-black text-emerald-600 font-mono">
-                  {totalMontantPaye.toLocaleString()} <span className="text-xs font-semibold text-emerald-700">FCFA</span>
-                </p>
-                <p className="text-[11px] text-emerald-600/80 mt-0.5">{paiements.length} versement(s) comptabilisé(s)</p>
-              </div>
-            </div>
-
-            {/* Reste à Payer */}
-            <div className="bg-white p-5 rounded-[18px] border border-slate-200 shadow-xs space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-amber-600 uppercase tracking-wider">Solde Restant Dû</span>
-                <div className="p-2 bg-amber-50 text-amber-600 rounded-xl">
-                  <Clock className="w-4 h-4" />
-                </div>
-              </div>
-              <div>
-                <p className={`text-xl sm:text-2xl font-black font-mono ${soldeRestant <= 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
-                  {soldeRestant.toLocaleString()} <span className="text-xs font-semibold text-slate-500">FCFA</span>
-                </p>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  {soldeRestant <= 0 ? "Frais de formation 100% soldés" : "Échéance en attente de versement"}
-                </p>
-              </div>
-            </div>
-
-            {/* Taux de Recouvrement / Quitus */}
-            <div className="bg-white p-5 rounded-[18px] border border-slate-200 shadow-xs flex flex-col justify-between space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">Taux de Règlement</span>
-                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                  tauxReglement >= 100 ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
-                }`}>
-                  {tauxReglement}%
-                </span>
-              </div>
-
-              {/* Progress Bar */}
-              <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ${
-                    tauxReglement >= 100 ? 'bg-emerald-500' : 'bg-blue-600'
-                  }`}
-                  style={{ width: `${Math.min(100, Math.max(0, tauxReglement))}%` }}
-                />
-              </div>
-
-              {/* Quitus button */}
-              <button
-                type="button"
-                onClick={() => setIsQuitusModalOpen(true)}
-                className={`w-full py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-2xs ${
-                  soldeRestant <= 0
-                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                }`}
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>{soldeRestant <= 0 ? "Quitus de Scolarité Officiel" : "Situation Financière"}</span>
-              </button>
-            </div>
-
-          </div>
-
           {/* Grille Détails Frais & Versements */}
           <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
             <div className="px-5 py-4 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
